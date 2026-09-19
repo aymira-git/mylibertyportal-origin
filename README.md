@@ -1,16 +1,47 @@
-# React + Vite
+# MyLiberty Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Operational and academic management portal for Liberty English Course, built with React, Vite, Tailwind CSS, and Firebase (Firestore, Authentication, and Storage).
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📖 Documentation & Guides
 
-## React Compiler
+All project documentation, engineering specifications, implementation plans, and roadmaps are organized in the [`docs/`](./docs/) directory:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+* **[Master Documentation Index](docs/README.md)** — central directory of all guides and plans.
+* **[Architecture Guide](docs/ARCHITECTURE.md)** — domain directory structure (`src/features/*`), barrel boundary rules, repository patterns, and protected infrastructure.
+* **[Payment Plans Implementation Plan](docs/Payment%20Plans%20Implementation%20Plan.md)** — multi-duration tuition plans (1, 3, 6, 12, 24 Mo + Custom), payment health status, renewal logic, and WhatsApp receipts.
+* **[Academic Model, Batches & RBAC Implementation Plan](docs/Academic%20Model%2C%20Batches%20%26%20RBAC%20Implementation%20Plan.md)** — fluency tiers, Option B placement range compatibility, admissions pipeline, and role-based permissions.
+* **[Available Batches Integration Roadmap](docs/myliberty_available_batches_roadmap.md)** — batch lifecycle, scheduling, capacity, and enrollment architecture.
+* **[Operations & Migration Runbook](docs/READ-ME-FIRST.md)** — Firestore composite index deployments and pagination notes.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🛠️ Tech Stack & Architecture
+
+* **Frontend**: React (v19) + Vite
+* **Styling**: Tailwind CSS
+* **Backend / Database**: Google Firebase (Firestore, Auth, Storage)
+* **Architecture**: Domain-driven feature layout (`src/features/<domain>/`), separated repository layer for Firestore calls (`*Repository.js`), and strict public barrel boundaries (`index.js`).
+* **PWA**: `vite-plugin-pwa` with offline caching and service worker support.
+
+---
+
+## 🚀 Development Scripts
+
+```bash
+# Install dependencies
+npm install
+
+# Start local Vite development server
+npm run dev
+
+# Run ESLint validation
+npm run lint
+
+# Build production bundle with Vite & PWA generation
+npm run build
+
+# Deploy Firestore composite indexes
+firebase deploy --only firestore:indexes
+```

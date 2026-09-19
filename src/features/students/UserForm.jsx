@@ -6,7 +6,17 @@
  */
 
 import StudentPhotoCapture from "./StudentPhotoCapture";
-import { LevelBadge, LEVELS, LEVEL_LIST, TIERS, TIER_KEYS, getTier, getStars } from "../shared";
+import {
+  LevelBadge,
+  LEVELS,
+  LEVEL_LIST,
+  TIERS,
+  TIER_KEYS,
+  getTier,
+  getStars,
+  PAYMENT_PLANS,
+  PAYMENT_PLAN_KEYS,
+} from "../shared";
 
 export default function UserForm({ formData, setFormData, editId, onSubmit }) {
   const field = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
@@ -300,6 +310,26 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                   onChange={e => field("classOrSemester", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
+              </div>
+              <div className="md:col-span-3">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Tuition Payment Plan Preference
+                </label>
+                <select
+                  value={formData.paymentPlan || "monthly"}
+                  onChange={e => field("paymentPlan", e.target.value)}
+                  className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs capitalize text-slate-800 focus:border-[#1a3a8f] outline-none"
+                >
+                  {PAYMENT_PLAN_KEYS.map((pKey) => {
+                    const p = PAYMENT_PLANS[pKey];
+                    return (
+                      <option key={pKey} value={pKey}>
+                        {p.label} ({p.termName}){p.discountPercent > 0 ? ` — Save ${p.discountPercent}%` : ""}
+                      </option>
+                    );
+                  })}
+                  <option value="custom">Custom (Flexible / Manual Billing)</option>
+                </select>
               </div>
             </div>
           </div>

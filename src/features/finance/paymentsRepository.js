@@ -1,5 +1,5 @@
 import { db } from "../../firebase";
-import { collection, getDocs, query, where, doc, setDoc, writeBatch } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, setDoc, writeBatch, deleteField } from "firebase/firestore";
 
 /**
  * All direct Firestore reads/writes for payments live here instead of
@@ -18,28 +18,39 @@ export async function fetchPaymentHistory(studentId) {
 
 /**
  * Writes the payment record and updates the student's payment status
- * together, atomically — either both land or neither does (see the
- * PaymentModal history for why this matters: it used to be two separate
- * calls, which left room for a dropped connection to record a payment
- * with no status update, or the reverse).
+ * together, atomically — either both land or neither does.
  */
 export async function recordPayment(studentId, paymentRecord) {
   const paymentRef = doc(collection(db, "payments"));
   const batch = writeBatch(db);
 
-  batch.set(paymentRef, paymentRecord);
-  batch.set(doc(db, "users", studentId), {
+  const studentUpdate = {
     paymentStatus: "paid",
     lastPaymentPeriod: paymentRecord.period,
     lastPaymentDate: paymentRecord.recordedAt.slice(0, 10),
     lastPaymentAmount: paymentRecord.amount,
     lastPaymentMethod: paymentRecord.method,
-  }, { merge: true });
+    paymentPlan: paymentRecord.planId || "monthly",
+  };
+
+  if (paymentRecord.coverageEnd) {
+    studentUpdate.paidUntil = paymentRecord.coverageEnd;
+  }
+
+  batch.set(paymentRef, paymentRecord);
+  batch.set(doc(db, "users", studentId), studentUpdate, { merge: true });
 
   await batch.commit();
   return { id: paymentRef.id, ...paymentRecord };
 }
 
 export function markPaymentPending(studentId) {
-  return setDoc(doc(db, "users", studentId), { paymentStatus: "pending" }, { merge: true });
+  return setDoc(
+    doc(db, "users", studentId),
+    {
+      paymentStatus: "pending",
+      paidUntil: deleteField(),
+    },
+    { merge: true }
+  );
 }

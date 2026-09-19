@@ -1,6 +1,17 @@
 import { useState } from "react";
 import { PaymentModal } from "../finance";
-import { exportTableCSV, Pagination, usePagination } from "../shared";
+import {
+  exportTableCSV,
+  Pagination,
+  usePagination,
+  getPaymentHealthStatus,
+  PAYMENT_PLANS,
+  useToast,
+} from "../shared";
+import {
+  normalizeWhatsAppNumber,
+  buildWhatsAppRenewalReminderMessage,
+} from "../finance/receiptMessages";
 import {
   Users,
   Search,
@@ -11,7 +22,8 @@ import {
   ChevronUp,
   ChevronDown,
   X,
-  UserPlus
+  UserPlus,
+  MessageCircle,
 } from "lucide-react";
 
 function getInitials(name) {
@@ -24,6 +36,40 @@ function getInitials(name) {
     .join("");
 }
 
+function getStudentPlanLabel(student) {
+  if (!student.paymentPlan) return null;
+  if (student.paymentPlan === "custom") return "Custom";
+  return PAYMENT_PLANS[student.paymentPlan]?.label || student.paymentPlan;
+}
+
+function getHealthBadgeClasses(tone) {
+  switch (tone) {
+    case "emerald":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:ring-emerald-400";
+    case "amber":
+      return "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:ring-amber-400";
+    case "rose":
+      return "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:ring-rose-400";
+    case "slate":
+    default:
+      return "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:ring-slate-400";
+  }
+}
+
+function getHealthBadgeReadOnlyClasses(tone) {
+  switch (tone) {
+    case "emerald":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    case "amber":
+      return "bg-amber-50 text-amber-700 border-amber-200";
+    case "rose":
+      return "bg-rose-50 text-rose-700 border-rose-200";
+    case "slate":
+    default:
+      return "bg-slate-100 text-slate-600 border-slate-200";
+  }
+}
+
 export default function StudentRoster({
   students,
   getStudentClasses,
@@ -33,10 +79,32 @@ export default function StudentRoster({
   handleAddStudent,
   readOnly = false
 }) {
+  const toast = useToast();
   const [paymentStudent, setPaymentStudent] = useState(null);
   const [studentSortField, setStudentSortField] = useState("displayName");
   const [studentSortAsc, setStudentSortAsc] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSendRenewalReminder = (e, s, health) => {
+    e.stopPropagation();
+    const rawPhone = s.parentPhone || s.phone;
+    const formatted = normalizeWhatsAppNumber(rawPhone);
+    if (!formatted) {
+      toast(`No valid phone number for ${s.displayName}. Please update contact details first.`, "error");
+      return;
+    }
+
+    const planLabel = getStudentPlanLabel(s);
+    const message = buildWhatsAppRenewalReminderMessage({
+      student: s,
+      paidUntil: s.paidUntil,
+      planLabel,
+      remainingDays: health.remainingDays,
+    });
+
+    const waUrl = `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, "_blank");
+  };
 
   const handleStudentSort = (field) => {
     if (studentSortField === field) {
@@ -85,20 +153,31 @@ export default function StudentRoster({
       "Education",
       "DOB",
       "Joined",
-      "Payment",
+      "Payment Status",
+      "Plan",
+      "Paid Until",
       "Class",
       "Instructor"
     ];
-    const rows = sortedStudents.map((s) => [
-      s.displayName || "",
-      `${s.parentName || "N/A"} (${s.parentPhone || "N/A"})`,
-      s.educationLevel || s.schoolOrJob || "N/A",
-      s.dob || "N/A",
-      s.effectiveJoinedDate || "N/A",
-      s.paymentStatus === "paid" ? "Paid" : "Pending",
-      s.studentClasses.length ? s.studentClasses.map((c) => c.className).join(", ") : "Unassigned",
-      s.studentClasses.length ? s.studentClasses.map((c) => c.instructorName || "Unassigned").join(", ") : "—"
-    ]);
+    const rows = sortedStudents.map((s) => {
+      const planLabel = getStudentPlanLabel(s) || "—";
+      const isPending = s.paymentStatus === "pending";
+      const health = isPending
+        ? { label: "Pending" }
+        : getPaymentHealthStatus(s.paidUntil);
+      return [
+        s.displayName || "",
+        `${s.parentName || "N/A"} (${s.parentPhone || "N/A"})`,
+        s.educationLevel || s.schoolOrJob || "N/A",
+        s.dob || "N/A",
+        s.effectiveJoinedDate || "N/A",
+        health.label,
+        planLabel,
+        s.paidUntil || s.lastPaymentPeriod || "—",
+        s.studentClasses.length ? s.studentClasses.map((c) => c.className).join(", ") : "Unassigned",
+        s.studentClasses.length ? s.studentClasses.map((c) => c.instructorName || "Unassigned").join(", ") : "—"
+      ];
+    });
     exportTableCSV(`student-roster-${new Date().toISOString().slice(0, 10)}`, headers, rows);
   };
 
@@ -167,6 +246,13 @@ export default function StudentRoster({
             ? studentClasses.map((c) => c.className).join(", ")
             : "Unassigned";
 
+          const isPending = s.paymentStatus === "pending";
+          const health = isPending
+            ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
+            : getPaymentHealthStatus(s.paidUntil);
+          const planLabel = getStudentPlanLabel(s);
+          const canRemind = !readOnly && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
+
           return (
             <article
               key={s.id}
@@ -193,28 +279,59 @@ export default function StudentRoster({
                     <p className="text-[11px] font-mono text-slate-400 mt-0.5">ID: {s.id.slice(0, 12)}</p>
                   </div>
                 </div>
-                {readOnly ? (
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border ${
-                      s.paymentStatus === "paid"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}
-                  >
-                    {s.paymentStatus === "paid" ? "Paid" : "Pending"}
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setPaymentStudent(s)}
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border transition shadow-2xs ${
-                      s.paymentStatus === "paid"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                        : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
-                    }`}
-                  >
-                    {s.paymentStatus === "paid" ? "Paid" : "Payment"}
-                  </button>
-                )}
+
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {readOnly ? (
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border ${getHealthBadgeReadOnlyClasses(health.tone)}`}
+                      >
+                        {health.label}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setPaymentStudent(s)}
+                        className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border transition shadow-2xs ${getHealthBadgeClasses(health.tone)}`}
+                      >
+                        {health.label}
+                      </button>
+                    )}
+
+                    {planLabel && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-[#1a3a8f] border border-indigo-100">
+                        {planLabel}
+                      </span>
+                    )}
+
+                    {canRemind && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleSendRenewalReminder(e, s, health)}
+                        title="Send WhatsApp renewal reminder"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition shadow-2xs"
+                      >
+                        <MessageCircle className="w-3 h-3" />
+                        <span>Remind</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {s.paidUntil ? (
+                    <p className="text-[10px] text-slate-500 font-medium whitespace-nowrap">
+                      Until {s.paidUntil}
+                      {health.remainingDays !== null && health.status === "due_soon" && (
+                        <span className="text-amber-600 font-semibold ml-1">({health.remainingDays}d)</span>
+                      )}
+                      {health.remainingDays !== null && health.status === "expired" && (
+                        <span className="text-rose-600 font-semibold ml-1">({Math.abs(health.remainingDays)}d ago)</span>
+                      )}
+                    </p>
+                  ) : s.lastPaymentPeriod ? (
+                    <p className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                      {s.lastPaymentPeriod}
+                    </p>
+                  ) : null}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs border-y border-slate-100 py-2.5 text-slate-600">
@@ -343,6 +460,13 @@ export default function StudentRoster({
           <tbody className="divide-y divide-slate-100 bg-white">
             {pageItems.map((s) => {
               const studentClasses = s.studentClasses;
+              const isPending = s.paymentStatus === "pending";
+              const health = isPending
+                ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
+                : getPaymentHealthStatus(s.paidUntil);
+              const planLabel = getStudentPlanLabel(s);
+              const canRemind = !readOnly && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
+
               return (
                 <tr key={s.id} className="hover:bg-slate-50/60 transition group">
                   <td className="p-3.5 font-bold text-slate-900">
@@ -375,34 +499,57 @@ export default function StudentRoster({
                   <td className="p-3.5 text-slate-500 whitespace-nowrap text-[11px]">{s.dob || "—"}</td>
                   <td className="p-3.5 text-slate-600 font-semibold whitespace-nowrap">{s.effectiveJoinedDate || "—"}</td>
                   <td className="p-3.5">
-                    {readOnly ? (
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                          s.paymentStatus === "paid"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200"
-                        }`}
-                      >
-                        {s.paymentStatus === "paid" ? "Paid" : "Pending"}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setPaymentStudent(s)}
-                        title="Click to manage payments"
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border transition shadow-2xs hover:ring-2 hover:ring-offset-1 ${
-                          s.paymentStatus === "paid"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:ring-emerald-400"
-                            : "bg-amber-50 text-amber-700 border-amber-200 hover:ring-amber-400"
-                        }`}
-                      >
-                        {s.paymentStatus === "paid" ? "Paid" : "Pending"}
-                      </button>
-                    )}
-                    {s.lastPaymentPeriod && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {readOnly ? (
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getHealthBadgeReadOnlyClasses(health.tone)}`}
+                        >
+                          {health.label}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setPaymentStudent(s)}
+                          title="Click to manage payments"
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border transition shadow-2xs hover:ring-2 hover:ring-offset-1 ${getHealthBadgeClasses(health.tone)}`}
+                        >
+                          {health.label}
+                        </button>
+                      )}
+
+                      {planLabel && (
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-[#1a3a8f] border border-indigo-100">
+                          {planLabel}
+                        </span>
+                      )}
+
+                      {canRemind && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleSendRenewalReminder(e, s, health)}
+                          title="Send WhatsApp renewal reminder"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition shadow-2xs"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          <span>Remind</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {s.paidUntil ? (
+                      <p className="text-[10px] text-slate-500 mt-1 font-medium whitespace-nowrap">
+                        Until {s.paidUntil}
+                        {health.remainingDays !== null && health.status === "due_soon" && (
+                          <span className="text-amber-600 font-semibold ml-1">({health.remainingDays}d left)</span>
+                        )}
+                        {health.remainingDays !== null && health.status === "expired" && (
+                          <span className="text-rose-600 font-semibold ml-1">({Math.abs(health.remainingDays)}d ago)</span>
+                        )}
+                      </p>
+                    ) : s.lastPaymentPeriod ? (
                       <p className="text-[10px] text-slate-400 mt-1 font-medium whitespace-nowrap">
                         {s.lastPaymentPeriod}
                       </p>
-                    )}
+                    ) : null}
                   </td>
                   <td className="p-3.5">
                     {studentClasses.length === 0 ? (

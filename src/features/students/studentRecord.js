@@ -48,6 +48,8 @@ export function buildStudentRecord(fields = {}) {
     referralSource: clean(fields.referralSource),
     currentLevel: clean(fields.currentLevel) || "warrior",
     rating: fields.rating || "1",
+    paymentPlan: clean(fields.paymentPlan) || "monthly",
+    ...(fields.paidUntil ? { paidUntil: clean(fields.paidUntil) } : {}),
     notes: clean(fields.notes),
     role: "student",
   };
