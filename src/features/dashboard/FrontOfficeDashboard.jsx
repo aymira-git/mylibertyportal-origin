@@ -240,9 +240,11 @@ export default function FrontOfficeDashboard() {
       ),
     },
     { id: "aiAssistant", label: "AI Assistant", component: <AIAssistant /> },
-    // 👈 Not in the sidebar — only reachable via "Edit" on a student in the
-    // roster. Safe to reach this way: UserForm locks the Role field whenever
-    // editId is set, so this can never create staff accounts or change roles.
+    // 👈 Not in the sidebar — reachable via "Add Student" and via "Edit" on a
+    // student in the roster (both go through handleAddStudent/handleEdit,
+    // which always set role: "student"). UserForm locks the Role field to a
+    // read-only badge whenever formData.role === "student" (add OR edit), so
+    // this can never expose the staff-role picker or create staff accounts.
     {
       id: "addUser", label: editId ? "Edit Student" : "Add Student", hidden: true, component: (
         <UserForm formData={formData} setFormData={setFormData} editId={editId} onSubmit={handleSave} />

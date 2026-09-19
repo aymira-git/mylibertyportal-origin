@@ -19,9 +19,9 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-2">
         <div>
           <h3 className="font-bold text-slate-800 text-lg">
-            {editId
-              ? (isStudent ? "Edit Student Profile" : "Edit Staff Profile")
-              : "Automated Staff Account Creation"}
+            {isStudent
+              ? (editId ? "Edit Student Profile" : "Student Registration")
+              : (editId ? "Edit Staff Profile" : "Automated Staff Account Creation")}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             {isStudent
@@ -32,7 +32,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
 
         {/* Role badge or picker */}
         <div>
-          {editId ? (
+          {editId || isStudent ? (
             <span className="px-3 py-1 bg-indigo-50 text-indigo-700 font-bold text-xs rounded-full uppercase">
               Role: {formData.role}
             </span>
