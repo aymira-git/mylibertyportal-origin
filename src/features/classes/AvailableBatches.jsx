@@ -444,6 +444,7 @@ export default function AvailableBatches({
             onClose={() => setModalOpen(false)}
             batch={editingBatch}
             instructors={instructors}
+            existingClasses={classes}
           />
         )}
       </div>
@@ -867,6 +868,7 @@ export default function AvailableBatches({
           onClose={() => setModalOpen(false)}
           batch={editingBatch}
           instructors={instructors}
+          existingClasses={classes}
         />
       )}
     </div>
