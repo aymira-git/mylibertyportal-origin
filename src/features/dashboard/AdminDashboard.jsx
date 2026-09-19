@@ -24,7 +24,7 @@ export default function AdminDashboard() {
   };
 
   const {
-    users, classes, invites, todos,
+    users, classes, applications, invites, todos,
     editId, selectedStudent, setSelectedStudent,
     formData, setFormData,
     handleSave, handleEdit, handleAddStaff, handleAddStudent, handleDelete,
@@ -184,7 +184,15 @@ export default function AdminDashboard() {
       id: "applications",
       label: "Applications",
       badge: pendingApplications > 0 ? pendingApplications : null,
-      component: <StudentApplications onApproveAndEdit={handleEdit} />,
+      component: (
+        <StudentApplications
+          applications={applications}
+          classes={classes}
+          users={users}
+          onApproveAndEdit={handleEdit}
+          onViewStudent={handleEdit}
+        />
+      ),
     },
     {
       id: "students",

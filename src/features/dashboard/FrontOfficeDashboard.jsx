@@ -34,7 +34,7 @@ export default function FrontOfficeDashboard() {
   const toast = useToast();
 
   const {
-    users, classes, todos,
+    users, classes, applications, todos,
     editId, selectedStudent, setSelectedStudent,
     formData, setFormData,
     handleSave, handleEdit, handleAddStudent, handleDelete,
@@ -205,7 +205,15 @@ export default function FrontOfficeDashboard() {
       id: "applications",
       label: "Applications",
       badge: pendingApplications > 0 ? pendingApplications : null,
-      component: <StudentApplications onApproveAndEdit={handleEdit} />,
+      component: (
+        <StudentApplications
+          applications={applications}
+          classes={classes}
+          users={users}
+          onApproveAndEdit={handleEdit}
+          onViewStudent={handleEdit}
+        />
+      ),
     },
     {
       id: "students",

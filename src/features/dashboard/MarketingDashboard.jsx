@@ -129,7 +129,8 @@ export default function MarketingDashboard() {
     const unsubApplications = onSnapshot(
       collection(db, "applications"),
       (snap) => {
-        setLeadCount(snap.size);
+        const pending = snap.docs.filter((d) => (d.data().status || "pending") === "pending").length;
+        setLeadCount(pending);
         setLoading(false);
       },
       (err) => {

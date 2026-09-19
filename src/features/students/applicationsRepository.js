@@ -1,68 +1,164 @@
+/**
+ * applicationsRepository.js
+ * Write-only Firestore operations for student applications and admissions.
+ *
+ * Applications are retained in Firestore across their lifecycle (pending,
+ * approved, rejected) to maintain audit trails and recovery capability.
+ * Reads are handled via real-time listeners in the dashboard data layer.
+ */
+
 import { db } from "../../firebase";
-import { collection, getDocs, deleteDoc, doc, writeBatch } from "firebase/firestore";
+import {
+  runTransaction,
+  doc,
+  collection,
+  updateDoc,
+  deleteDoc,
+  deleteField,
+  arrayUnion,
+} from "firebase/firestore";
 import { buildStudentRecord } from "./studentRecord";
+import { getBatchAvailability } from "../classes/batchAvailability";
 
 /**
- * All direct Firestore reads/writes for student applications live here
- * instead of inside StudentApplications.jsx — same pattern as
- * classesRepository.js and paymentsRepository.js.
+ * Atomically approves an application, creates the canonical student record,
+ * updates the application document status, and optionally enrolls the student
+ * into an available class batch within a single transaction.
  */
+export async function approveApplication({
+  app,
+  level = "warrior",
+  paymentPlan = "monthly",
+  classId = null,
+  actorEmail = "",
+}) {
+  return runTransaction(db, async (transaction) => {
+    // 1. Verify application exists and is pending
+    const appRef = doc(db, "applications", app.id);
+    const appSnap = await transaction.get(appRef);
+    if (!appSnap.exists() || (appSnap.data().status || "pending") !== "pending") {
+      throw new Error("This application was already processed by someone else.");
+    }
 
-export async function fetchApplications() {
-  // Only ever pending applications live here — once a human approves or
-  // rejects one, the record is deleted immediately rather than archived,
-  // since the decision itself is the record that matters, not the raw
-  // form submission.
-  const snap = await getDocs(collection(db, "applications"));
-  const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  list.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-  return list;
-}
+    // 2. If classId is specified, read and verify class capacity
+    let classData = null;
+    let classRef = null;
+    if (classId) {
+      classRef = doc(db, "classes", classId);
+      const classSnap = await transaction.get(classRef);
+      if (!classSnap.exists()) {
+        throw new Error("This batch is full or no longer open.");
+      }
+      classData = { id: classSnap.id, ...classSnap.data() };
+      const { canEnroll } = getBatchAvailability(classData);
+      if (!canEnroll) {
+        throw new Error("This batch is full or no longer open.");
+      }
+    }
 
-/**
- * Approving an application both creates the real student record and
- * removes the staging application — as one atomic batch. Before this,
- * these were two separate calls: a dropped connection between them could
- * leave a duplicate-risk half-approved application (student created, but
- * the application still sitting there to possibly be approved again), or
- * the application deleted with no student record ever created.
- */
-export function approveApplication(app) {
-  const studentRef = doc(collection(db, "users"));
-  const batch = writeBatch(db);
-  const studentData = buildStudentRecord({
-    displayName: app.displayName,
-    phone: app.phone,
-    dob: app.dob,
-    gender: app.gender,
-    placeOfBirth: app.placeOfBirth,
-    religion: app.religion,
-    address: app.address,
-    branch: app.branch,
-    program: app.program,
-    classType: app.classType,
-    schoolOrJob: app.schoolOrJob,
-    classOrSemester: app.classOrSemester,
-    referralSource: app.referralSource,
-    joinedDate: new Date().toISOString().split("T")[0],
-    fatherName: app.fatherName,
-    fatherJob: app.fatherJob,
-    fatherPhone: app.fatherPhone,
-    motherName: app.motherName,
-    motherJob: app.motherJob,
-    motherPhone: app.motherPhone,
-    photoURL: app.photoURL || "",
+    // 3. Determine final academic level (batch level wins if class chosen)
+    const finalLevel = classId && classData?.classLevel ? classData.classLevel : (level || "warrior");
+    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date().toISOString();
+
+    // 4. Build canonical student record
+    const studentRef = doc(collection(db, "users"));
+    const studentData = buildStudentRecord({
+      displayName: app.displayName,
+      nickname: app.nickname,
+      phone: app.phone,
+      dob: app.dob,
+      gender: app.gender,
+      placeOfBirth: app.placeOfBirth,
+      religion: app.religion,
+      address: app.address,
+      branch: app.branch,
+      program: app.program,
+      classType: app.classType,
+      schoolOrJob: app.schoolOrJob,
+      classOrSemester: app.classOrSemester,
+      referralSource: app.referralSource,
+      joinedDate: today,
+      fatherName: app.fatherName,
+      fatherJob: app.fatherJob,
+      fatherPhone: app.fatherPhone,
+      motherName: app.motherName,
+      motherJob: app.motherJob,
+      motherPhone: app.motherPhone,
+      photoURL: app.photoURL || "",
+      currentLevel: finalLevel,
+      paymentPlan: paymentPlan || "monthly",
+      status: "active",
+    });
+
+    // 5. Atomic writes
+    transaction.set(studentRef, studentData);
+
+    transaction.update(appRef, {
+      status: "approved",
+      approvedAt: now,
+      approvedBy: actorEmail || "system",
+      studentId: studentRef.id,
+    });
+
+    if (classId && classRef) {
+      const dateJoined = classData.classStartDate || today;
+      transaction.update(classRef, {
+        studentIds: arrayUnion(studentRef.id),
+        enrollments: arrayUnion({
+          studentId: studentRef.id,
+          dateJoined,
+          level: finalLevel,
+        }),
+        updatedAt: now,
+      });
+    }
+
+    return {
+      id: studentRef.id,
+      ...studentData,
+    };
   });
-
-  batch.set(studentRef, studentData);
-  batch.delete(doc(db, "applications", app.id));
-
-  return batch.commit().then(() => ({
-    id: studentRef.id,
-    ...studentData,
-  }));
 }
 
-export function rejectApplication(appId) {
+/**
+ * Soft-rejects an application, recording reason, note, and actor identity.
+ */
+export function archiveApplication(appId, { reason = "", note = "", actorEmail = "" } = {}) {
+  return runTransaction(db, async (transaction) => {
+    const appRef = doc(db, "applications", appId);
+    const snap = await transaction.get(appRef);
+    if (!snap.exists() || (snap.data().status || "pending") !== "pending") {
+      throw new Error("This application was already processed by someone else.");
+    }
+    const now = new Date().toISOString();
+    transaction.update(appRef, {
+      status: "rejected",
+      rejectedAt: now,
+      rejectedBy: actorEmail || "system",
+      rejectedReason: reason || "",
+      rejectedNote: note || "",
+    });
+  });
+}
+
+/**
+ * Restores a rejected application back to pending status.
+ */
+export function restoreApplication(appId) {
+  const appRef = doc(db, "applications", appId);
+  return updateDoc(appRef, {
+    status: "pending",
+    rejectedAt: deleteField(),
+    rejectedBy: deleteField(),
+    rejectedReason: deleteField(),
+    rejectedNote: deleteField(),
+  });
+}
+
+/**
+ * Permanently deletes an application document (used only on the Rejected tab).
+ */
+export function deleteApplicationPermanently(appId) {
   return deleteDoc(doc(db, "applications", appId));
 }

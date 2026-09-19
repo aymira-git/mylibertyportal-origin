@@ -6,15 +6,16 @@ export default function StaffDashboard() {
   const [leadCount, setLeadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Every doc in "applications" is inherently pending — approve/reject
-  // deletes the record immediately, so there's no "status" field to filter
-  // on. The collection size IS the pending count. This is a live listener,
-  // so a registration submitted right now bumps the number on screen
-  // without anyone reloading.
+  // Counts active pending applications only. Approved and rejected applications
+  // are retained in the collection with their respective status flags.
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "applications"),
-      snap => { setLeadCount(snap.size); setLoading(false); },
+      snap => {
+        const pending = snap.docs.filter(d => (d.data().status || "pending") === "pending").length;
+        setLeadCount(pending);
+        setLoading(false);
+      },
       err => { console.error("applications listener:", err); setLoading(false); }
     );
     return unsubscribe;

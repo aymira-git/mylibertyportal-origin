@@ -81,9 +81,9 @@ service cloud.firestore {
     }
 
     match /applications/{applicationId} {
-      // Office now handles applications as their actual job function,
-      // same as admin — approve/reject deletes the record immediately,
-      // so delete needs to match update here, not stay admin-only.
+      // Office and Admin handle admissions as their core function — approve
+      // and reject update the record's status, while permanent delete is available
+      // from the archive view.
       // Manager gets read-only visibility for dashboard stats — approving/
       // rejecting stays an Admin/Front Office job, not a Manager one.
       // Marketing gets read-only visibility too, for the lead-count widget
