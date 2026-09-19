@@ -119,7 +119,7 @@ service cloud.firestore {
         && request.resource.data.classId is string
         && get(/databases/$(database)/documents/classes/$(request.resource.data.classId)).data.instructorId == request.auth.uid
         && get(/databases/$(database)/documents/classes/$(request.resource.data.classId)).data.studentIds.hasAny([request.resource.data.studentId]);
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAdmin() || isFrontOffice();
     }
 
     match /shifts/{shiftId} {

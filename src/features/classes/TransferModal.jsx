@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import {
   X,
   ArrowRightLeft,
+  UserPlus,
   Clock,
   MapPin,
   AlertTriangle,
@@ -9,13 +10,17 @@ import {
   Search,
 } from "lucide-react";
 import { LevelBadge, useToast, isCompatible } from "../shared";
-import { transferStudentBetweenClasses } from "./classesRepository";
+import {
+  transferStudentBetweenClasses,
+  addStudentToClass,
+  syncStudentsCurrentLevel,
+} from "./classesRepository";
 
 export default function TransferModal({
   isOpen = true,
   onClose,
   student,
-  sourceClass,
+  sourceClass = null,
   classes = [],
   users = [],
   onTransferred,
@@ -42,9 +47,9 @@ export default function TransferModal({
 
   // Candidate target classes (exclude source class and any where student is already in)
   const candidateClasses = useMemo(() => {
-    if (!student || !sourceClass) return [];
+    if (!student) return [];
     return classes
-      .filter((c) => c.id !== sourceClass.id)
+      .filter((c) => !sourceClass || c.id !== sourceClass.id)
       .filter((c) => !(c.studentIds || []).includes(student.id))
       .map((c) => {
         const studentCount = (c.studentIds || []).length;
@@ -88,16 +93,16 @@ export default function TransferModal({
       !isCompatible(student.currentLevel, selectedTargetClass)
   );
 
-  if (!isOpen || !student || !sourceClass) return null;
+  if (!isOpen || !student) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!targetClassId) {
-      toast("Please select a target batch to transfer into.", "error");
+      toast("Please select a target batch to enroll or transfer into.", "error");
       return;
     }
     if (selectedTargetClass && selectedTargetClass.seatsAvailable <= 0) {
-      toast("Cannot transfer: Target batch has no remaining seats.", "error");
+      toast("Cannot proceed: Selected batch has no remaining seats.", "error");
       return;
     }
 
@@ -105,25 +110,42 @@ export default function TransferModal({
     const finalReason = reason === "Other" ? customReason.trim() : reason;
 
     try {
-      await transferStudentBetweenClasses({
-        sourceClass,
-        targetClassId,
-        targetClass: selectedTargetClass,
-        studentId: student.id,
-        dateTransferred: transferDate || new Date().toISOString().slice(0, 10),
-        newLevel: selectedTargetClass?.classLevel || student.currentLevel,
-        transferReason: finalReason || "Batch transfer",
-      });
+      if (sourceClass) {
+        await transferStudentBetweenClasses({
+          sourceClass,
+          targetClassId,
+          targetClass: selectedTargetClass,
+          studentId: student.id,
+          dateTransferred: transferDate || new Date().toISOString().slice(0, 10),
+          newLevel: selectedTargetClass?.classLevel || student.currentLevel,
+          transferReason: finalReason || "Batch transfer",
+        });
 
-      toast(
-        `Transferred ${student.displayName || "Student"} from ${sourceClass.className} to ${selectedTargetClass.className}.`,
-        "success"
-      );
+        toast(
+          `Transferred ${student.displayName || "Student"} from ${sourceClass.className} to ${selectedTargetClass.className}.`,
+          "success"
+        );
+      } else {
+        const effectiveDate = transferDate || new Date().toISOString().slice(0, 10);
+        const targetLevel = selectedTargetClass?.classLevel || student.currentLevel || "warrior";
+        await addStudentToClass(targetClassId, {
+          studentId: student.id,
+          dateJoined: effectiveDate,
+          level: targetLevel,
+        });
+        await syncStudentsCurrentLevel([student.id], targetLevel);
+
+        toast(
+          `Enrolled "${student.displayName || "Student"}" into ${selectedTargetClass.className}!`,
+          "success"
+        );
+      }
+
       if (onTransferred) onTransferred();
       onClose();
     } catch (err) {
-      console.error("Batch transfer error:", err);
-      toast("Failed to complete batch transfer: " + (err.message || "Unknown error"), "error");
+      console.error("Batch placement/transfer error:", err);
+      toast("Failed to complete operation: " + (err.message || "Unknown error"), "error");
     } finally {
       setTransferring(false);
     }
@@ -136,12 +158,16 @@ export default function TransferModal({
         <div className="p-5 sm:p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/70">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-[#1a3a8f] flex items-center justify-center font-bold shrink-0">
-              <ArrowRightLeft className="w-5 h-5" />
+              {sourceClass ? <ArrowRightLeft className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 text-lg">One-Click Batch Transfer</h3>
+              <h3 className="font-extrabold text-slate-900 text-lg">
+                {sourceClass ? "One-Click Batch Transfer" : "Enroll Student into Batch"}
+              </h3>
               <p className="text-xs text-slate-500 font-medium">
-                Atomically move student from their current cohort to an available batch.
+                {sourceClass
+                  ? "Atomically move student from their current cohort to an available batch."
+                  : "Direct placement of student into an available cohort opening."}
               </p>
             </div>
           </div>
@@ -172,13 +198,19 @@ export default function TransferModal({
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-slate-500">Current Level:</span>
-                <LevelBadge level={student.currentLevel || sourceClass.classLevel || "warrior"} />
+                <LevelBadge level={student.currentLevel || sourceClass?.classLevel || "warrior"} />
               </div>
             </div>
 
             <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-600">
               <span className="font-semibold">Current Batch:</span>
-              <span className="font-extrabold text-[#1a3a8f]">{sourceClass.className}</span>
+              {sourceClass ? (
+                <span className="font-extrabold text-[#1a3a8f]">{sourceClass.className}</span>
+              ) : (
+                <span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
+                  Unassigned
+                </span>
+              )}
             </div>
           </div>
 
@@ -307,11 +339,11 @@ export default function TransferModal({
             </div>
           )}
 
-          {/* Transfer Effective Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          {/* Effective Date & Optional Reason */}
+          <div className={`grid gap-3 pt-1 ${sourceClass ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
             <div className="space-y-1">
               <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700">
-                Transfer Effective Date
+                {sourceClass ? "Transfer Effective Date" : "Enrollment Date"}
               </label>
               <input
                 type="date"
@@ -322,26 +354,28 @@ export default function TransferModal({
               />
             </div>
 
-            {/* Transfer Reason */}
-            <div className="space-y-1">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700">
-                Reason for Transfer
-              </label>
-              <select
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:border-[#1a3a8f] outline-none"
-              >
-                <option value="Schedule adjustment">Schedule adjustment / time conflict</option>
-                <option value="Level advancement">Level advancement / promotion</option>
-                <option value="Student request">Personal / student preference</option>
-                <option value="Cohort rebalancing">Cohort capacity rebalancing</option>
-                <option value="Other">Other reason...</option>
-              </select>
-            </div>
+            {/* Transfer Reason - only shown when transferring out of an existing cohort */}
+            {sourceClass && (
+              <div className="space-y-1">
+                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700">
+                  Reason for Transfer
+                </label>
+                <select
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:border-[#1a3a8f] outline-none"
+                >
+                  <option value="Schedule adjustment">Schedule adjustment / time conflict</option>
+                  <option value="Level advancement">Level advancement / promotion</option>
+                  <option value="Student request">Personal / student preference</option>
+                  <option value="Cohort rebalancing">Cohort capacity rebalancing</option>
+                  <option value="Other">Other reason...</option>
+                </select>
+              </div>
+            )}
           </div>
 
-          {reason === "Other" && (
+          {sourceClass && reason === "Other" && (
             <div className="space-y-1">
               <label className="block text-[11px] font-bold text-slate-600">
                 Specify Reason
@@ -372,8 +406,12 @@ export default function TransferModal({
               disabled={transferring || !targetClassId}
               className="px-5 py-2.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-xs rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
             >
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              <span>{transferring ? "Transferring..." : "Confirm Transfer"}</span>
+              {sourceClass ? <ArrowRightLeft className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+              <span>
+                {sourceClass
+                  ? (transferring ? "Transferring..." : "Confirm Transfer")
+                  : (transferring ? "Enrolling..." : "Confirm Enrollment")}
+              </span>
             </button>
           </div>
         </form>

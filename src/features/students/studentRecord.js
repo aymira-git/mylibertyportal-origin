@@ -50,6 +50,7 @@ export function buildStudentRecord(fields = {}) {
     rating: fields.rating || "1",
     paymentPlan: clean(fields.paymentPlan) || "monthly",
     ...(fields.paidUntil ? { paidUntil: clean(fields.paidUntil) } : {}),
+    status: clean(fields.status) || "active",
     notes: clean(fields.notes),
     role: "student",
   };

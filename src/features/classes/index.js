@@ -5,3 +5,4 @@ export { default as TeachingMaterial } from "./TeachingMaterial";
 export { default as AvailableBatches } from "./AvailableBatches";
 export { default as BatchModal } from "./BatchModal";
 export { default as TransferModal } from "./TransferModal";
+export { default as EnrollModal } from "./EnrollModal";

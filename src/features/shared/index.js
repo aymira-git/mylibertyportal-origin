@@ -21,6 +21,7 @@ export {
   getTier,
   getStars,
   getStarText,
+  getNextLevel,
   isCompatible,
 } from "./levels";
 export {

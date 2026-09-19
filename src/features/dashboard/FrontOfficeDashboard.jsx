@@ -213,6 +213,8 @@ export default function FrontOfficeDashboard() {
       component: (
         <StudentRoster
           students={students}
+          classes={classes}
+          users={users}
           getStudentClasses={getStudentClasses}
           setSelectedStudent={setSelectedStudent}
           handleEdit={handleEdit}

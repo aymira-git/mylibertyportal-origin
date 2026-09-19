@@ -1,17 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { PaymentModal } from "../finance";
+import { TransferModal } from "../classes";
 import {
   exportTableCSV,
   Pagination,
   usePagination,
   getPaymentHealthStatus,
   PAYMENT_PLANS,
+  getTier,
+  getNextLevel,
   useToast,
+  useConfirm,
 } from "../shared";
 import {
   normalizeWhatsAppNumber,
   buildWhatsAppRenewalReminderMessage,
 } from "../finance/receiptMessages";
+import {
+  fetchPendingPromotions,
+  promoteStudentLevel,
+} from "./progressReportsRepository";
 import {
   Users,
   Search,
@@ -24,6 +32,8 @@ import {
   X,
   UserPlus,
   MessageCircle,
+  ArrowRightLeft,
+  Sparkles,
 } from "lucide-react";
 
 function getInitials(name) {
@@ -70,8 +80,34 @@ function getHealthBadgeReadOnlyClasses(tone) {
   }
 }
 
+function getStatusBadge(status) {
+  const eff = status || "active";
+  switch (eff) {
+    case "on_leave":
+      return { label: "On Leave", tone: "bg-amber-50 text-amber-700 border-amber-200" };
+    case "graduated":
+      return { label: "Graduated", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" };
+    case "inactive":
+      return { label: "Inactive", tone: "bg-slate-100 text-slate-600 border-slate-200" };
+    case "active":
+    default:
+      return { label: "Active", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  }
+}
+
+function openWhatsAppParentChat(parentPhone, parentName, studentName) {
+  const formatted = normalizeWhatsAppNumber(parentPhone);
+  if (!formatted) return;
+  const greeting = parentName ? `Halo Bapak/Ibu ${parentName}, ` : "Halo, ";
+  const text = `${greeting}kami dari Liberty English Course ingin menginformasikan mengenai ananda ${studentName || "siswa"}...`;
+  const url = `https://wa.me/${formatted}?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
+}
+
 export default function StudentRoster({
-  students,
+  students = [],
+  classes = [],
+  users = [],
   getStudentClasses,
   setSelectedStudent,
   handleEdit,
@@ -80,10 +116,99 @@ export default function StudentRoster({
   readOnly = false
 }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const [paymentStudent, setPaymentStudent] = useState(null);
   const [studentSortField, setStudentSortField] = useState("displayName");
   const [studentSortAsc, setStudentSortAsc] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pendingPromotions, setPendingPromotions] = useState([]);
+  const [selectedTransferStudent, setSelectedTransferStudent] = useState(null); // { student, sourceClass }
+  const [statusFilter, setStatusFilter] = useState("active"); // "active" | "on_leave" | "inactive_graduated" | "all"
+  const [actionFilter, setActionFilter] = useState("all"); // "all" | "unassigned" | "due_or_expired" | "beginner" | "intermediate" | "fluent"
+
+  const loadPendingPromotions = () => {
+    fetchPendingPromotions()
+      .then((reports) => {
+        setPendingPromotions(reports);
+      })
+      .catch((err) => {
+        console.error("Error loading pending promotions:", err);
+      });
+  };
+
+  useEffect(() => {
+    let active = true;
+    fetchPendingPromotions()
+      .then((reports) => {
+        if (active) {
+          setPendingPromotions(reports);
+        }
+      })
+      .catch((err) => {
+        console.error("Error loading pending promotions:", err);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const pendingPromotionsMap = useMemo(() => {
+    const map = {};
+    pendingPromotions.forEach((rep) => {
+      if (rep.studentId) map[rep.studentId] = rep;
+    });
+    return map;
+  }, [pendingPromotions]);
+
+  const handlePromote = async (student, report) => {
+    const nextLevel = getNextLevel(student.currentLevel || "warrior");
+    if (!nextLevel) {
+      toast(`${student.displayName || "Student"} is already at the highest level!`, "info");
+      return;
+    }
+
+    const confirmed = await confirm(
+      `Promote ${student.displayName || "Student"} from ${(student.currentLevel || "warrior").toUpperCase()} to ${nextLevel.toUpperCase()}?`
+    );
+    if (!confirmed) return;
+
+    try {
+      await promoteStudentLevel(student.id, nextLevel, report?.id);
+      toast(`Successfully promoted ${student.displayName} to ${nextLevel.toUpperCase()}!`, "success");
+      loadPendingPromotions();
+    } catch (err) {
+      toast(`Failed to promote student: ${err.message}`, "error");
+    }
+  };
+
+  const statusCounts = useMemo(() => {
+    let active = 0;
+    let onLeave = 0;
+    let inactiveGrad = 0;
+    students.forEach((s) => {
+      const st = s.status || "active";
+      if (st === "active") active++;
+      else if (st === "on_leave") onLeave++;
+      else inactiveGrad++;
+    });
+    return { active, onLeave, inactiveGrad, total: students.length };
+  }, [students]);
+
+  const actionCounts = useMemo(() => {
+    let unassigned = 0;
+    let dueOrExpired = 0;
+    students.forEach((s) => {
+      const cls = getStudentClasses(s.id);
+      if (!cls || cls.length === 0) unassigned++;
+      const health = s.paymentStatus === "pending"
+        ? { status: "pending" }
+        : getPaymentHealthStatus(s.paidUntil);
+      if (health.status === "due_soon" || health.status === "expired") {
+        dueOrExpired++;
+      }
+    });
+    return { unassigned, dueOrExpired };
+  }, [students, getStudentClasses]);
 
   const handleSendRenewalReminder = (e, s, health) => {
     e.stopPropagation();
@@ -115,34 +240,58 @@ export default function StudentRoster({
     }
   };
 
-  const sortedStudents = [...students]
-    .map((s) => {
-      const studentClasses = getStudentClasses(s.id);
-      const enrollmentJoinedDate = studentClasses.find((c) => c.dateJoined)?.dateJoined || "";
-      return {
-        ...s,
-        studentClasses,
-        effectiveJoinedDate: s.joinedDate || enrollmentJoinedDate || ""
-      };
-    })
-    .filter((s) => {
-      const q = searchQuery.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        (s.displayName || "").toLowerCase().includes(q) ||
-        (s.phone || "").includes(q) ||
-        (s.id || "").toLowerCase().includes(q)
-      );
-    })
-    .sort((a, b) => {
-      const field = studentSortField === "joinedDate" ? "effectiveJoinedDate" : studentSortField;
-      let valA = a[field] || "";
-      let valB = b[field] || "";
+  const sortedStudents = useMemo(() => {
+    return [...students]
+      .map((s) => {
+        const studentClasses = getStudentClasses(s.id);
+        const enrollmentJoinedDate = studentClasses.find((c) => c.dateJoined)?.dateJoined || "";
+        const effectiveStatus = s.status || "active";
+        const health = s.paymentStatus === "pending"
+          ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
+          : getPaymentHealthStatus(s.paidUntil);
+        const tier = getTier(s.currentLevel || "warrior");
+        return {
+          ...s,
+          studentClasses,
+          effectiveJoinedDate: s.joinedDate || enrollmentJoinedDate || "",
+          effectiveStatus,
+          paymentHealth: health,
+          tier,
+        };
+      })
+      .filter((s) => {
+        // 1. Status Filter
+        if (statusFilter === "active" && s.effectiveStatus !== "active") return false;
+        if (statusFilter === "on_leave" && s.effectiveStatus !== "on_leave") return false;
+        if (statusFilter === "inactive_graduated" && s.effectiveStatus !== "inactive" && s.effectiveStatus !== "graduated") return false;
 
-      if (valA < valB) return studentSortAsc ? -1 : 1;
-      if (valA > valB) return studentSortAsc ? 1 : -1;
-      return 0;
-    });
+        // 2. Action Filter
+        if (actionFilter === "unassigned" && s.studentClasses.length > 0) return false;
+        if (actionFilter === "due_or_expired" && s.paymentHealth.status !== "due_soon" && s.paymentHealth.status !== "expired") return false;
+        if (actionFilter === "beginner" && s.tier !== "beginner") return false;
+        if (actionFilter === "intermediate" && s.tier !== "intermediate") return false;
+        if (actionFilter === "fluent" && s.tier !== "fluent") return false;
+
+        // 3. Search Query
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return true;
+        return (
+          (s.displayName || "").toLowerCase().includes(q) ||
+          (s.phone || "").includes(q) ||
+          (s.id || "").toLowerCase().includes(q) ||
+          (s.parentName || "").toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        const field = studentSortField === "joinedDate" ? "effectiveJoinedDate" : studentSortField;
+        let valA = a[field] || "";
+        let valB = b[field] || "";
+
+        if (valA < valB) return studentSortAsc ? -1 : 1;
+        if (valA > valB) return studentSortAsc ? 1 : -1;
+        return 0;
+      });
+  }, [students, getStudentClasses, statusFilter, actionFilter, searchQuery, studentSortField, studentSortAsc]);
 
   const { page, setPage, totalPages, pageItems, from, to, total } = usePagination(sortedStudents, 25);
 
@@ -150,6 +299,7 @@ export default function StudentRoster({
     const headers = [
       "Student Name",
       "Parent Contact",
+      "Status",
       "Education",
       "DOB",
       "Joined",
@@ -168,6 +318,7 @@ export default function StudentRoster({
       return [
         s.displayName || "",
         `${s.parentName || "N/A"} (${s.parentPhone || "N/A"})`,
+        s.effectiveStatus || "active",
         s.educationLevel || s.schoolOrJob || "N/A",
         s.dob || "N/A",
         s.effectiveJoinedDate || "N/A",
@@ -213,7 +364,7 @@ export default function StudentRoster({
             <span>Export CSV</span>
           </button>
           <span className="bg-[#1a3a8f]/10 text-[#1a3a8f] px-3 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider">
-            {students.length} Active Students
+            {statusCounts.active} Active Students
           </span>
         </div>
       </div>
@@ -238,20 +389,98 @@ export default function StudentRoster({
         )}
       </div>
 
+      {/* Operational Quick Filters Bar */}
+      <div className="space-y-2.5 pt-1">
+        {/* Status Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs border-b border-slate-100 no-scrollbar">
+          {[
+            { id: "active", label: "Active", count: statusCounts.active },
+            { id: "on_leave", label: "On Leave", count: statusCounts.onLeave },
+            { id: "inactive_graduated", label: "Inactive / Graduated", count: statusCounts.inactiveGrad },
+            { id: "all", label: "All Records", count: statusCounts.total },
+          ].map((tab) => {
+            const isSelected = statusFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setStatusFilter(tab.id);
+                  setPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
+                  isSelected
+                    ? "bg-[#1a3a8f] text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                    isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Action & Tier Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+            Filter:
+          </span>
+          {[
+            { id: "all", label: "All" },
+            {
+              id: "unassigned",
+              label: `⚠️ Unassigned (${actionCounts.unassigned})`,
+              tone: actionCounts.unassigned > 0 ? "text-amber-700 bg-amber-50 border-amber-200" : "",
+            },
+            {
+              id: "due_or_expired",
+              label: `💳 Due Soon / Expired (${actionCounts.dueOrExpired})`,
+              tone: actionCounts.dueOrExpired > 0 ? "text-rose-700 bg-rose-50 border-rose-200" : "",
+            },
+            { id: "beginner", label: "⭐ Beginner" },
+            { id: "intermediate", label: "⭐⭐ Intermediate" },
+            { id: "fluent", label: "⭐⭐⭐ Fluent" },
+          ].map((pill) => {
+            const isSelected = actionFilter === pill.id;
+            return (
+              <button
+                key={pill.id}
+                onClick={() => {
+                  setActionFilter(pill.id);
+                  setPage(1);
+                }}
+                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition whitespace-nowrap border ${
+                  isSelected
+                    ? "bg-[#1a3a8f] text-white border-[#1a3a8f] shadow-2xs"
+                    : pill.tone || "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {pill.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Mobile Card List View */}
       <div className="space-y-3.5 md:hidden">
         {pageItems.map((s) => {
           const studentClasses = s.studentClasses;
-          const classNames = studentClasses.length
-            ? studentClasses.map((c) => c.className).join(", ")
-            : "Unassigned";
-
+          const statusBadge = getStatusBadge(s.effectiveStatus);
           const isPending = s.paymentStatus === "pending";
           const health = isPending
             ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
             : getPaymentHealthStatus(s.paidUntil);
           const planLabel = getStudentPlanLabel(s);
           const canRemind = !readOnly && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
+          const pendingPromotion = pendingPromotionsMap[s.id];
+          const nextLevel = pendingPromotion ? getNextLevel(s.currentLevel || "warrior") : null;
 
           return (
             <article
@@ -273,10 +502,22 @@ export default function StudentRoster({
                     </div>
                   )}
                   <div className="min-w-0">
-                    <h4 className="truncate text-sm font-extrabold text-slate-900">
-                      {s.displayName || "Unnamed student"}
-                    </h4>
-                    <p className="text-[11px] font-mono text-slate-400 mt-0.5">ID: {s.id.slice(0, 12)}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="truncate text-sm font-extrabold text-slate-900">
+                        {s.displayName || "Unnamed student"}
+                      </h4>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
+                        {statusBadge.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <p className="text-[11px] font-mono text-slate-400">ID: {s.id.slice(0, 10)}</p>
+                      {s.currentLevel && (
+                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100 uppercase">
+                          {s.currentLevel}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -334,11 +575,40 @@ export default function StudentRoster({
                 </div>
               </div>
 
+              {/* Promotion Banner if Eligible */}
+              {pendingPromotion && !readOnly && nextLevel && (
+                <div className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-indigo-50 p-2.5 rounded-xl border border-amber-200 text-xs">
+                  <div className="flex items-center gap-1.5 text-amber-900 font-bold">
+                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Eligible for {nextLevel.toUpperCase()}!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handlePromote(s, pendingPromotion)}
+                    className="px-2.5 py-1 rounded-lg bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-[11px] shadow-xs transition shrink-0"
+                  >
+                    Promote
+                  </button>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2 text-xs border-y border-slate-100 py-2.5 text-slate-600">
                 <div>
                   <span className="block text-[10px] font-bold text-slate-400 uppercase">Parent</span>
                   <span className="font-semibold text-slate-800">{s.parentName || "—"}</span>
-                  <p className="text-[11px] text-slate-500 truncate">{s.parentPhone || "No contact"}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-[11px] text-slate-500 truncate">{s.parentPhone || "No contact"}</p>
+                    {s.parentPhone && (
+                      <button
+                        type="button"
+                        onClick={() => openWhatsAppParentChat(s.parentPhone, s.parentName, s.displayName)}
+                        title="Chat with parent on WhatsApp"
+                        className="p-1 rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition shrink-0"
+                      >
+                        <MessageCircle className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-slate-400 uppercase">Education / Joined</span>
@@ -347,11 +617,43 @@ export default function StudentRoster({
                   </span>
                   <p className="text-[11px] text-slate-500">{s.effectiveJoinedDate || "—"}</p>
                 </div>
-                <div className="col-span-2 bg-slate-50/80 p-2 rounded-xl">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Enrolled Class</span>
-                  <p className={`text-xs font-bold ${studentClasses.length ? "text-[#1a3a8f]" : "text-amber-600"}`}>
-                    {classNames}
-                  </p>
+                <div className="col-span-2 bg-slate-50/80 p-2.5 rounded-xl">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Enrolled Class</span>
+                  {studentClasses.length === 0 ? (
+                    !readOnly ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTransferStudent({ student: s, sourceClass: null })}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition shadow-2xs"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Assign Batch</span>
+                      </button>
+                    ) : (
+                      <span className="text-amber-700 font-semibold text-xs">Unassigned</span>
+                    )
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {studentClasses.map((c, idx) => (
+                        <div
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 bg-indigo-50 text-[#1a3a8f] px-2.5 py-1 rounded-lg border border-indigo-100 text-xs font-bold"
+                        >
+                          <span>{c.className}</span>
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTransferStudent({ student: s, sourceClass: c })}
+                              title="Transfer batch"
+                              className="p-0.5 hover:text-[#122b6e] text-indigo-400 transition"
+                            >
+                              <ArrowRightLeft className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -391,7 +693,7 @@ export default function StudentRoster({
         })}
         {sortedStudents.length === 0 && (
           <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200/80 text-slate-500 text-xs">
-            No students found matching &ldquo;{searchQuery}&rdquo;.
+            No students found matching your criteria.
           </div>
         )}
       </div>
@@ -411,6 +713,7 @@ export default function StudentRoster({
                     (studentSortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#1a3a8f]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#1a3a8f]" />)}
                 </div>
               </th>
+              <th className="p-3.5">Status</th>
               <th
                 className="p-3.5 cursor-pointer hover:text-slate-900 transition"
                 onClick={() => handleStudentSort("parentName")}
@@ -460,12 +763,15 @@ export default function StudentRoster({
           <tbody className="divide-y divide-slate-100 bg-white">
             {pageItems.map((s) => {
               const studentClasses = s.studentClasses;
+              const statusBadge = getStatusBadge(s.effectiveStatus);
               const isPending = s.paymentStatus === "pending";
               const health = isPending
                 ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
                 : getPaymentHealthStatus(s.paidUntil);
               const planLabel = getStudentPlanLabel(s);
               const canRemind = !readOnly && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
+              const pendingPromotion = pendingPromotionsMap[s.id];
+              const nextLevel = pendingPromotion ? getNextLevel(s.currentLevel || "warrior") : null;
 
               return (
                 <tr key={s.id} className="hover:bg-slate-50/60 transition group">
@@ -485,13 +791,40 @@ export default function StudentRoster({
                       )}
                       <div>
                         <p className="font-extrabold text-slate-900 group-hover:text-[#1a3a8f] transition">{s.displayName}</p>
-                        <p className="text-[10px] font-mono text-slate-400 font-normal mt-0.5">ID: {s.id.slice(0, 10)}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] font-mono text-slate-400 font-normal">ID: {s.id.slice(0, 10)}</span>
+                          {s.currentLevel && (
+                            <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100 uppercase">
+                              {s.currentLevel}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>
+                  <td className="p-3.5 whitespace-nowrap">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
+                      {statusBadge.label}
+                    </span>
+                  </td>
                   <td className="p-3.5 text-slate-600">
                     <p className="font-semibold text-slate-800">{s.parentName || "—"}</p>
-                    <p className="text-[11px] text-slate-400">{s.parentPhone || "No contact"}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[11px] text-slate-400">{s.parentPhone || "No contact"}</p>
+                      {s.parentPhone && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openWhatsAppParentChat(s.parentPhone, s.parentName, s.displayName);
+                          }}
+                          title="Chat with parent on WhatsApp"
+                          className="p-0.5 rounded text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="p-3.5 text-slate-600 font-medium whitespace-nowrap">
                     {s.educationLevel || s.schoolOrJob || "—"}
@@ -553,15 +886,37 @@ export default function StudentRoster({
                   </td>
                   <td className="p-3.5">
                     {studentClasses.length === 0 ? (
-                      <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded text-[11px] border border-amber-200/60 whitespace-nowrap">
-                        Unassigned
-                      </span>
+                      !readOnly ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTransferStudent({ student: s, sourceClass: null })}
+                          className="inline-flex items-center gap-1 text-amber-800 font-bold bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-md text-[11px] border border-amber-200 transition shadow-2xs"
+                          title="Assign to a batch"
+                        >
+                          <UserPlus className="w-3 h-3 text-amber-600" />
+                          <span>Assign Batch</span>
+                        </button>
+                      ) : (
+                        <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded text-[11px] border border-amber-200/60 whitespace-nowrap">
+                          Unassigned
+                        </span>
+                      )
                     ) : (
                       studentClasses.map((c, idx) => (
-                        <div key={idx} className="mb-1 last:mb-0 whitespace-nowrap">
+                        <div key={idx} className="mb-1 last:mb-0 whitespace-nowrap inline-flex items-center gap-1.5 mr-2">
                           <span className="text-[#1a3a8f] font-bold text-[11px] bg-indigo-50/80 px-2 py-0.5 rounded-md border border-indigo-100">
                             {c.className}
                           </span>
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTransferStudent({ student: s, sourceClass: c })}
+                              title="Transfer to another batch"
+                              className="p-0.5 text-slate-400 hover:text-[#1a3a8f] hover:bg-indigo-50 rounded transition"
+                            >
+                              <ArrowRightLeft className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       ))
                     )}
@@ -582,6 +937,17 @@ export default function StudentRoster({
                   {(!readOnly || setSelectedStudent) && (
                     <td className="p-3.5 text-right font-bold whitespace-nowrap">
                       <div className="flex items-center gap-1.5 justify-end">
+                        {pendingPromotion && !readOnly && nextLevel && (
+                          <button
+                            type="button"
+                            onClick={() => handlePromote(s, pendingPromotion)}
+                            className="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2 py-1 rounded-lg font-bold text-[11px] transition shadow-2xs"
+                            title={`Promote to ${nextLevel.toUpperCase()}`}
+                          >
+                            <Sparkles className="w-3 h-3 text-amber-600 animate-pulse" />
+                            <span>Promote</span>
+                          </button>
+                        )}
                         {setSelectedStudent && (
                           <button
                             onClick={() => setSelectedStudent(s)}
@@ -637,6 +1003,18 @@ export default function StudentRoster({
         <PaymentModal
           student={students.find((s) => s.id === paymentStudent.id) || paymentStudent}
           onClose={() => setPaymentStudent(null)}
+        />
+      )}
+
+      {/* Batch Placement & Lateral Transfer Modal */}
+      {!readOnly && selectedTransferStudent && (
+        <TransferModal
+          isOpen={true}
+          student={selectedTransferStudent.student}
+          sourceClass={selectedTransferStudent.sourceClass}
+          classes={classes}
+          users={users}
+          onClose={() => setSelectedTransferStudent(null)}
         />
       )}
     </div>

@@ -25,6 +25,7 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
   const [level, setLevel] = useState("warrior");
   const [scores, setScores] = useState({ pronunciation: "", fluency: "", vocabulary: "", comprehension: "" });
   const [notes, setNotes] = useState("");
+  const [markPromotion, setMarkPromotion] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState({ message: "", type: "" });
 
@@ -36,6 +37,7 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
   const overallScore = numericScores.length === SCORE_FIELDS.length
     ? Math.round(numericScores.reduce((total, score) => total + score, 0) / SCORE_FIELDS.length)
     : null;
+  const isEligibleForPromotion = overallScore !== null && overallScore >= 70;
 
   const handleClassChange = (event) => {
     setClassId(event.target.value);
@@ -73,13 +75,14 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
         vocabularyScore: Number(scores.vocabulary),
         comprehensionScore: Number(scores.comprehension),
         overallScore,
+        eligibleForPromotion: Boolean(isEligibleForPromotion && markPromotion),
         notes: notes.trim(),
         submittedAt: new Date().toISOString(),
       });
       setScores({ pronunciation: "", fluency: "", vocabulary: "", comprehension: "" });
       setNotes("");
       setFeedback({
-        message: `Evaluation submitted successfully for ${selectedStudent.displayName}! Overall Band: ${overallScore}%`,
+        message: `Evaluation submitted successfully for ${selectedStudent.displayName}! Overall Band: ${overallScore}%${isEligibleForPromotion && markPromotion ? " (Flagged for level promotion)" : ""}`,
         type: "success"
       });
       onSaved?.();
@@ -221,13 +224,13 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
               <TrendingUp className="w-4 h-4 text-[#1a3a8f]" />
               <span>Proficiency Benchmarks (10 – 100 Scale)</span>
             </h4>
-            <span className="text-[11px] text-slate-400 font-medium">Standard passing mark: 65+</span>
+            <span className="text-[11px] text-slate-400 font-medium">Standard passing mark: 70+</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {SCORE_FIELDS.map(({ field, label, desc }) => {
               const val = Number(scores[field]) || 0;
-              const isPassing = val >= 65;
+              const isPassing = val >= 70;
 
               return (
                 <div
@@ -265,7 +268,7 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
                     <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
                       <div
                         className={`h-full transition-all duration-300 rounded-full ${
-                          val >= 80 ? "bg-emerald-500" : val >= 65 ? "bg-[#1a3a8f]" : val > 0 ? "bg-amber-500" : "w-0"
+                          val >= 80 ? "bg-emerald-500" : val >= 70 ? "bg-[#1a3a8f]" : val > 0 ? "bg-amber-500" : "w-0"
                         }`}
                         style={{ width: `${Math.min(100, Math.max(0, val))}%` }}
                       />
@@ -280,7 +283,7 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
         {/* Notes & Recommendations */}
         <div className="space-y-1.5 pt-2">
           <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-            Pedagogical Observations & Recommendations
+            Pedagogical Observations &amp; Recommendations
           </label>
           <textarea
             value={notes}
@@ -290,6 +293,32 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
             className="w-full p-3.5 border border-slate-200 rounded-2xl text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:border-[#1a3a8f] focus:ring-1 focus:ring-[#1a3a8f] outline-none transition"
           />
         </div>
+
+        {/* Level Promotion Eligibility Banner */}
+        {isEligibleForPromotion && (
+          <div className="p-4 bg-emerald-50/90 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-emerald-900">
+                  Evaluation Passed with {overallScore}%!
+                </p>
+                <p className="text-[11px] text-emerald-700">
+                  Student qualifies for level advancement. Flag for Admin / Front Office promotion?
+                </p>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-xs font-extrabold text-emerald-800 cursor-pointer shrink-0 bg-white/80 px-3 py-1.5 rounded-xl border border-emerald-200">
+              <input
+                type="checkbox"
+                checked={markPromotion}
+                onChange={(e) => setMarkPromotion(e.target.checked)}
+                className="w-4 h-4 rounded text-[#1a3a8f] focus:ring-[#1a3a8f] cursor-pointer"
+              />
+              <span>Eligible for Promotion</span>
+            </label>
+          </div>
+        )}
 
         {/* Submit Bar */}
         <button

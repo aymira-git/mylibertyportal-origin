@@ -91,6 +91,13 @@ export function getStarText(level) {
   return "⭐".repeat(stars);
 }
 
+export function getNextLevel(level) {
+  const current = LEVELS[level];
+  if (!current) return null;
+  const next = LEVEL_LIST.find((lvl) => lvl.order === current.order + 1);
+  return next ? next.id : null;
+}
+
 /**
  * Option B Compatibility Rule:
  * If batch specifies minLevel / maxLevel, compares studentOrder within that range.
