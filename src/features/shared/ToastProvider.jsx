@@ -1,0 +1,48 @@
+// Replaces the native window.alert() popup used everywhere for success/error
+// messages ("Success! Class scheduled.", "Error: " + err.message, etc.) with
+// a small toast that appears bottom-right and auto-dismisses.
+//
+// SETUP (do this once): wrap the app in main.jsx, inside ConfirmProvider —
+//   <ConfirmProvider><ToastProvider><App /></ToastProvider></ConfirmProvider>
+//
+// USAGE (per call site, later — not done yet):
+//   import { useToast } from "../../features/shared";
+//   const toast = useToast();
+//   ...
+//   toast("Success! Class scheduled.");           // default = success styling
+//   toast("Error: " + err.message, "error");       // error styling
+import { useCallback, useState } from "react";
+import { ToastContext } from "./useToast";
+
+let nextId = 1;
+
+export default function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+
+  const toast = useCallback((message, type = "success") => {
+    const id = nextId++;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  }, []);
+
+  return (
+    <ToastContext.Provider value={toast}>
+      {children}
+
+      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-xs w-full">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`p-3.5 rounded-xl shadow-lg text-sm font-semibold text-white ${
+              t.type === "error" ? "bg-rose-600" : "bg-[#1a3a8f]"
+            }`}
+          >
+            {t.message}
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}

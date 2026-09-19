@@ -1,0 +1,9 @@
+name = "myliberty-ai-proxy"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Update this to your real deployed site URL(s) once you know them
+# (e.g. "https://mylibertyies-f2f38.web.app"). "*" works for now while
+# you're testing, but locking it down is a good follow-up later.
+[vars]
+ALLOWED_ORIGIN = "*"

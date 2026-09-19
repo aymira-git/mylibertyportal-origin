@@ -1,0 +1,148 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile() {
+      return signedIn()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+        : null;
+    }
+
+    function hasRole(role) {
+      return signedIn() && userProfile().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    function isManager() {
+      return hasRole('manager');
+    }
+
+    function isStaff() {
+      return signedIn() && userProfile().role in ['admin', 'manager', 'instructor', 'marketing', 'frontoffice', 'officeboy'];
+    }
+
+    function isFrontOffice() {
+      return hasRole('frontoffice');
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin()
+        || isManager()
+        || (isStaff() && resource.data.role in ['student', 'instructor'])
+        || (signedIn() && userId == request.auth.uid);
+      allow create: if isAdmin() 
+        || (isFrontOffice() && request.resource.data.role == 'student')
+        || (signedIn() && userId == request.auth.uid);
+      allow delete: if isAdmin() || (isFrontOffice() && resource.data.role == 'student');
+      allow update: if isAdmin()
+        || (isFrontOffice() && resource.data.role == 'student' && request.resource.data.role == 'student')
+        || (signedIn()
+          && userId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['displayName', 'phone', 'dob', 'photoURL', 'nickname']));
+    }
+
+    match /invites/{inviteId} {
+      // inviteId is the invite's unguessable token. Public signup can look
+      // an invite up by its exact ID, but can never list/dump the collection.
+      allow get: if true;
+      allow list: if isAdmin() || isFrontOffice();
+
+      // A newly-registered staff member may clear the one invite that
+      // matches their own (just-verified) auth email; admins can cancel any.
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.email == request.auth.token.email);
+
+      allow update: if true 
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedAt', 'usedBy'])
+        && resource.data.used == false; 
+      allow create: if isAdmin();
+    }
+
+    match /applications/{applicationId} {
+      // Office now handles applications as their actual job function,
+      // same as admin — approve/reject deletes the record immediately,
+      // so delete needs to match update here, not stay admin-only.
+      // Manager gets read-only visibility for dashboard stats — approving/
+      // rejecting stays an Admin/Front Office job, not a Manager one.
+      // Marketing gets read-only visibility too, for the lead-count widget
+      // on their own dashboard — same reasoning, no approve/reject rights.
+      allow read: if isAdmin() || isFrontOffice() || isManager() || hasRole('marketing');
+      allow update, delete: if isAdmin() || isFrontOffice();
+      allow create: if false;
+    }
+
+    match /classes/{classId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isAdmin() || isFrontOffice();
+    }
+
+    match /todos/{todoId} {
+      // Admins/Office/Manager handle all; Office Boy handles their own tasks
+      allow read: if isAdmin() || isManager() || isFrontOffice() || hasRole('officeboy');
+      allow update: if isAdmin() || isManager() || isFrontOffice() || (hasRole('officeboy') && resource.data.assignee in ['officeboy', 'all']);
+      allow create, delete: if isAdmin() || isManager() || isFrontOffice();
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if isStaff();
+      allow create: if isStaff()
+        && request.resource.data.userId is string
+        && request.resource.data.timestamp is string;
+      allow update, delete: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || isManager() || isFrontOffice();
+      allow create, update, delete: if isAdmin() || isFrontOffice();
+    }
+
+    match /progressReports/{reportId} {
+      allow read: if isAdmin()
+        || isManager()
+        || isFrontOffice()
+        || (signedIn() && resource.data.instructorId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.instructorId == request.auth.uid
+        && request.resource.data.studentId is string
+        && request.resource.data.classId is string
+        && get(/databases/$(database)/documents/classes/$(request.resource.data.classId)).data.instructorId == request.auth.uid
+        && get(/databases/$(database)/documents/classes/$(request.resource.data.classId)).data.studentIds.hasAny([request.resource.data.studentId]);
+      allow update, delete: if isAdmin();
+    }
+
+    match /shifts/{shiftId} {
+      allow read: if isAdmin()
+        || isManager()
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin()
+        || (signedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin()
+        || isManager()
+        || (signedIn()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == resource.data.userId);
+      allow delete: if isAdmin();
+    }
+
+    match /materials/{materialId} {
+      allow read: if signedIn()
+        && resource.data.createdBy == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if signedIn()
+        && resource.data.createdBy == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
