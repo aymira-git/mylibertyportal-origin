@@ -1,5 +1,5 @@
 import { db } from "../../firebase";
-import { collection, addDoc, deleteDoc, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, updateDoc, arrayUnion, writeBatch } from "firebase/firestore";
 
 /**
  * All direct Firestore writes for the `classes` collection — and the
@@ -42,6 +42,7 @@ export function addStudentToClass(classId, { studentId, dateJoined, level }) {
   return updateDoc(doc(db, "classes", classId), {
     studentIds: arrayUnion(studentId),
     enrollments: arrayUnion({ studentId, dateJoined, level }),
+    updatedAt: new Date().toISOString(),
   });
 }
 
@@ -49,6 +50,7 @@ export function removeStudentFromClass(cls, studentId) {
   return updateDoc(doc(db, "classes", cls.id), {
     studentIds: (cls.studentIds || []).filter(id => id !== studentId),
     enrollments: (cls.enrollments || []).filter(e => e.studentId !== studentId),
+    updatedAt: new Date().toISOString(),
   });
 }
 
@@ -59,4 +61,59 @@ export function setClassGroupLevel(classItems, level) {
       enrollments: (cls.enrollments || []).map(en => ({ ...en, level })),
     })
   ));
+}
+
+/**
+ * Atomically transfers a student from a source class to a target class.
+ * Updates both class documents in a single writeBatch, updating studentIds,
+ * enrollments, and updatedAt so it adheres strictly to Firestore security rules.
+ */
+export async function transferStudentBetweenClasses({
+  sourceClass,
+  targetClassId,
+  targetClass,
+  studentId,
+  dateTransferred = new Date().toISOString().slice(0, 10),
+  newLevel,
+  transferReason = "",
+}) {
+  const batch = writeBatch(db);
+  const now = new Date().toISOString();
+
+  // 1. Remove student from source class
+  const sourceRef = doc(db, "classes", sourceClass.id);
+  const updatedSourceStudentIds = (sourceClass.studentIds || []).filter(id => id !== studentId);
+  const updatedSourceEnrollments = (sourceClass.enrollments || []).filter(e => e.studentId !== studentId);
+  batch.update(sourceRef, {
+    studentIds: updatedSourceStudentIds,
+    enrollments: updatedSourceEnrollments,
+    updatedAt: now,
+  });
+
+  // 2. Add student to target class
+  const targetRef = doc(db, "classes", targetClassId);
+  const targetLevel = newLevel || targetClass?.classLevel || sourceClass?.classLevel || "warrior";
+  const enrollmentRecord = {
+    studentId,
+    dateJoined: dateTransferred,
+    level: targetLevel,
+    transferredFrom: sourceClass.className || sourceClass.id,
+  };
+  if (transferReason && transferReason.trim()) {
+    enrollmentRecord.transferReason = transferReason.trim();
+  }
+
+  batch.update(targetRef, {
+    studentIds: arrayUnion(studentId),
+    enrollments: arrayUnion(enrollmentRecord),
+    updatedAt: now,
+  });
+
+  // Commit atomic transfer
+  await batch.commit();
+
+  // 3. Sync student user currentLevel if target class level is defined
+  if (targetLevel) {
+    syncStudentsCurrentLevel([studentId], targetLevel).catch(() => {});
+  }
 }

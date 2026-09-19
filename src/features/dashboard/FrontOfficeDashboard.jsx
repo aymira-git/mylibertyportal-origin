@@ -191,7 +191,7 @@ export default function FrontOfficeDashboard() {
         classes={classes}
         instructors={instructors}
         users={users}
-        canEdit={true}
+        canEdit={false}
         role="frontoffice"
         isOverviewWidget={true}
         onNavigateToClasses={() => setActiveTab("classes")}
@@ -230,6 +230,8 @@ export default function FrontOfficeDashboard() {
           users={users}
           instructors={instructors}
           unenrolledStudents={unenrolledStudents}
+          role="frontoffice"
+          isAdmin={false}
         />
       ),
     },

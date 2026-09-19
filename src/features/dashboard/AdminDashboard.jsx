@@ -209,6 +209,8 @@ export default function AdminDashboard() {
           users={users}
           instructors={instructors}
           unenrolledStudents={unenrolledStudents}
+          role="admin"
+          isAdmin={true}
         />
       ),
     },

@@ -81,7 +81,10 @@ service cloud.firestore {
 
     match /classes/{classId} {
       allow read: if isStaff();
-      allow create, update, delete: if isAdmin() || isFrontOffice();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isFrontOffice()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['studentIds', 'enrollments', 'updatedAt']));
     }
 
     match /todos/{todoId} {

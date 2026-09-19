@@ -292,10 +292,11 @@ function BatchForm({ batch, instructors, onClose, onSuccess }) {
               className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
             >
               <option value="open">🟢 Open for Enrollment</option>
-              <option value="filling_fast">🟡 Filling Fast (&le; 3 seats)</option>
               <option value="upcoming">🔵 Upcoming / Registration Only</option>
+              <option value="in_progress">⚪ Ongoing / In Progress</option>
               <option value="full">🔴 Full / Waitlist</option>
-              <option value="in_progress">⚪ In Progress (Closed)</option>
+              <option value="completed">🟣 Completed / Archived</option>
+              <option value="cancelled">⛔ Cancelled</option>
             </select>
           </div>
         </div>

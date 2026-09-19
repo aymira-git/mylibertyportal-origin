@@ -17,6 +17,7 @@ import {
 } from "./classesRepository";
 import AvailableBatches from "./AvailableBatches";
 import BatchModal from "./BatchModal";
+import TransferModal from "./TransferModal";
 import {
   Calendar,
   MapPin,
@@ -31,10 +32,18 @@ import {
   Search,
   ExternalLink,
   Check,
-  Sparkles
+  Sparkles,
+  ArrowRightLeft,
 } from "lucide-react";
 
-export default function ClassManager({ classes, users, instructors, unenrolledStudents }) {
+export default function ClassManager({
+  classes,
+  users,
+  instructors,
+  unenrolledStudents,
+  role = "admin",
+  isAdmin = true,
+}) {
   const toast = useToast();
   const confirm = useConfirm();
   const [classSubTab, setClassSubTab] = useState("batches");
@@ -59,6 +68,8 @@ export default function ClassManager({ classes, users, instructors, unenrolledSt
   const [enrollingIntoClassId, setEnrollingIntoClassId] = useState(null);
   const [addStudentId, setAddStudentId] = useState("");
   const [addDateJoined, setAddDateJoined] = useState(new Date().toISOString().slice(0, 10));
+  const [transferringStudent, setTransferringStudent] = useState(null);
+  const canEnroll = isAdmin || role === "frontoffice";
 
   const [classSortField, setClassSortField] = useState("className");
   const [classSortAsc, setClassSortAsc] = useState(true);
@@ -317,22 +328,24 @@ export default function ClassManager({ classes, users, instructors, unenrolledSt
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setEditingBatchFromCard(cls)}
-            className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 border border-indigo-100"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-            <span>Edit Batch</span>
-          </button>
-          <button
-            onClick={() => handleDeleteClass(cls.id)}
-            className="text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete Batch</span>
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setEditingBatchFromCard(cls)}
+              className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 border border-indigo-100"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+              <span>Edit Batch</span>
+            </button>
+            <button
+              onClick={() => handleDeleteClass(cls.id)}
+              className="text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Batch</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Roster of Students in this Batch */}
@@ -356,12 +369,29 @@ export default function ClassManager({ classes, users, instructors, unenrolledSt
                     Joined: {enrollment.dateJoined || "N/A"} · {getDuration(enrollment.dateJoined)}
                   </p>
                 </div>
-                <button
-                  onClick={() => handleRemoveStudentFromClass(cls, studentId)}
-                  className="text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition shrink-0"
-                >
-                  Remove
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {canEnroll && (
+                    <button
+                      onClick={() =>
+                        setTransferringStudent({
+                          student: student || { id: studentId, displayName: "Enrolled Student" },
+                          sourceClass: cls,
+                        })
+                      }
+                      title="Transfer to another batch"
+                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <ArrowRightLeft className="w-3 h-3" />
+                      <span>Transfer</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleRemoveStudentFromClass(cls, studentId)}
+                    className="text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             );
           })
@@ -478,17 +508,19 @@ export default function ClassManager({ classes, users, instructors, unenrolledSt
             <Users className="w-3.5 h-3.5" />
             <span>Class Rosters ({classGroups.length})</span>
           </button>
-          <button
-            onClick={() => setClassSubTab("schedule")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 ${
-              classSubTab === "schedule"
-                ? "bg-[#1a3a8f] text-white shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Schedule New Class</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setClassSubTab("schedule")}
+              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 ${
+                classSubTab === "schedule"
+                  ? "bg-[#1a3a8f] text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Schedule New Class</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -498,13 +530,13 @@ export default function ClassManager({ classes, users, instructors, unenrolledSt
           classes={classes}
           instructors={instructors}
           users={users}
-          canEdit={true}
-          role="admin"
+          canEdit={isAdmin}
+          role={role}
         />
       )}
 
       {/* ── Tab: Schedule Class ── */}
-      {classSubTab === "schedule" && (
+      {isAdmin && classSubTab === "schedule" && (
         <form onSubmit={handleCreateClass} className="space-y-5 max-w-2xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -850,7 +882,7 @@ export default function ClassManager({ classes, users, instructors, unenrolledSt
                                 ✕
                               </button>
                             </div>
-                          ) : (
+                          ) : isAdmin ? (
                             <button
                               onClick={() => {
                                 setEditingLevelKey(group.key);
@@ -860,6 +892,8 @@ export default function ClassManager({ classes, users, instructors, unenrolledSt
                             >
                               Set Level
                             </button>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium">Unset</span>
                           )}
                         </td>
 
@@ -971,13 +1005,27 @@ export default function ClassManager({ classes, users, instructors, unenrolledSt
         </div>
       )}
 
-      {/* Batch Edit Modal */}
-      <BatchModal
-        isOpen={Boolean(editingBatchFromCard)}
-        onClose={() => setEditingBatchFromCard(null)}
-        batch={editingBatchFromCard}
-        instructors={instructors}
-      />
+      {/* Batch Edit Modal (Admin only) */}
+      {isAdmin && (
+        <BatchModal
+          isOpen={Boolean(editingBatchFromCard)}
+          onClose={() => setEditingBatchFromCard(null)}
+          batch={editingBatchFromCard}
+          instructors={instructors}
+        />
+      )}
+
+      {/* Dedicated One-Click Batch Transfer Modal */}
+      {transferringStudent && (
+        <TransferModal
+          isOpen={Boolean(transferringStudent)}
+          onClose={() => setTransferringStudent(null)}
+          student={transferringStudent.student}
+          sourceClass={transferringStudent.sourceClass}
+          classes={classes}
+          users={users}
+        />
+      )}
     </div>
   );
 }

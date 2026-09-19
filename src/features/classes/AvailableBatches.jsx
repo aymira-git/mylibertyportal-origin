@@ -13,11 +13,308 @@ import {
   Check,
   Search,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  UserPlus,
+  X,
+  ArrowRightLeft,
 } from "lucide-react";
 import { LevelBadge, LEVELS, useToast, useConfirm } from "../shared";
 import BatchModal from "./BatchModal";
-import { deleteClass } from "./classesRepository";
+import {
+  deleteClass,
+  addStudentToClass,
+  syncStudentsCurrentLevel,
+  transferStudentBetweenClasses,
+} from "./classesRepository";
+
+function EnrollModal({ batch, students, allClasses = [], onClose, onEnrolled }) {
+  const toast = useToast();
+  const [enrollMode, setEnrollMode] = useState("direct"); // "direct" | "transfer"
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [selectedTransferKey, setSelectedTransferKey] = useState("");
+  const [dateJoined, setDateJoined] = useState(
+    batch?.classStartDate || new Date().toISOString().slice(0, 10)
+  );
+  const [enrolling, setEnrolling] = useState(false);
+
+  // Filter out students already enrolled in this batch to prevent duplicate active enrollments
+  const studentIds = batch?.studentIds;
+  const batchId = batch?.id;
+  const enrolledSet = useMemo(() => new Set(studentIds || []), [studentIds]);
+  const eligibleStudents = useMemo(() => {
+    return students.filter((s) => !enrolledSet.has(s.id));
+  }, [students, enrolledSet]);
+
+  // Students currently enrolled in other cohorts available for lateral transfer
+  const transferCandidates = useMemo(() => {
+    const list = [];
+    allClasses.forEach((cls) => {
+      if (cls.id === batchId) return;
+      (cls.studentIds || []).forEach((sId) => {
+        if (enrolledSet.has(sId)) return;
+        const student = students.find((s) => s.id === sId);
+        if (student) {
+          list.push({
+            key: `${student.id}___${cls.id}`,
+            student,
+            sourceClass: cls,
+          });
+        }
+      });
+    });
+    return list;
+  }, [allClasses, batchId, enrolledSet, students]);
+
+  const selectedTransfer = useMemo(() => {
+    return transferCandidates.find((t) => t.key === selectedTransferKey) || null;
+  }, [transferCandidates, selectedTransferKey]);
+
+  const selectedStudent = useMemo(() => {
+    if (enrollMode === "transfer") {
+      return selectedTransfer?.student || null;
+    }
+    return students.find((s) => s.id === selectedStudentId) || null;
+  }, [enrollMode, selectedTransfer, students, selectedStudentId]);
+
+  const levelMismatch = Boolean(
+    selectedStudent?.currentLevel &&
+    batch?.classLevel &&
+    selectedStudent.currentLevel !== batch.classLevel
+  );
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (enrollMode === "direct" && !selectedStudentId) {
+      toast("Please select a student to enroll.", "error");
+      return;
+    }
+    if (enrollMode === "transfer" && !selectedTransfer) {
+      toast("Please select a student to transfer.", "error");
+      return;
+    }
+    if (batch.seatsAvailable <= 0) {
+      toast("Cannot enroll: this batch is already at maximum capacity.", "error");
+      return;
+    }
+
+    setEnrolling(true);
+    const targetLevel = batch.classLevel || "warrior";
+    const effectiveDate = dateJoined || new Date().toISOString().slice(0, 10);
+
+    try {
+      if (enrollMode === "transfer") {
+        await transferStudentBetweenClasses({
+          sourceClass: selectedTransfer.sourceClass,
+          targetClassId: batch.id,
+          targetClass: batch,
+          studentId: selectedTransfer.student.id,
+          dateTransferred: effectiveDate,
+          newLevel: targetLevel,
+          transferReason: `Transferred into ${batch.className}`,
+        });
+        toast(
+          `Transferred "${selectedTransfer.student.displayName || "Student"}" from ${selectedTransfer.sourceClass.className} to ${batch.className}!`,
+          "success"
+        );
+      } else {
+        await addStudentToClass(batch.id, {
+          studentId: selectedStudentId,
+          dateJoined: effectiveDate,
+          level: targetLevel,
+        });
+        await syncStudentsCurrentLevel([selectedStudentId], targetLevel);
+        toast(
+          `Enrolled "${selectedStudent?.displayName || "Student"}" into ${batch.className}!`,
+          "success"
+        );
+      }
+
+      if (onEnrolled) onEnrolled();
+      onClose();
+    } catch (err) {
+      toast("Enrollment failed: " + err.message, "error");
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-fadeIn">
+      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/80">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-[#1a3a8f] text-white flex items-center justify-center shadow-xs">
+              {enrollMode === "transfer" ? (
+                <ArrowRightLeft className="w-5 h-5" />
+              ) : (
+                <UserPlus className="w-5 h-5" />
+              )}
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">
+                {enrollMode === "transfer" ? "Transfer Student to Batch" : "Enroll Student into Batch"}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {enrollMode === "transfer"
+                  ? "Lateral transfer from another cohort"
+                  : "Direct placement into available cohort opening"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Batch Snapshot */}
+        <div className="p-4 bg-indigo-50/50 border-b border-indigo-100 space-y-2 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-black text-slate-900 text-sm">{batch.className}</span>
+            <LevelBadge level={batch.classLevel || "warrior"} />
+          </div>
+          <div className="flex items-center justify-between text-slate-600 font-medium text-[11px]">
+            <span>{batch.schedule || batch.classDay} · {batch.classRoom || "Main Campus"}</span>
+            <span className="font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+              {batch.seatsAvailable} seat{batch.seatsAvailable === 1 ? "" : "s"} remaining
+            </span>
+          </div>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Direct vs Transfer Mode Switcher */}
+          <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => setEnrollMode("direct")}
+              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                enrollMode === "direct"
+                  ? "bg-white text-[#1a3a8f] shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Direct Placement</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setEnrollMode("transfer")}
+              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                enrollMode === "transfer"
+                  ? "bg-white text-[#1a3a8f] shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              <span>Transfer from Cohort</span>
+            </button>
+          </div>
+
+          {enrollMode === "direct" ? (
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Select Student *
+              </label>
+              {eligibleStudents.length === 0 ? (
+                <p className="text-xs text-amber-700 bg-amber-50 p-3 rounded-xl border border-amber-200">
+                  All active students are already enrolled in this batch, or no students are registered yet.
+                </p>
+              ) : (
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
+                  required
+                >
+                  <option value="">-- Choose student to enroll --</option>
+                  {eligibleStudents.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.displayName || s.name || s.email}
+                      {s.currentLevel ? ` [Track: ${s.currentLevel}]` : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Select Enrolled Student to Transfer *
+              </label>
+              {transferCandidates.length === 0 ? (
+                <p className="text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  No students found in other cohorts eligible for transfer.
+                </p>
+              ) : (
+                <select
+                  value={selectedTransferKey}
+                  onChange={(e) => setSelectedTransferKey(e.target.value)}
+                  className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
+                  required
+                >
+                  <option value="">-- Choose student &amp; source cohort --</option>
+                  {transferCandidates.map((cand) => (
+                    <option key={cand.key} value={cand.key}>
+                      {cand.student.displayName || cand.student.name || cand.student.email} (from {cand.sourceClass.className})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {/* Level mismatch warning */}
+          {levelMismatch && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+              <p className="font-bold">⚠️ Level Track Mismatch</p>
+              <p className="text-[11px]">
+                {selectedStudent?.displayName} is recorded at{" "}
+                <span className="font-bold uppercase">{selectedStudent?.currentLevel}</span> level,
+                while this batch is <span className="font-bold uppercase">{batch.classLevel}</span>.
+                Enrolling will update the student&apos;s recorded current level to {batch.classLevel}.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              Enrollment Date
+            </label>
+            <input
+              type="date"
+              value={dateJoined}
+              onChange={(e) => setDateJoined(e.target.value)}
+              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
+              required
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={enrolling}
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={enrolling || eligibleStudents.length === 0}
+              className="px-5 py-2.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-xs rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+            >
+              {enrolling ? "Enrolling..." : "Confirm Enrollment"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default function AvailableBatches({
   classes = [],
@@ -38,7 +335,18 @@ export default function AvailableBatches({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState(null);
+  const [enrollingBatch, setEnrollingBatch] = useState(null);
   const [copiedBatchId, setCopiedBatchId] = useState(null);
+
+  // Strict role boundaries
+  const canAdminister = role === "admin" && canEdit;
+  const canEnroll = role === "admin" || role === "frontoffice";
+
+  // Filter students list for direct enrollment
+  const studentsList = useMemo(() => {
+    const studentsOnly = users.filter((u) => u.role === "student");
+    return studentsOnly.length > 0 ? studentsOnly : users;
+  }, [users]);
 
   // Map instructor name lookups
   const instructorMap = useMemo(() => {
@@ -49,7 +357,7 @@ export default function AvailableBatches({
     return map;
   }, [users, instructors]);
 
-  // Augment classes with capacity and availability calculations
+  // Augment classes with capacity and availability calculations (Source of Truth is classes + enrollments)
   const augmentedBatches = useMemo(() => {
     return classes.map((cls) => {
       const studentCount = (cls.studentIds || []).length;
@@ -57,13 +365,27 @@ export default function AvailableBatches({
       const seatsAvailable = Math.max(0, capacity - studentCount);
       const occupancyRate = Math.min(100, Math.round((studentCount / capacity) * 100));
 
-      // Determine computed availability status
+      // Determine computed availability status following the roadmap lifecycle:
+      // OPEN and active_enrollment_count < capacity and not cancelled and not completed
       let computedStatus = cls.status || "open";
-      if (studentCount >= capacity) {
+      if (cls.status === "cancelled") {
+        computedStatus = "cancelled";
+      } else if (cls.status === "completed") {
+        computedStatus = "completed";
+      } else if (cls.status === "in_progress") {
+        computedStatus = "in_progress";
+      } else if (studentCount >= capacity) {
         computedStatus = "full";
       } else if (seatsAvailable <= 3 && seatsAvailable > 0 && computedStatus !== "upcoming") {
         computedStatus = "filling_fast";
       }
+
+      const isAvailable =
+        computedStatus !== "cancelled" &&
+        computedStatus !== "completed" &&
+        computedStatus !== "in_progress" &&
+        computedStatus !== "full" &&
+        seatsAvailable > 0;
 
       const instructorName = cls.instructorId
         ? (instructorMap.get(cls.instructorId) || cls.instructorName || "Assigned Instructor")
@@ -76,6 +398,7 @@ export default function AvailableBatches({
         seatsAvailable,
         occupancyRate,
         computedStatus,
+        isAvailable,
         instructorName,
       };
     });
@@ -86,9 +409,11 @@ export default function AvailableBatches({
     const totalBatches = augmentedBatches.length;
     const totalCapacity = augmentedBatches.reduce((acc, b) => acc + b.maxCapacity, 0);
     const totalEnrolled = augmentedBatches.reduce((acc, b) => acc + b.studentCount, 0);
-    const totalOpenSeats = Math.max(0, totalCapacity - totalEnrolled);
+    const totalOpenSeats = augmentedBatches
+      .filter((b) => b.isAvailable)
+      .reduce((acc, b) => acc + b.seatsAvailable, 0);
     const fillingFastCount = augmentedBatches.filter((b) => b.computedStatus === "filling_fast").length;
-    const openBatchesCount = augmentedBatches.filter((b) => b.seatsAvailable > 0 && b.computedStatus !== "full").length;
+    const openBatchesCount = augmentedBatches.filter((b) => b.isAvailable).length;
     const overallOccupancy = totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
 
     return {
@@ -107,9 +432,11 @@ export default function AvailableBatches({
     return augmentedBatches
       .filter((b) => {
         if (levelFilter !== "all" && b.classLevel !== levelFilter) return false;
-        if (statusFilter === "open" && b.seatsAvailable <= 0) return false;
+        if (statusFilter === "open" && (!b.isAvailable || b.seatsAvailable <= 0)) return false;
         if (statusFilter === "filling_fast" && b.computedStatus !== "filling_fast") return false;
-        if (statusFilter === "full" && b.seatsAvailable > 0) return false;
+        if (statusFilter === "upcoming" && b.computedStatus !== "upcoming") return false;
+        if (statusFilter === "full" && b.computedStatus !== "full" && b.seatsAvailable > 0) return false;
+        if (statusFilter === "completed" && b.computedStatus !== "completed" && b.computedStatus !== "cancelled") return false;
         return true;
       })
       .filter((b) => {
@@ -177,8 +504,32 @@ export default function AvailableBatches({
     }
   };
 
-  // Helper for status badge styling
+  // Helper for status badge styling across all lifecycle states
   const renderStatusPill = (status, seatsAvailable) => {
+    if (status === "cancelled") {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+          Cancelled
+        </span>
+      );
+    }
+    if (status === "completed") {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+          Completed
+        </span>
+      );
+    }
+    if (status === "in_progress") {
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+          Ongoing
+        </span>
+      );
+    }
     if (status === "full" || seatsAvailable === 0) {
       return (
         <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
@@ -240,7 +591,7 @@ export default function AvailableBatches({
           </div>
 
           <div className="flex items-center gap-2">
-            {canEdit && (
+            {canAdminister && (
               <button
                 onClick={handleOpenAddModal}
                 className="px-3 py-1.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white text-xs font-extrabold rounded-xl shadow-xs transition flex items-center gap-1"
@@ -334,7 +685,7 @@ export default function AvailableBatches({
                     </div>
                   </div>
 
-                  {canEdit && (
+                  {canAdminister && (
                     <button
                       onClick={() => handleOpenEditModal(batch)}
                       title="Edit Batch"
@@ -343,19 +694,42 @@ export default function AvailableBatches({
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                   )}
+
+                  {canEnroll && batch.isAvailable && (
+                    <button
+                      onClick={() => setEnrollingBatch(batch)}
+                      title="Enroll Student"
+                      className="px-2.5 py-1.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white rounded-lg transition text-[11px] font-extrabold flex items-center gap-1 shadow-2xs cursor-pointer"
+                    >
+                      <UserPlus className="w-3 h-3" />
+                      <span>Enroll</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Modal for editing/adding if triggered from widget */}
-        <BatchModal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          batch={editingBatch}
-          instructors={instructors}
-        />
+        {/* Modal for direct enrollment & transfer */}
+        {enrollingBatch && (
+          <EnrollModal
+            batch={enrollingBatch}
+            students={studentsList}
+            allClasses={classes}
+            onClose={() => setEnrollingBatch(null)}
+          />
+        )}
+
+        {/* Modal for editing/adding if triggered from widget (Admin only) */}
+        {canAdminister && (
+          <BatchModal
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            batch={editingBatch}
+            instructors={instructors}
+          />
+        )}
       </div>
     );
   }
@@ -382,7 +756,7 @@ export default function AvailableBatches({
             </p>
           </div>
 
-          {canEdit && (
+          {canAdminister && (
             <button
               onClick={handleOpenAddModal}
               className="px-4 py-2.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 shrink-0"
@@ -485,7 +859,9 @@ export default function AvailableBatches({
             <option value="all">All Statuses</option>
             <option value="open">🟢 Open Seats Only</option>
             <option value="filling_fast">🟡 Filling Fast (&le; 3)</option>
+            <option value="upcoming">🔵 Upcoming Intake</option>
             <option value="full">🔴 Full / Closed</option>
+            <option value="completed">🟣 Completed / Cancelled</option>
           </select>
         </div>
       </div>
@@ -498,9 +874,9 @@ export default function AvailableBatches({
           <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
             {search || levelFilter !== "all" || statusFilter !== "all"
               ? "No cohorts match your selected search query or filters. Try resetting the filters."
-              : "No class batches are currently available. Click below to add your first batch."}
+              : "No class batches are currently available."}
           </p>
-          {canEdit && (
+          {canAdminister && (
             <button
               onClick={handleOpenAddModal}
               className="mt-2 px-4 py-2 bg-[#1a3a8f] text-white text-xs font-bold rounded-xl hover:bg-[#122b6e] transition inline-flex items-center gap-1.5"
@@ -532,8 +908,8 @@ export default function AvailableBatches({
                     <div className="flex items-center gap-1.5">
                       {renderStatusPill(batch.computedStatus, batch.seatsAvailable)}
 
-                      {/* Edit / Delete for Admin & Front Office */}
-                      {canEdit && (
+                      {/* Edit / Delete strictly for Admin */}
+                      {canAdminister && (
                         <div className="flex items-center gap-1 ml-1">
                           <button
                             onClick={() => handleOpenEditModal(batch)}
@@ -611,7 +987,7 @@ export default function AvailableBatches({
                   )}
                 </div>
 
-                {/* Card Bottom: Capacity Bar & Action Button */}
+                {/* Card Bottom: Capacity Bar & Action Buttons */}
                 <div className="space-y-3 pt-2 border-t border-slate-100">
                   {/* Capacity Progress Bar */}
                   <div>
@@ -647,8 +1023,8 @@ export default function AvailableBatches({
                     </div>
                   </div>
 
-                  {/* Syllabus link or Marketing Copy Button */}
-                  <div className="flex items-center justify-between gap-2 pt-1">
+                  {/* Syllabus link or Actions */}
+                  <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
                     {batch.worksheetUrl ? (
                       <a
                         href={batch.worksheetUrl}
@@ -663,33 +1039,65 @@ export default function AvailableBatches({
                       <span className="text-[11px] text-slate-400 font-medium">Standard Syllabus</span>
                     )}
 
-                    {/* Marketing Action */}
-                    {role === "marketing" ? (
-                      <button
-                        onClick={() => handleCopyMarketingBlurb(batch)}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-extrabold shadow-xs transition flex items-center gap-1.5"
-                      >
-                        {copiedBatchId === batch.id ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Share2 className="w-3.5 h-3.5" />
-                            <span>Share for Leads</span>
-                          </>
-                        )}
-                      </button>
-                    ) : canEdit ? (
-                      <button
-                        onClick={() => handleOpenEditModal(batch)}
-                        className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-[#1a3a8f] rounded-xl text-[11px] font-extrabold transition flex items-center gap-1 border border-indigo-100"
-                      >
-                        <Edit2 className="w-3 h-3" />
-                        <span>Edit Batch</span>
-                      </button>
-                    ) : null}
+                    {/* Actions container */}
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      {/* Marketing Action */}
+                      {role === "marketing" && (
+                        <button
+                          onClick={() => handleCopyMarketingBlurb(batch)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-extrabold shadow-xs transition flex items-center gap-1.5"
+                        >
+                          {copiedBatchId === batch.id ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="w-3.5 h-3.5" />
+                              <span>Share for Leads</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Admin Edit Batch */}
+                      {canAdminister && (
+                        <button
+                          onClick={() => handleOpenEditModal(batch)}
+                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-[#1a3a8f] rounded-xl text-[11px] font-extrabold transition flex items-center gap-1 border border-indigo-100"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                      )}
+
+                      {/* Operational Enrollment Action (Admin + Front Office) */}
+                      {canEnroll && (
+                        <button
+                          onClick={() => setEnrollingBatch(batch)}
+                          disabled={!batch.isAvailable}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition flex items-center gap-1.5 ${
+                            batch.isAvailable
+                              ? "bg-[#1a3a8f] hover:bg-[#122b6e] text-white shadow-xs cursor-pointer"
+                              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                          }`}
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>
+                            {batch.isAvailable
+                              ? "Enroll Student"
+                              : batch.computedStatus === "full"
+                              ? "Batch Full"
+                              : batch.computedStatus === "cancelled"
+                              ? "Cancelled"
+                              : batch.computedStatus === "completed"
+                              ? "Completed"
+                              : "Unavailable"}
+                          </span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -698,13 +1106,25 @@ export default function AvailableBatches({
         </div>
       )}
 
-      {/* Add / Edit Batch Modal */}
-      <BatchModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        batch={editingBatch}
-        instructors={instructors}
-      />
+      {/* Enroll Student / Transfer Modal */}
+      {enrollingBatch && (
+        <EnrollModal
+          batch={enrollingBatch}
+          students={studentsList}
+          allClasses={classes}
+          onClose={() => setEnrollingBatch(null)}
+        />
+      )}
+
+      {/* Add / Edit Batch Modal (Admin only) */}
+      {canAdminister && (
+        <BatchModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          batch={editingBatch}
+          instructors={instructors}
+        />
+      )}
     </div>
   );
 }
