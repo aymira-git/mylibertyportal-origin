@@ -19,6 +19,10 @@ export function updateStaffRecord(uid, staffData) {
   return setDoc(doc(db, "users", uid), staffData, { merge: true });
 }
 
+export function updateStaffStatus(uid, status) {
+  return setDoc(doc(db, "users", uid), { status }, { merge: true });
+}
+
 /**
  * Creating a new staff account means creating the Firebase Auth account
  * FIRST (via the secondary auth instance, so the admin doing this stays

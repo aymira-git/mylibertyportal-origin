@@ -1,0 +1,22 @@
+{
+  "version" : "5.12.0.v202606180846",
+  "projects" : [ {
+    "name" : "KNIME_project",
+    "active" : true,
+    "origin" : {
+      "providerId" : "local",
+      "spaceId" : "local",
+      "relativePath" : "KNIME_project"
+    }
+  } ],
+  "mostRecentlyUsedProjects" : [ {
+    "name" : "KNIME_project",
+    "timeUsed" : "2026-09-20T04:33:25.629624+08:00",
+    "origin" : {
+      "providerId" : "local",
+      "spaceId" : "local",
+      "projectType" : "WORKFLOW",
+      "relativePath" : "KNIME_project"
+    }
+  } ]
+}

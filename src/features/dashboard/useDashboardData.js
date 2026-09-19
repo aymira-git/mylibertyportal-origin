@@ -158,7 +158,10 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
           phone: formData.phone,
           dob: formData.dob,
           educationLevel: formData.educationLevel,
-          email: formData.email
+          email: formData.email,
+          branch: formData.branch || "",
+          status: formData.status || "active",
+          photoURL: formData.photoURL || "",
         };
 
         if (editId) {

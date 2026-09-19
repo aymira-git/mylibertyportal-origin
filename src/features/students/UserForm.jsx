@@ -484,6 +484,12 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
            STAFF PROFILE FORM (Account credentials & staff attributes)
            ══════════════════════════════════════════════════════════════════ */
         <div className="space-y-4">
+          {/* Staff Headshot Photo Capture / Upload */}
+          <StudentPhotoCapture
+            photoURL={formData.photoURL}
+            onPhotoChange={(url) => field("photoURL", url)}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">First Name</label>
@@ -559,6 +565,29 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 <option value="SMA/SMK">SMA/SMK</option>
                 <option value="Universitas">Universitas</option>
                 <option value="S2">S2 (Master)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Branch (Cabang)</label>
+              <input
+                type="text"
+                placeholder="e.g. Cabang Utama"
+                value={formData.branch || ""}
+                onChange={e => field("branch", e.target.value)}
+                className="w-full p-2.5 border rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Employment Status</label>
+              <select
+                value={formData.status || "active"}
+                onChange={e => field("status", e.target.value)}
+                className="w-full p-2.5 border rounded-xl bg-white font-bold"
+              >
+                <option value="active">🟢 Active</option>
+                <option value="on_leave">🟡 On Leave</option>
+                <option value="resigned">⚪ Resigned</option>
+                <option value="terminated">🔴 Terminated</option>
               </select>
             </div>
             <div>
