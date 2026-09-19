@@ -22,6 +22,7 @@ import {
 
 export default function FrontOfficeDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [waPhone, setWaPhone] = useState("");
   const [receptionMode, setReceptionMode] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -53,6 +54,7 @@ export default function FrontOfficeDashboard() {
     const regUrl = window.location.origin + "/register";
     const message = encodeURIComponent(`Hello! Greetings from My Liberty school. 🌟 Please complete your student registration here: ${regUrl}`);
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
+    setWaPhone("");
   };
 
   // Full-screen takeover — deliberately rendered before DashboardShell, same
@@ -126,12 +128,13 @@ export default function FrontOfficeDashboard() {
           <div className="flex gap-2 pt-1">
             <input
               type="tel"
-              id="wa-phone"
+              value={waPhone}
+              onChange={(e) => setWaPhone(e.target.value)}
               placeholder="Parent's Phone (e.g. 0812...)"
               className="flex-1 p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
             />
             <button
-              onClick={() => sendWhatsAppInvite(document.getElementById("wa-phone").value)}
+              onClick={() => sendWhatsAppInvite(waPhone)}
               className="bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-xs transition flex items-center gap-1.5"
             >
               <Send className="w-3.5 h-3.5" />
