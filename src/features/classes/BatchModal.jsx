@@ -11,7 +11,15 @@ import {
   Upload,
   Info
 } from "lucide-react";
-import { LEVELS, useToast, uploadFileToCloudinary } from "../shared";
+import {
+  LEVELS,
+  LEVEL_KEYS,
+  TIERS,
+  LevelBadge,
+  getStarText,
+  useToast,
+  uploadFileToCloudinary
+} from "../shared";
 import { createClass, updateClass } from "./classesRepository";
 
 function BatchForm({ batch, instructors, onClose, onSuccess }) {
@@ -20,6 +28,8 @@ function BatchForm({ batch, instructors, onClose, onSuccess }) {
 
   const [className, setClassName] = useState(batch?.className || "");
   const [classLevel, setClassLevel] = useState(batch?.classLevel || "warrior");
+  const [minLevel, setMinLevel] = useState(batch?.minLevel || batch?.classLevel || "warrior");
+  const [maxLevel, setMaxLevel] = useState(batch?.maxLevel || batch?.classLevel || "warrior");
   const [instructorId, setInstructorId] = useState(batch?.instructorId || "");
   const [classDay, setClassDay] = useState(batch?.classDay || "Mon/Wed");
   const [classStartDate, setClassStartDate] = useState(
@@ -61,6 +71,8 @@ function BatchForm({ batch, instructors, onClose, onSuccess }) {
       const payload = {
         className: className.trim(),
         classLevel,
+        minLevel: minLevel || classLevel,
+        maxLevel: maxLevel || classLevel,
         instructorId: instructorId || "",
         instructorName: instructorName || "",
         classDay,
@@ -146,20 +158,72 @@ function BatchForm({ batch, instructors, onClose, onSuccess }) {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Level Track *
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Level Track *
+              </label>
+              <LevelBadge level={classLevel} showStars={true} showTier={true} />
+            </div>
             <select
               value={classLevel}
-              onChange={(e) => setClassLevel(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition uppercase"
+              onChange={(e) => {
+                const newLvl = e.target.value;
+                setClassLevel(newLvl);
+                if (minLevel === classLevel && maxLevel === classLevel) {
+                  setMinLevel(newLvl);
+                  setMaxLevel(newLvl);
+                }
+              }}
+              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition capitalize"
             >
-              {Object.entries(LEVELS).map(([key, config]) => (
-                <option key={key} value={key}>
-                  {config.label}
+              {LEVEL_KEYS.map((lvl) => (
+                <option key={lvl} value={lvl}>
+                  {LEVELS[lvl]?.label} ({getStarText(lvl)} {TIERS[LEVELS[lvl]?.tier]?.label})
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        {/* Option B: Eligible Placement Range */}
+        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between text-slate-700">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 text-[#1a3a8f]">
+              <span>🎯</span> Eligible Placement Range (Option B)
+            </span>
+            <span className="text-[10px] text-slate-500 font-medium">
+              Controls which student levels qualify for enrollment
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Minimum Level</label>
+              <select
+                value={minLevel}
+                onChange={(e) => setMinLevel(e.target.value)}
+                className="w-full p-2 border rounded-xl bg-white text-xs font-semibold capitalize"
+              >
+                {LEVEL_KEYS.map((lvl) => (
+                  <option key={lvl} value={lvl}>
+                    {LEVELS[lvl]?.label} ({LEVELS[lvl]?.stars}★)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Maximum Level</label>
+              <select
+                value={maxLevel}
+                onChange={(e) => setMaxLevel(e.target.value)}
+                className="w-full p-2 border rounded-xl bg-white text-xs font-semibold capitalize"
+              >
+                {LEVEL_KEYS.map((lvl) => (
+                  <option key={lvl} value={lvl}>
+                    {LEVELS[lvl]?.label} ({LEVELS[lvl]?.stars}★)
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

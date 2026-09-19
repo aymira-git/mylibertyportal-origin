@@ -46,6 +46,7 @@ export function buildStudentRecord(fields = {}) {
     parentPhone: fatherPhone || motherPhone || clean(fields.parentPhone),
     photoURL: clean(fields.photoURL),
     referralSource: clean(fields.referralSource),
+    currentLevel: clean(fields.currentLevel) || "warrior",
     rating: fields.rating || "1",
     notes: clean(fields.notes),
     role: "student",

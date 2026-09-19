@@ -205,7 +205,7 @@ export default function FrontOfficeDashboard() {
       id: "applications",
       label: "Applications",
       badge: pendingApplications > 0 ? pendingApplications : null,
-      component: <StudentApplications />,
+      component: <StudentApplications onApproveAndEdit={handleEdit} />,
     },
     {
       id: "students",

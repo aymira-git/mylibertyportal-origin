@@ -6,10 +6,19 @@
  */
 
 import StudentPhotoCapture from "./StudentPhotoCapture";
+import { LevelBadge, LEVELS, LEVEL_LIST, TIERS, TIER_KEYS, getTier, getStars } from "../shared";
 
 export default function UserForm({ formData, setFormData, editId, onSubmit }) {
   const field = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
   const isStudent = formData.role === "student";
+
+  const setAcademicLevel = (level) => {
+    field("currentLevel", level);
+    const stars = getStars(level);
+    if (stars) {
+      field("rating", String(stars));
+    }
+  };
 
   return (
     <form
@@ -160,10 +169,78 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
           <hr className="border-slate-100" />
 
           {/* Section 2: Academic & Enrollment */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <h4 className="text-xs font-black uppercase tracking-wider text-[#1a3a8f] flex items-center gap-1.5">
-              <span>🏫</span> Academic & Enrollment Details
+              <span>🏫</span> Academic &amp; Enrollment Details
             </h4>
+
+            {/* Fluency Tier & Academic Level Placement */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="block text-[11px] font-extrabold text-[#1a3a8f] uppercase tracking-wider">
+                    Fluency Tier &amp; Placement Level *
+                  </label>
+                  <p className="text-[11px] text-slate-500">
+                    Determines eligible batches and cohort placement. Select a quick tier shortcut or pick the exact track.
+                  </p>
+                </div>
+                {formData.currentLevel && (
+                  <LevelBadge level={formData.currentLevel} showStars={true} showTier={true} />
+                )}
+              </div>
+
+              {/* 3-Tier Shortcut Buttons */}
+              <div className="grid grid-cols-3 gap-2">
+                {TIER_KEYS.map((tierKey) => {
+                  const tier = TIERS[tierKey];
+                  const currentTier = getTier(formData.currentLevel);
+                  const isSelected = currentTier === tierKey;
+                  return (
+                    <button
+                      key={tierKey}
+                      type="button"
+                      onClick={() => {
+                        // If already in this tier, keep the specific level; otherwise default to tier's starting level
+                        if (!tier.levels.includes(formData.currentLevel)) {
+                          setAcademicLevel(tier.levels[0]);
+                        }
+                      }}
+                      className={`p-3 rounded-xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                        isSelected
+                          ? "bg-[#1a3a8f] text-white border-[#1a3a8f] shadow-xs"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100"
+                      }`}
+                    >
+                      <span className="text-sm font-black">{tier.starText}</span>
+                      <span className="text-xs font-extrabold">{tier.label}</span>
+                      <span className={`text-[10px] ${isSelected ? "text-indigo-200" : "text-slate-500"}`}>
+                        {tier.levels.map(l => LEVELS[l]?.label).join(" / ")}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Exact Level Track Dropdown */}
+              <div className="pt-1">
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  Specific Academic Track (Stored Level)
+                </label>
+                <select
+                  value={formData.currentLevel || "warrior"}
+                  onChange={(e) => setAcademicLevel(e.target.value)}
+                  className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs capitalize text-slate-800 focus:border-[#1a3a8f] outline-none"
+                >
+                  {LEVEL_LIST.map((lvl) => (
+                    <option key={lvl.id} value={lvl.id}>
+                      {lvl.label} ({lvl.starText || "⭐".repeat(lvl.stars)} {TIERS[lvl.tier]?.label})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Branch (Pilihan Cabang)</label>
@@ -326,15 +403,20 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rating / Fluency</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fluency Tier (Evaluated)</label>
                 <select
-                  value={formData.rating || "1"}
-                  onChange={e => field("rating", e.target.value)}
-                  className="w-full p-2.5 border rounded-xl bg-white font-bold"
+                  value={String(getStars(formData.currentLevel) || "1")}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val === "1") setAcademicLevel("warrior");
+                    else if (val === "2") setAcademicLevel("master");
+                    else if (val === "3") setAcademicLevel("epic");
+                  }}
+                  className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs"
                 >
-                  <option value="1">1 Star (Beginner)</option>
-                  <option value="3">3 Star (Intermediate)</option>
-                  <option value="5">5 Star (Fluent)</option>
+                  <option value="1">⭐ 1 Star (Beginner)</option>
+                  <option value="2">⭐⭐ 2 Stars (Intermediate)</option>
+                  <option value="3">⭐⭐⭐ 3 Stars (Fluent)</option>
                 </select>
               </div>
               <div className="md:col-span-3">

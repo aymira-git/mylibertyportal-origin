@@ -10,7 +10,7 @@ const emptyFormData = {
   firstName: "", lastName: "", nickname: "", displayName: "", gender: "male",
   email: "", password: "", role: "instructor", phone: "", dob: "",
   educationLevel: "SD", joinedDate: "", parentName: "", parentPhone: "",
-  rating: "1", notes: "",
+  currentLevel: "warrior", rating: "1", notes: "",
   placeOfBirth: "", religion: "", address: "", branch: "", program: "",
   classType: "", schoolOrJob: "", classOrSemester: "",
   fatherName: "", fatherJob: "", fatherPhone: "",
@@ -138,6 +138,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
           parentPhone: formData.parentPhone,
           referralSource: formData.referralSource,
           photoURL: formData.photoURL,
+          currentLevel: formData.currentLevel || "warrior",
           rating: formData.rating,
           notes: formData.notes,
         });
@@ -183,6 +184,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
     setFormData({
       ...emptyFormData,
       role: "student",
+      currentLevel: "warrior",
     });
     setActiveTab?.("addUser");
   };
@@ -199,6 +201,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
       educationLevel: user.educationLevel || "SD", joinedDate: user.joinedDate || "",
       parentName: user.parentName || user.fatherName || user.motherName || "",
       parentPhone: user.parentPhone || user.fatherPhone || user.motherPhone || "",
+      currentLevel: user.currentLevel || "warrior",
       rating: user.rating || "1", notes: user.notes || "",
       placeOfBirth: user.placeOfBirth || "",
       religion: user.religion || "",

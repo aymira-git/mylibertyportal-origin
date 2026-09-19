@@ -1,9 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
 import { useToast, useConfirm } from "../shared";
 import { fetchApplications as fetchApplicationsData, approveApplication, rejectApplication } from "./applicationsRepository";
-import { Check, X, ExternalLink, Loader2, UserCheck, Calendar, Phone } from "lucide-react";
+import { Check, X, ExternalLink, Loader2, UserCheck, Calendar, Phone, MessageCircle } from "lucide-react";
 
-export default function StudentApplications() {
+function normalizeWhatsAppPhone(phone) {
+  if (!phone) return "";
+  let cleaned = phone.replace(/[^0-9]/g, "");
+  if (cleaned.startsWith("08")) {
+    cleaned = "62" + cleaned.slice(1);
+  } else if (cleaned.startsWith("8")) {
+    cleaned = "62" + cleaned;
+  }
+  return cleaned;
+}
+
+function getWhatsAppUrl(phone, name, program) {
+  const clean = normalizeWhatsAppPhone(phone);
+  if (!clean) return null;
+  const greeting = `Halo Kak ${name || ""}! Terima kasih telah mendaftar di My Liberty English Academy (${program || "General Program"}). Kami dari tim Admissions ingin mengonfirmasi jadwal placement test dan informasi kelas Anda. Apakah saat ini waktu yang tepat untuk berdiskusi?`;
+  return `https://wa.me/${clean}?text=${encodeURIComponent(greeting)}`;
+}
+
+export default function StudentApplications({ onApproveAndEdit = null }) {
   const toast = useToast();
   const confirm = useConfirm();
   const [applications, setApplications] = useState([]);
@@ -26,15 +44,13 @@ export default function StudentApplications() {
   const handleApprove = async (app) => {
     setProcessingId(app.id);
     try {
-      // Creates the real roster entry and clears the application in one
-      // atomic step — same shape as a manually-added student, just
-      // sourced from the form instead of Add User. Father's info fills
-      // the existing parentName/parentPhone fields (what Directory/Roster
-      // already display); mother's info is kept alongside it so nothing
-      // from the form gets silently dropped.
-      await approveApplication(app);
+      const newStudent = await approveApplication(app);
       toast(`Approved ${app.displayName || "student"} into active roster!`);
-      fetchApplications();
+      if (onApproveAndEdit) {
+        onApproveAndEdit(newStudent);
+      } else {
+        fetchApplications();
+      }
     } catch (err) {
       toast("Error approving: " + err.message, "error");
     } finally {
@@ -145,12 +161,12 @@ export default function StudentApplications() {
                   </div>
                 </div>
 
-                {/* Approve / Reject Actions */}
+                {/* Approve / Reject / WhatsApp Actions */}
                 <div className="flex gap-2 shrink-0 sm:flex-col sm:w-28">
                   <button
                     onClick={() => handleApprove(app)}
                     disabled={processingId === app.id}
-                    className="flex-1 py-2 px-3 rounded-xl font-extrabold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="flex-1 py-2 px-3 rounded-xl font-extrabold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
                     {processingId === app.id ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -162,11 +178,38 @@ export default function StudentApplications() {
                   <button
                     onClick={() => handleReject(app)}
                     disabled={processingId === app.id}
-                    className="flex-1 py-2 px-3 rounded-xl font-bold text-xs bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="flex-1 py-2 px-3 rounded-xl font-bold text-xs bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span>Reject</span>
                   </button>
+
+                  {/* 1-Click WhatsApp Outreach */}
+                  {app.phone && (
+                    <a
+                      href={getWhatsAppUrl(app.phone, app.displayName, app.program)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-1.5 px-2 rounded-xl font-bold text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition flex items-center justify-center gap-1 shadow-2xs text-center"
+                      title="Follow up with applicant on WhatsApp"
+                    >
+                      <MessageCircle className="w-3 h-3 text-emerald-600 shrink-0" />
+                      <span>WA Chat</span>
+                    </a>
+                  )}
+
+                  {!app.phone && (app.fatherPhone || app.motherPhone) && (
+                    <a
+                      href={getWhatsAppUrl(app.fatherPhone || app.motherPhone, `${app.displayName}'s Parent`, app.program)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-1.5 px-2 rounded-xl font-bold text-[11px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition flex items-center justify-center gap-1 shadow-2xs text-center"
+                      title="Follow up with parent on WhatsApp"
+                    >
+                      <MessageCircle className="w-3 h-3 text-emerald-600 shrink-0" />
+                      <span>WA Parent</span>
+                    </a>
+                  )}
                 </div>
               </div>
 

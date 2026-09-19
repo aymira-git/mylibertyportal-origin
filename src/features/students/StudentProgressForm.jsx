@@ -10,9 +10,7 @@ import {
   TrendingUp,
   FileCheck2
 } from "lucide-react";
-import LevelBadge from "../shared/LevelBadge";
-
-const LEVELS = ["warrior", "elite", "master", "grandmaster", "epic"];
+import { LevelBadge, LEVEL_KEYS, LEVELS } from "../shared";
 const SCORE_FIELDS = [
   { field: "pronunciation", label: "Pronunciation", desc: "Clarity, phonemes, and accent neutrality" },
   { field: "fluency", label: "Fluency", desc: "Speaking pace, flow, and absence of hesitation" },
@@ -203,9 +201,9 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
                 onChange={(e) => setLevel(e.target.value)}
                 className="flex-1 p-3 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] focus:ring-1 focus:ring-[#1a3a8f] outline-none transition capitalize"
               >
-                {LEVELS.map((opt) => (
+                {LEVEL_KEYS.map((opt) => (
                   <option key={opt} value={opt}>
-                    {opt.toUpperCase()}
+                    {LEVELS[opt]?.label || opt.toUpperCase()}
                   </option>
                 ))}
               </select>

@@ -8,7 +8,7 @@ import {
   CheckCircle,
   Search,
 } from "lucide-react";
-import { LevelBadge, useToast } from "../shared";
+import { LevelBadge, useToast, isCompatible } from "../shared";
 import { transferStudentBetweenClasses } from "./classesRepository";
 
 export default function TransferModal({
@@ -85,8 +85,7 @@ export default function TransferModal({
   const levelMismatch = Boolean(
     selectedTargetClass &&
       student?.currentLevel &&
-      selectedTargetClass.classLevel &&
-      student.currentLevel !== selectedTargetClass.classLevel
+      !isCompatible(student.currentLevel, selectedTargetClass)
   );
 
   if (!isOpen || !student || !sourceClass) return null;

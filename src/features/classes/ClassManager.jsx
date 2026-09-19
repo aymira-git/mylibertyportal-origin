@@ -2,6 +2,7 @@ import { useState, Fragment } from "react";
 import {
   LevelBadge,
   LEVELS,
+  LEVEL_KEYS,
   useToast,
   useConfirm,
   uploadFileToCloudinary,
@@ -597,9 +598,9 @@ export default function ClassManager({
                   className="flex-1 p-3 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition capitalize"
                   required
                 >
-                  {LEVELS.map((lvl) => (
+                  {LEVEL_KEYS.map((lvl) => (
                     <option key={lvl} value={lvl}>
-                      {lvl.charAt(0).toUpperCase() + lvl.slice(1)}
+                      {LEVELS[lvl]?.label || (lvl.charAt(0).toUpperCase() + lvl.slice(1))}
                     </option>
                   ))}
                 </select>
@@ -768,9 +769,9 @@ export default function ClassManager({
                 className="p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-700 outline-none"
               >
                 <option value="all">All Levels</option>
-                {LEVELS.map((lvl) => (
+                {LEVEL_KEYS.map((lvl) => (
                   <option key={lvl} value={lvl}>
-                    {lvl.toUpperCase()}
+                    {LEVELS[lvl]?.label?.toUpperCase() || lvl.toUpperCase()}
                   </option>
                 ))}
               </select>
@@ -863,9 +864,9 @@ export default function ClassManager({
                                 onChange={(e) => setPendingLevel(e.target.value)}
                                 className="text-[11px] border rounded p-1 bg-white font-bold"
                               >
-                                {LEVELS.map((lvl) => (
+                                {LEVEL_KEYS.map((lvl) => (
                                   <option key={lvl} value={lvl}>
-                                    {lvl.toUpperCase()}
+                                    {LEVELS[lvl]?.label?.toUpperCase() || lvl.toUpperCase()}
                                   </option>
                                 ))}
                               </select>

@@ -18,7 +18,17 @@ import {
   X,
   ArrowRightLeft,
 } from "lucide-react";
-import { LevelBadge, LEVELS, useToast, useConfirm } from "../shared";
+import {
+  LevelBadge,
+  LEVELS,
+  LEVEL_KEYS,
+  TIERS,
+  TIER_KEYS,
+  getTier,
+  isCompatible,
+  useToast,
+  useConfirm,
+} from "../shared";
 import BatchModal from "./BatchModal";
 import {
   deleteClass,
@@ -78,8 +88,7 @@ function EnrollModal({ batch, students, allClasses = [], onClose, onEnrolled }) 
 
   const levelMismatch = Boolean(
     selectedStudent?.currentLevel &&
-    batch?.classLevel &&
-    selectedStudent.currentLevel !== batch.classLevel
+    !isCompatible(selectedStudent.currentLevel, batch)
   );
 
   const handleSubmit = async (e) => {
@@ -330,6 +339,7 @@ export default function AvailableBatches({
   const confirm = useConfirm();
 
   const [search, setSearch] = useState("");
+  const [tierFilter, setTierFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -431,6 +441,7 @@ export default function AvailableBatches({
   const filteredBatches = useMemo(() => {
     return augmentedBatches
       .filter((b) => {
+        if (tierFilter !== "all" && getTier(b.classLevel) !== tierFilter) return false;
         if (levelFilter !== "all" && b.classLevel !== levelFilter) return false;
         if (statusFilter === "open" && (!b.isAvailable || b.seatsAvailable <= 0)) return false;
         if (statusFilter === "filling_fast" && b.computedStatus !== "filling_fast") return false;
@@ -450,7 +461,7 @@ export default function AvailableBatches({
           (b.classDay || "").toLowerCase().includes(q)
         );
       });
-  }, [augmentedBatches, levelFilter, statusFilter, search]);
+  }, [augmentedBatches, tierFilter, levelFilter, statusFilter, search]);
 
   const handleOpenAddModal = () => {
     setEditingBatch(null);
@@ -823,32 +834,60 @@ export default function AvailableBatches({
             />
           </div>
 
-          {/* Level Filter */}
+          {/* Marketing-Friendly Tier Filter Tabs */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             <button
-              onClick={() => setLevelFilter("all")}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                levelFilter === "all"
+              onClick={() => {
+                setTierFilter("all");
+                setLevelFilter("all");
+              }}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                tierFilter === "all" && levelFilter === "all"
                   ? "bg-[#1a3a8f] text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              All Levels
+              All Batches
             </button>
-            {Object.entries(LEVELS).map(([key, config]) => (
-              <button
-                key={key}
-                onClick={() => setLevelFilter(key)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition uppercase whitespace-nowrap ${
-                  levelFilter === key
-                    ? "bg-[#1a3a8f] text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {config.label}
-              </button>
-            ))}
+            {TIER_KEYS.map((tierKey) => {
+              const tier = TIERS[tierKey];
+              const isSelected = tierFilter === tierKey;
+              return (
+                <button
+                  key={tierKey}
+                  onClick={() => {
+                    setTierFilter(isSelected ? "all" : tierKey);
+                    setLevelFilter("all");
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? "bg-[#1a3a8f] text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  <span>{tier.starText}</span>
+                  <span>{tier.label}</span>
+                  <span className={`text-[10px] font-normal ${isSelected ? "text-indigo-200" : "text-slate-400"}`}>
+                    ({tier.levels.map((l) => LEVELS[l]?.label).join("/")})
+                  </span>
+                </button>
+              );
+            })}
           </div>
+
+          {/* Sub-level Filter Dropdown */}
+          <select
+            value={levelFilter}
+            onChange={(e) => setLevelFilter(e.target.value)}
+            className="p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:border-[#1a3a8f] outline-none capitalize"
+          >
+            <option value="all">All Sub-Levels</option>
+            {LEVEL_KEYS.map((lvl) => (
+              <option key={lvl} value={lvl}>
+                {LEVELS[lvl]?.label} ({LEVELS[lvl]?.stars ? "⭐".repeat(LEVELS[lvl].stars) : ""})
+              </option>
+            ))}
+          </select>
 
           {/* Status Filter */}
           <select

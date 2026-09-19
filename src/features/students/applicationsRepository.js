@@ -30,8 +30,7 @@ export async function fetchApplications() {
 export function approveApplication(app) {
   const studentRef = doc(collection(db, "users"));
   const batch = writeBatch(db);
-
-  batch.set(studentRef, buildStudentRecord({
+  const studentData = buildStudentRecord({
     displayName: app.displayName,
     phone: app.phone,
     dob: app.dob,
@@ -53,10 +52,15 @@ export function approveApplication(app) {
     motherJob: app.motherJob,
     motherPhone: app.motherPhone,
     photoURL: app.photoURL || "",
-  }));
+  });
+
+  batch.set(studentRef, studentData);
   batch.delete(doc(db, "applications", app.id));
 
-  return batch.commit();
+  return batch.commit().then(() => ({
+    id: studentRef.id,
+    ...studentData,
+  }));
 }
 
 export function rejectApplication(appId) {
