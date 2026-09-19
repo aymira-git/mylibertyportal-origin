@@ -32,6 +32,14 @@ service cloud.firestore {
       return hasRole('frontoffice');
     }
 
+    function roleOf(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data.role;
+    }
+
+    function isTrackedRole(r) {
+      return r in ['instructor', 'frontoffice', 'marketing', 'officeboy', 'admin'];
+    }
+
     match /users/{userId} {
       allow read: if isAdmin()
         || isManager()
@@ -39,7 +47,13 @@ service cloud.firestore {
         || (signedIn() && userId == request.auth.uid);
       allow create: if isAdmin() 
         || (isFrontOffice() && request.resource.data.role == 'student')
-        || (signedIn() && userId == request.auth.uid);
+        || (signedIn()
+            && userId == request.auth.uid
+            && request.resource.data.inviteId is string
+            && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteId)).data.email
+                 == request.auth.token.email.lower()
+            && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteId)).data.role
+                 == request.resource.data.role);
       allow delete: if isAdmin() || (isFrontOffice() && resource.data.role == 'student');
       allow update: if isAdmin()
         || (isFrontOffice() && resource.data.role == 'student' && request.resource.data.role == 'student')
@@ -97,9 +111,11 @@ service cloud.firestore {
 
     match /attendance/{attendanceId} {
       allow read: if isStaff();
-      allow create: if isStaff()
+      // Student scans: Admin (reception station), Front Office, and Instructor; scanned person must be a student
+      allow create: if (isAdmin() || isFrontOffice() || hasRole('instructor'))
         && request.resource.data.userId is string
-        && request.resource.data.timestamp is string;
+        && request.resource.data.timestamp is string
+        && roleOf(request.resource.data.userId) == 'student';
       allow update, delete: if isAdmin();
     }
 
@@ -126,14 +142,31 @@ service cloud.firestore {
       allow read: if isAdmin()
         || isManager()
         || (signedIn() && resource.data.userId == request.auth.uid);
+      // Staff scans: Admin only, for tracked roles only, new shifts start open
       allow create: if isAdmin()
-        || (signedIn() && request.resource.data.userId == request.auth.uid);
-      allow update: if isAdmin()
+        && request.resource.data.userId is string
+        && request.resource.data.clockOut == null
+        && isTrackedRole(roleOf(request.resource.data.userId));
+      // Deploy B: Shift updates and manual corrections are strictly Admin-only
+      allow update, delete: if isAdmin();
+    }
+
+    match /shiftAuditEvents/{eventId} {
+      allow read: if isAdmin() || isManager();
+      allow create: if isAdmin()
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.shiftId is string;
+      allow update, delete: if false; // append-only immutable audit trail
+    }
+
+    match /staffLeave/{leaveId} {
+      allow read: if isAdmin()
         || isManager()
-        || (signedIn()
-          && resource.data.userId == request.auth.uid
-          && request.resource.data.userId == resource.data.userId);
-      allow delete: if isAdmin();
+        || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin()
+        && request.resource.data.status == 'approved'
+        && isTrackedRole(roleOf(request.resource.data.userId));
+      allow update, delete: if isAdmin();
     }
 
     match /materials/{materialId} {

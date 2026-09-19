@@ -117,6 +117,7 @@ export default function StaffSignup() {
         phone: formData.phone,
         dob: formData.dob,
         educationLevel: formData.educationLevel,
+        inviteId: invite.id,
         createdAt: new Date().toISOString()
       };
 

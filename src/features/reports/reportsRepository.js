@@ -1,6 +1,5 @@
 import { auth, db } from "../../firebase";
 import { collection, getDocs, getDoc, doc, query, where } from "firebase/firestore";
-import { isShiftStale, autoCloseShift } from "../attendance";
 
 /**
  * All direct Firestore reads for the Reports dashboard live here instead
@@ -16,23 +15,9 @@ import { isShiftStale, autoCloseShift } from "../attendance";
  * presented."
  */
 
-async function autoCloseStaleShifts(shifts) {
-  const updated = [];
-  for (const s of shifts) {
-    if (isShiftStale(s)) {
-      try {
-        const estimatedClockOut = await autoCloseShift(s);
-        updated.push({ ...s, clockOut: estimatedClockOut, autoClosed: true });
-      } catch (err) {
-        console.error("Failed to auto-close shift", s.id, err);
-        updated.push(s);
-      }
-    } else {
-      updated.push(s);
-    }
-  }
-  return updated;
-}
+// Auto-closing stale shifts during read has been decoupled per Step 1.
+// Shifts are now classified on-the-fly using getShiftStatus(), preventing
+// uninvited write side-effects when opening Reports.
 
 /**
  * `shifts` and `attendance` are the only two collections in this app that
@@ -83,7 +68,7 @@ export async function fetchStaffShifts(isAdminView, since = null) {
     .map(d => ({ id: d.id, ...d.data() }))
     .filter(shift => existingUserIds.has(shift.userId))
     .sort((a, b) => (b.clockIn || "").localeCompare(a.clockIn || ""));
-  return autoCloseStaleShifts(raw);
+  return raw;
 }
 
 export async function fetchStudentProgressData(isAdminView, isFrontOffice, since = null) {

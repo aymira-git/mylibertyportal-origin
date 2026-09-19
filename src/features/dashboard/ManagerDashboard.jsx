@@ -6,6 +6,7 @@ import { GraduationCap, BookOpen, UserPlus, Users, ExternalLink } from "lucide-r
 import { ReportsDashboard } from "../reports";
 import { TasksPanel, createTodo, deleteTodo } from "../staff";
 import { AvailableBatches } from "../classes";
+import { getShiftStatus } from "../attendance";
 
 function formatTime(isoString) {
   if (!isoString) return "N/A";
@@ -1013,7 +1014,7 @@ export default function ManagerDashboard() {
   }, [classes, users]);
 
   const activeShifts = useMemo(() => {
-    return shifts.filter((s) => !s.clockOut);
+    return shifts.filter((s) => getShiftStatus(s) === "on_duty");
   }, [shifts]);
 
   const stats = {

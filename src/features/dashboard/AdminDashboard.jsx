@@ -4,7 +4,7 @@ import { AIAssistant, DashboardShell, WelcomeBanner } from "../shared";
 import { UserPlus, GraduationCap, BookOpen, AlertCircle, ArrowRight } from "lucide-react";
 import { ReportsDashboard } from "../reports";
 import { StudentApplications, UserForm, StudentRoster, BadgeModal } from "../students";
-import { Kiosk } from "../attendance";
+import { AttendanceManager } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { InvitesPanel, TasksPanel } from "../staff";
 
@@ -216,7 +216,11 @@ export default function AdminDashboard() {
         />
       ),
     },
-    { id: "kiosk", label: "Attendance", component: <Kiosk title="Office Reception Kiosk Station" staffOnly={true} /> },
+    {
+      id: "kiosk",
+      label: "Attendance",
+      component: <AttendanceManager users={users} instructors={instructors} />,
+    },
     { id: "directory", label: "Staff", component: directoryTab },
     {
       id: "invites",

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { auth } from "../../firebase";
-import { computeMonthlyPunctuality } from "../attendance";
+import { computeMonthlyPunctuality, getShiftStatus } from "../attendance";
 import { exportTableCSV, Pagination, usePagination } from "../shared";
 import {
   fetchStaffShifts,
@@ -205,7 +205,7 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
   // Aggregate KPI summary metrics
   const kpiData = useMemo(() => {
     if (subTab === "staff") {
-      const activeCount = shifts.filter((s) => !s.clockOut && !s.autoClosed).length;
+      const activeCount = shifts.filter((s) => getShiftStatus(s) === "on_duty").length;
       const autoClosedCount = shifts.filter((s) => s.autoClosed).length;
       return {
         metric1: { label: "Total Shift Logs", value: shifts.length, sub: "In selected period" },

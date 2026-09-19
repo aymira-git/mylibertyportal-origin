@@ -1,12 +1,17 @@
 import { db } from "../../firebase";
-import { collection, doc, getDoc, addDoc, getDocs, query, where, updateDoc } from "firebase/firestore";
-
-/**
- * All direct Firestore reads/writes for shifts, plus the lookups the
- * clock-in flows need (a user's role, an instructor's classes) and
- * kiosk-recorded student attendance, live here instead of inside
- * Kiosk.jsx — same pattern as the other domain repositories.
- */
+import {
+  collection,
+  doc,
+  getDoc,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+  writeBatch,
+  deleteDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 export async function fetchUserById(uid) {
   const snap = await getDoc(doc(db, "users", uid));
@@ -22,35 +27,182 @@ export async function fetchOpenShiftFor(uid) {
 
 export async function fetchInstructorClasses(uid) {
   const snap = await getDocs(query(collection(db, "classes"), where("instructorId", "==", uid)));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export function clockIn({ uid, displayName, role, classId, className, clockInAt, punctuality }) {
-  return addDoc(collection(db, "shifts"), {
+export function clockIn({
+  uid,
+  displayName,
+  role,
+  classId,
+  className,
+  clockInAt,
+  punctuality,
+  stationId = "reception-01",
+  docId = null,
+}) {
+  const payload = {
     userId: uid,
     displayName: displayName || "",
     role,
-    classId,
+    classId: classId || "general",
     className: className || "",
     clockIn: clockInAt.toISOString(),
     clockOut: null,
-    scheduledStart: punctuality.scheduledStart,
-    requiredArrival: punctuality.requiredArrival,
-    punctualityStatus: punctuality.status,
-    minutesEarlyOrLate: punctuality.minutesEarlyOrLate,
-  });
+    scheduledStart: punctuality?.scheduledStart || null,
+    requiredArrival: punctuality?.requiredArrival || null,
+    punctualityStatus: punctuality?.status || "Present",
+    minutesEarlyOrLate: punctuality?.minutesEarlyOrLate ?? 0,
+    stationId,
+    clockInSource: "kiosk",
+    createdAt: serverTimestamp(),
+  };
+
+  if (docId) {
+    const batch = writeBatch(db);
+    batch.set(doc(db, "shifts", docId), payload);
+    return batch.commit();
+  }
+
+  return addDoc(collection(db, "shifts"), payload);
 }
 
 export function clockOutShift(shiftId, clockOutAt = new Date()) {
   return updateDoc(doc(db, "shifts", shiftId), { clockOut: clockOutAt.toISOString() });
 }
 
+/**
+ * Executes a class transition atomically: clocks out previous shift
+ * and creates new shift in a single Firestore writeBatch.
+ */
+export function switchClassAtomic({
+  previousShiftId,
+  clockOutAt = new Date(),
+  newShiftDocId,
+  uid,
+  displayName,
+  role,
+  classId,
+  className,
+  punctuality,
+  stationId = "reception-01",
+}) {
+  const batch = writeBatch(db);
+  const prevRef = doc(db, "shifts", previousShiftId);
+  batch.update(prevRef, { clockOut: clockOutAt.toISOString() });
+
+  const newRef = newShiftDocId ? doc(db, "shifts", newShiftDocId) : doc(collection(db, "shifts"));
+  batch.set(newRef, {
+    userId: uid,
+    displayName: displayName || "",
+    role,
+    classId: classId || "general",
+    className: className || "",
+    clockIn: clockOutAt.toISOString(),
+    clockOut: null,
+    scheduledStart: punctuality?.scheduledStart || null,
+    requiredArrival: punctuality?.requiredArrival || null,
+    punctualityStatus: punctuality?.status || "Present",
+    minutesEarlyOrLate: punctuality?.minutesEarlyOrLate ?? 0,
+    stationId,
+    clockInSource: "kiosk",
+    createdAt: serverTimestamp(),
+  });
+
+  return batch.commit();
+}
+
 export function recordStudentAttendance({ uid, displayName }) {
   return addDoc(collection(db, "attendance"), {
     userId: uid,
-    displayName,
+    displayName: displayName || "",
     role: "student",
     timestamp: new Date().toISOString(),
     method: "KIOSK",
   });
+}
+
+/**
+ * Performs an audited shift adjustment using an atomic batch write:
+ * Updates the shift doc and creates an immutable audit event record.
+ */
+export async function adjustShiftWithAudit({
+  shiftId,
+  beforeShift,
+  afterData,
+  reasonCode,
+  note,
+  actorId,
+  actorName,
+}) {
+  const batch = writeBatch(db);
+  const shiftRef = doc(db, "shifts", shiftId);
+
+  batch.update(shiftRef, {
+    ...afterData,
+    corrected: true,
+    reviewStatus: "reviewed",
+  });
+
+  const auditRef = doc(collection(db, "shiftAuditEvents"));
+  batch.set(auditRef, {
+    shiftId,
+    action: "manual_adjustment",
+    before: {
+      clockIn: beforeShift.clockIn || null,
+      clockOut: beforeShift.clockOut || null,
+      autoClosed: beforeShift.autoClosed || false,
+    },
+    after: {
+      clockIn: afterData.clockIn || null,
+      clockOut: afterData.clockOut || null,
+    },
+    reasonCode,
+    note: note || "",
+    actorId,
+    actorNameSnapshot: actorName || "Administrator",
+    createdAt: serverTimestamp(),
+  });
+
+  await batch.commit();
+}
+
+/**
+ * Staff Leave Operations (Sakit, Izin, Cuti, Dinas Luar)
+ */
+export async function logStaffLeave({
+  userId,
+  displayNameSnapshot,
+  type,
+  startDate,
+  endDate,
+  dayPortion = "full",
+  note = "",
+  createdBy,
+}) {
+  return addDoc(collection(db, "staffLeave"), {
+    userId,
+    displayNameSnapshot: displayNameSnapshot || "",
+    type,
+    startDate,
+    endDate: endDate || startDate,
+    dayPortion,
+    note,
+    status: "approved",
+    createdBy,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function fetchStaffLeaves(sinceDate = null) {
+  let q = collection(db, "staffLeave");
+  if (sinceDate) {
+    q = query(q, where("endDate", ">=", sinceDate));
+  }
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export function deleteStaffLeave(leaveId) {
+  return deleteDoc(doc(db, "staffLeave", leaveId));
 }

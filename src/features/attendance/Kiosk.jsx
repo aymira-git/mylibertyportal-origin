@@ -12,6 +12,7 @@ import {
   fetchInstructorClasses,
   clockIn,
   clockOutShift,
+  switchClassAtomic,
   recordStudentAttendance,
 } from "./shiftsRepository";
 import { soundEffects } from "./soundEffects";
@@ -95,16 +96,16 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
     if (!pendingTransition || !nextClass) return;
     try {
       const now = new Date();
-      await clockOutShift(pendingTransition.openShift.id, now);
-
       const punctuality = getInstantPunctuality(nextClass, now);
-      await clockIn({
+
+      await switchClassAtomic({
+        previousShiftId: pendingTransition.openShift.id,
+        clockOutAt: now,
         uid: pendingTransition.uid,
         displayName: pendingTransition.userData.displayName,
         role: pendingTransition.userData.role,
         classId: nextClass.id,
         className: nextClass.className,
-        clockInAt: now,
         punctuality,
       });
 

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import { Kiosk } from "../attendance";
 
 export default function StaffDashboard() {
   const [leadCount, setLeadCount] = useState(0);
@@ -36,14 +35,11 @@ export default function StaffDashboard() {
         </p>
       </div>
 
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
         <h3 className="font-bold text-slate-800 text-sm">Attendance Reminder</h3>
         <p className="text-xs text-slate-500 leading-relaxed">
-          Use the widget below to clock in and out — this keeps attendance tied to actually being on site.
+          Staff shifts are tracked via the physical reception counter scanner. Please present your badge to the front desk station upon arrival and before leaving.
         </p>
-        <div className="pt-2">
-          <Kiosk title="Marketing Staff Clock-In/Out" />
-        </div>
       </div>
       
       <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
