@@ -45,8 +45,35 @@ export const STAFF_STATUS_MAP = {
   },
 };
 
+export const TRACKED_STAFF_ROLES = [
+  "instructor",
+  "frontoffice",
+  "marketing",
+  "officeboy",
+];
+
+export const STAFF_STATUS_OPTIONS = Object.entries(STAFF_STATUS_MAP).map(
+  ([value, conf]) => ({
+    value,
+    label: conf.label,
+  })
+);
+
+export const STANDARD_BRANCHES = ["Cabang Utama"];
+
+/**
+ * Checks whether a class is currently active (not cancelled, not completed).
+ * Aligns with available batches and attendance lifecycle rules.
+ */
+export function isActiveClass(c) {
+  if (!c) return false;
+  const s = c.status || "open";
+  return s !== "cancelled" && s !== "completed";
+}
+
 /**
  * Computes teaching workload telemetry for an instructor based on active classes.
+ * Unique student count prevents duplicate headcount if a student is in multiple classes.
  */
 export function getInstructorWorkload(instructorId, classes = []) {
   if (!instructorId) {
@@ -54,13 +81,15 @@ export function getInstructorWorkload(instructorId, classes = []) {
   }
 
   const assignedClasses = classes.filter(
-    (c) => c.instructorId === instructorId && c.status !== "cancelled"
+    (c) => c.instructorId === instructorId && isActiveClass(c)
   );
   const batchCount = assignedClasses.length;
-  const studentCount = assignedClasses.reduce(
-    (sum, c) => sum + (c.studentIds || []).length,
-    0
-  );
+
+  const uniqueStudentIds = new Set();
+  assignedClasses.forEach((c) => {
+    (c.studentIds || []).forEach((id) => uniqueStudentIds.add(id));
+  });
+  const studentCount = uniqueStudentIds.size;
 
   return {
     assignedClasses,
@@ -86,14 +115,14 @@ export function canDeleteStaff(staffUser, classes = [], currentUserId = null) {
   }
 
   const assignedClasses = classes.filter(
-    (c) => c.instructorId === staffUser.id && c.status !== "cancelled" && c.status !== "completed"
+    (c) => c.instructorId === staffUser.id && isActiveClass(c)
   );
 
   if (assignedClasses.length > 0) {
     const classNames = assignedClasses.map((c) => c.className || "Class").join(", ");
     return {
       canDelete: false,
-      reason: `Cannot delete: This instructor is currently assigned to ${assignedClasses.length} active class(es): ${classNames}. Please reassign their classes first, or mark their status as "Resigned / Inactive" instead.`,
+      reason: `Cannot delete: This instructor is currently assigned to ${assignedClasses.length} active class(es): ${classNames}. Please reassign their classes first, or mark their status as "Resigned" instead.`,
     };
   }
 
@@ -150,7 +179,7 @@ export function filterStaffMembers({
  * Extracts unique non-empty branch names from staff users.
  */
 export function getDistinctStaffBranches(users = []) {
-  const set = new Set();
+  const set = new Set(STANDARD_BRANCHES);
   users.forEach((u) => {
     if (u.role !== "student" && u.branch) {
       set.add(u.branch.trim());

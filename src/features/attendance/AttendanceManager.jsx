@@ -74,9 +74,15 @@ export default function AttendanceManager({
     return () => unsub();
   }, []);
 
-  // Trackable staff list (excluding students & pure managers)
+  // Trackable staff list (excluding students, pure managers, and deactivated staff)
   const staffMembers = useMemo(() => {
-    return users.filter((u) => u.role !== "student" && u.role !== "manager");
+    return users.filter(
+      (u) =>
+        u.role !== "student" &&
+        u.role !== "manager" &&
+        (u.status || "active") !== "resigned" &&
+        (u.status || "active") !== "terminated"
+    );
   }, [users]);
 
   // Multiple open shifts detection

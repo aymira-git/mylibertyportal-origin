@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { auth, db } from "./firebase";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -81,23 +81,36 @@ function App() {
     };
   }, [user]);
 
-  const refreshProfile = async (uid) => {
+  const refreshProfile = useCallback(async (uid) => {
     const userDoc = await getDoc(doc(db, "users", uid));
     if (userDoc.exists()) {
       const data = userDoc.data();
+      const status = data.status || "active";
+      if (status === "resigned" || status === "terminated") {
+        await signOut(auth);
+        toast("Your account has been deactivated. Please contact academy administration.", "error");
+        setUser(null);
+        setRole("");
+        setNickname("");
+        return false;
+      }
       setRole(data.role || "student");
       setDisplayName(data.displayName || "");
       setNickname(data.nickname || data.displayName || ""); 
       setPhotoURL(data.photoURL || "");
+      return true;
     }
-  };
+    return true;
+  }, [toast]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         try {
-          await refreshProfile(currentUser.uid);
-          setUser(currentUser);
+          const ok = await refreshProfile(currentUser.uid);
+          if (ok) {
+            setUser(currentUser);
+          }
         } catch (err) {
           console.error(err);
         }
@@ -109,7 +122,7 @@ function App() {
       setCheckingAuth(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [refreshProfile]);
 
   // Public route — no login required.
   if (window.location.pathname === "/register") {

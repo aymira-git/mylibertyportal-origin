@@ -42,7 +42,7 @@ export default function AdminDashboard() {
           },
           {
             label: "Active Students",
-            value: students.length,
+            value: students.filter((s) => (s.status || "active") === "active").length,
             icon: GraduationCap,
             onClick: () => handleTabChange("students"),
           },
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <h4 className="font-bold text-slate-800">Staff snapshot</h4>
           <p className="text-xs text-slate-500 mt-2 font-medium">
-            {users.filter(user => user.role !== "student" && user.role !== "admin").length} staff profiles · {instructors.length} instructors
+            {users.filter(user => user.role !== "student" && (user.status || "active") === "active").length} active staff · {instructors.filter(i => (i.status || "active") === "active").length} active instructors
           </p>
           <p className="text-xs text-slate-500 mt-1 font-medium">
             {invites.filter(inv => !inv.used).length} pending invitations · {todos.filter(todo => todo.isPinned || todo.type === "deadline").length} pinned tasks

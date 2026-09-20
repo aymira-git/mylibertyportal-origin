@@ -5,6 +5,7 @@
  * matching all Google Registration Form fields.
  */
 
+import { auth } from "../../firebase";
 import StudentPhotoCapture from "./StudentPhotoCapture";
 import {
   LevelBadge,
@@ -17,8 +18,10 @@ import {
   PAYMENT_PLANS,
   PAYMENT_PLAN_KEYS,
 } from "../shared";
+import { STAFF_STATUS_OPTIONS, STANDARD_BRANCHES } from "../staff/staffUtils";
 
 export default function UserForm({ formData, setFormData, editId, onSubmit }) {
+  const isSelf = Boolean(editId && auth.currentUser && editId === auth.currentUser.uid);
   const field = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
   const isStudent = formData.role === "student";
 
@@ -254,13 +257,18 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Branch (Pilihan Cabang)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Cabang Utama"
-                  value={formData.branch || ""}
+                <select
+                  value={formData.branch || "Cabang Utama"}
                   onChange={e => field("branch", e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
+                  className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs"
+                >
+                  {STANDARD_BRANCHES.map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                  {formData.branch && !STANDARD_BRANCHES.includes(formData.branch) && (
+                    <option value={formData.branch}>{formData.branch}</option>
+                  )}
+                </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Program</label>
@@ -569,25 +577,37 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Branch (Cabang)</label>
-              <input
-                type="text"
-                placeholder="e.g. Cabang Utama"
-                value={formData.branch || ""}
+              <select
+                value={formData.branch || "Cabang Utama"}
                 onChange={e => field("branch", e.target.value)}
-                className="w-full p-2.5 border rounded-xl"
-              />
+                className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs"
+              >
+                {STANDARD_BRANCHES.map(b => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+                {formData.branch && !STANDARD_BRANCHES.includes(formData.branch) && (
+                  <option value={formData.branch}>{formData.branch}</option>
+                )}
+              </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Employment Status</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Employment Status {isSelf && <span className="text-amber-600 font-semibold">(Protected Self-Account)</span>}
+              </label>
               <select
                 value={formData.status || "active"}
+                disabled={isSelf}
                 onChange={e => field("status", e.target.value)}
-                className="w-full p-2.5 border rounded-xl bg-white font-bold"
+                className={`w-full p-2.5 border rounded-xl font-bold text-xs ${
+                  isSelf ? "bg-slate-100 text-slate-500 cursor-not-allowed" : "bg-white"
+                }`}
+                title={isSelf ? "You cannot modify your own administrative status while logged in" : ""}
               >
-                <option value="active">🟢 Active</option>
-                <option value="on_leave">🟡 On Leave</option>
-                <option value="resigned">⚪ Resigned</option>
-                <option value="terminated">🔴 Terminated</option>
+                {STAFF_STATUS_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

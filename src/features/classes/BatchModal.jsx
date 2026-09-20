@@ -49,6 +49,13 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
   const [selectedFile, setSelectedFile] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  // Exclude non-active instructors from assignment dropdown, but preserve the currently assigned instructor if already attached
+  const assignableInstructors = useMemo(() => {
+    return instructors.filter(
+      (inst) => (inst.status || "active") === "active" || inst.id === instructorId
+    );
+  }, [instructors, instructorId]);
+
   // Live collision detection against existing classes
   const conflicts = useMemo(() => {
     const draft = {
@@ -283,11 +290,15 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
             >
               <option value="">-- Leave Unassigned (TBA) --</option>
-              {instructors.map((inst) => (
-                <option key={inst.id} value={inst.id}>
-                  {inst.displayName || inst.name || inst.email} ({inst.role || "Instructor"})
-                </option>
-              ))}
+              {assignableInstructors.map((inst) => {
+                const isInactive = inst.status && inst.status !== "active";
+                return (
+                  <option key={inst.id} value={inst.id}>
+                    {inst.displayName || inst.name || inst.email}
+                    {isInactive ? " (Inactive / Currently Assigned)" : ` (${inst.role || "Instructor"})`}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

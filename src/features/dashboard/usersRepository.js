@@ -1,5 +1,5 @@
 import { db, getSecondaryAuth } from "../../firebase";
-import { collection, doc, setDoc, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, setDoc, addDoc, deleteDoc, query, where, limit, getDocs } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
 /**
@@ -21,6 +21,33 @@ export function updateStaffRecord(uid, staffData) {
 
 export function updateStaffStatus(uid, status) {
   return setDoc(doc(db, "users", uid), { status }, { merge: true });
+}
+
+export function updateStudentStatus(uid, status) {
+  return setDoc(doc(db, "users", uid), { status }, { merge: true });
+}
+
+/**
+ * Checks whether a staff member has recorded attendance shift or leave documents.
+ * Used as an async guardrail before hard-deleting a profile to prevent orphaned history.
+ */
+export async function checkStaffHasAttendanceHistory(uid) {
+  if (!uid) return { hasShifts: false, hasLeave: false };
+  try {
+    const shiftsQuery = query(collection(db, "shifts"), where("userId", "==", uid), limit(1));
+    const leaveQuery = query(collection(db, "staffLeave"), where("userId", "==", uid), limit(1));
+    const [shiftsSnap, leaveSnap] = await Promise.all([
+      getDocs(shiftsQuery),
+      getDocs(leaveQuery),
+    ]);
+    return {
+      hasShifts: !shiftsSnap.empty,
+      hasLeave: !leaveSnap.empty,
+    };
+  } catch (err) {
+    console.warn("Failed checking staff attendance history:", err);
+    return { hasShifts: false, hasLeave: false };
+  }
 }
 
 /**

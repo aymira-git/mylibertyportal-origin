@@ -7,12 +7,14 @@
 
 import { useState, useMemo } from "react";
 import { useToast, useConfirm, Pagination, usePagination } from "../shared";
-import { updateStaffStatus } from "../dashboard/usersRepository";
+import { updateStaffStatus, checkStaffHasAttendanceHistory } from "../dashboard/usersRepository";
 import { normalizeWhatsAppNumber } from "../finance/receiptMessages";
 import {
   STAFF_ROLES,
   STAFF_ROLE_LABELS,
   STAFF_STATUS_MAP,
+  STAFF_STATUS_OPTIONS,
+  TRACKED_STAFF_ROLES,
   getInstructorWorkload,
   canDeleteStaff,
   filterStaffMembers,
@@ -55,19 +57,21 @@ export default function StaffDirectory({
   const [branchFilter, setBranchFilter] = useState("all");
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
 
-  // Overall KPIs
+  // Overall KPIs (Counting active staff to prevent metric inflation)
   const totalStaffCount = useMemo(
-    () => users.filter((u) => u.role !== "student").length,
+    () => users.filter((u) => u.role !== "student" && (u.status || "active") === "active").length,
     [users]
   );
   const instructorCount = useMemo(
-    () => users.filter((u) => u.role === "instructor").length,
+    () => users.filter((u) => u.role === "instructor" && (u.status || "active") === "active").length,
     [users]
   );
   const opsCount = useMemo(
     () =>
-      users.filter((u) =>
-        ["frontoffice", "manager", "marketing", "officeboy"].includes(u.role)
+      users.filter(
+        (u) =>
+          ["frontoffice", "manager", "marketing", "officeboy"].includes(u.role) &&
+          (u.status || "active") === "active"
       ).length,
     [users]
   );
@@ -106,9 +110,36 @@ export default function StaffDirectory({
     toast(`Copied ${label} to clipboard!`);
   };
 
-  // 1-Click Status Change
+  // 1-Click Status Change with Guards
   const handleStatusChange = async (user, newStatus) => {
     if (user.status === newStatus) return;
+
+    // Guard: Prevent deactivating the last active administrator
+    if (user.role === "admin" && (newStatus === "resigned" || newStatus === "terminated")) {
+      const activeAdmins = users.filter(
+        (u) => u.role === "admin" && (u.status || "active") === "active"
+      );
+      if (activeAdmins.length <= 1) {
+        toast("Cannot deactivate the sole remaining active administrator.", "error");
+        return;
+      }
+    }
+
+    // Guard R8: Warning if deactivating an instructor with live active classes
+    if (
+      (newStatus === "resigned" || newStatus === "terminated") &&
+      user.role === "instructor"
+    ) {
+      const workload = getInstructorWorkload(user.id, classes);
+      if (workload.batchCount > 0) {
+        const classNames = workload.assignedClasses.map((c) => c.className || "Class").join(", ");
+        const ok = await confirm(
+          `Warning: ${user.displayName || "This instructor"} is currently assigned to ${workload.batchCount} active batch(es): ${classNames}. Changing status to "${STAFF_STATUS_MAP[newStatus]?.label || newStatus}" will leave these batches without an active instructor. Please reassign them in the Classes tab. Proceed?`
+        );
+        if (!ok) return;
+      }
+    }
+
     setUpdatingStatusId(user.id);
     try {
       await updateStaffStatus(user.id, newStatus);
@@ -124,21 +155,44 @@ export default function StaffDirectory({
     }
   };
 
-  // Safe Delete Guardrail
+  // Safe Delete Guardrail (R2: single confirm, R5: shift history check)
   const handleDeleteClick = async (user) => {
+    // 1. Synchronous class guard
     const { canDelete, reason } = canDeleteStaff(user, classes, currentUserId);
     if (!canDelete) {
       toast(reason, "error");
       return;
     }
 
+    // 2. Asynchronous shift & leave history guard
+    try {
+      const { hasShifts, hasLeave } = await checkStaffHasAttendanceHistory(user.id);
+      if (hasShifts) {
+        toast(
+          `Cannot delete: ${user.displayName} has recorded attendance shift history. Deleting this account would corrupt shift records. Please mark their status as "Resigned" or "Terminated" instead.`,
+          "error"
+        );
+        return;
+      }
+      if (hasLeave) {
+        toast(
+          `Cannot delete: ${user.displayName} has recorded leave requests. Deleting this account would corrupt leave records. Please mark their status as "Resigned" or "Terminated" instead.`,
+          "error"
+        );
+        return;
+      }
+    } catch (err) {
+      console.warn("Could not check attendance history before delete:", err);
+    }
+
+    // 3. Single explicit confirmation modal (R2)
     const ok = await confirm(
-      `Delete ${user.displayName}'s profile? Note: Firestore record will be removed, but Firebase Auth accounts must be cleared manually from the Firebase Console if re-registering.`
+      `Delete ${user.displayName}'s profile? Note: The Firestore record will be permanently removed. If this user needs to re-register with the same email, their Firebase Auth account must also be deleted from the Firebase Console.`
     );
     if (!ok) return;
 
     try {
-      await onDeleteStaff(user.id);
+      await onDeleteStaff(user.id, { skipConfirm: true });
       toast(`Deleted ${user.displayName}'s profile.`);
     } catch (err) {
       toast("Error deleting staff: " + err.message, "error");
@@ -253,10 +307,11 @@ export default function StaffDirectory({
               className="w-full p-2 border rounded-xl bg-white text-xs font-medium focus:border-[#1a3a8f] outline-none capitalize"
             >
               <option value="all">All Employment Statuses</option>
-              <option value="active">🟢 Active</option>
-              <option value="on_leave">🟡 On Leave</option>
-              <option value="resigned">⚪ Resigned</option>
-              <option value="terminated">🔴 Terminated</option>
+              {STAFF_STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -462,8 +517,8 @@ export default function StaffDirectory({
 
                   {/* Actions Column */}
                   <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 shrink-0">
-                    {/* Print Badge: Rendered ONLY for non-admins per user decision */}
-                    {!isAdminRole && onPrintBadge && (
+                    {/* Print Badge: Rendered ONLY for trackable attendance staff (R4) */}
+                    {TRACKED_STAFF_ROLES.includes(u.role) && onPrintBadge && (
                       <button
                         type="button"
                         onClick={() => onPrintBadge(u)}
@@ -502,18 +557,27 @@ export default function StaffDirectory({
                       </button>
                     )}
 
-                    {/* Status Toggle Dropdown */}
+                    {/* Status Toggle Dropdown: Guarded against self-deactivation (R3) */}
                     <select
                       value={u.status || "active"}
-                      disabled={updatingStatusId === u.id}
+                      disabled={updatingStatusId === u.id || isSelf}
                       onChange={(e) => handleStatusChange(u, e.target.value)}
-                      className="py-1.5 px-2 rounded-xl font-bold text-[11px] bg-slate-50 border border-slate-200 text-slate-700 focus:border-[#1a3a8f] outline-none cursor-pointer"
-                      title="Change employment status"
+                      className={`py-1.5 px-2 rounded-xl font-bold text-[11px] border text-slate-700 outline-none ${
+                        isSelf
+                          ? "bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed"
+                          : "bg-slate-50 border-slate-200 focus:border-[#1a3a8f] cursor-pointer"
+                      }`}
+                      title={
+                        isSelf
+                          ? "You cannot modify your own administrative status while logged in"
+                          : "Change employment status"
+                      }
                     >
-                      <option value="active">Active</option>
-                      <option value="on_leave">On Leave</option>
-                      <option value="resigned">Resigned</option>
-                      <option value="terminated">Terminated</option>
+                      {STAFF_STATUS_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
                     </select>
 
                     {/* Delete with Guardrail */}

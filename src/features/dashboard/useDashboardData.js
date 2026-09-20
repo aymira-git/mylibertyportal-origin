@@ -232,18 +232,24 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
     setActiveTab?.("addUser");
   };
 
-  const handleDelete = async (uid) => {
+  const handleDelete = async (uid, { skipConfirm = false } = {}) => {
     const user = users.find(profile => profile.id === uid);
-    if (!user || !(await confirm(`Are you sure you want to delete ${user.displayName || "this profile"}?`))) return;
+    if (!user) return;
+    if (!skipConfirm && !(await confirm(`Are you sure you want to delete ${user.displayName || "this profile"}?`))) return;
 
     try {
       await deleteUserProfile(uid);
-      if (user.role === "student") {
-        toast("Student roster profile deleted.");
-      } else {
-        toast("Staff profile deleted from Firestore. The Firebase Auth account still exists and must be deleted separately in Firebase Console before this email can be registered again.");
+      if (!skipConfirm) {
+        if (user.role === "student") {
+          toast("Student roster profile deleted.");
+        } else {
+          toast("Staff profile deleted from Firestore. The Firebase Auth account still exists and must be deleted separately in Firebase Console before this email can be registered again.");
+        }
       }
-    } catch (err) { toast("Unable to delete profile: " + err.message, "error"); }
+    } catch (err) {
+      toast("Unable to delete profile: " + err.message, "error");
+      throw err;
+    }
   };
 
   const handleAddTodo = async ({ text, type, isPinned, assignee }) => {
@@ -253,10 +259,8 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
   };
 
   const handleDeleteTodo = async (todoId) => {
-    if (!(await confirm("Delete this task or reminder?"))) return;
     try {
       await deleteTodo(todoId);
-      setTodos(current => current.filter(t => t.id !== todoId));
     } catch (err) { toast("Error deleting task: " + err.message, "error"); }
   };
 
@@ -285,6 +289,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
   };
 
   const instructors = users.filter(u => u.role === "instructor");
+  const activeInstructors = users.filter(u => u.role === "instructor" && (u.status || "active") === "active");
   const students = users.filter(u => u.role === "student");
   const enrolledStudentIds = classes.flatMap(cls => cls.studentIds || []);
   const unenrolledStudents = students.filter(s => !enrolledStudentIds.includes(s.id));
@@ -297,6 +302,6 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
     handleSave, handleEdit, handleAddStaff, handleAddStudent, handleDelete,
     handleAddTodo, handleDeleteTodo,
     handleCreateInvite, handleDeleteInvite,
-    getStudentClasses, instructors, students, unenrolledStudents, pendingApplications,
+    getStudentClasses, instructors, activeInstructors, students, unenrolledStudents, pendingApplications,
   };
 }

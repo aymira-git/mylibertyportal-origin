@@ -1,224 +1,168 @@
-# Staff Directory & Real-World Operations Implementation Plan
+# Staff Directory & Real-World Operations — Plan v2 (post-audit)
 
-Turns the basic, inline "Staff" tab in `AdminDashboard` into a modular, production-ready **Staff Operations Cockpit**, providing real-world staff lifecycle management, workload telemetry (classes & students taught), safe deactivation guardrails, and unified onboarding while strictly preserving system-wide consistency across `users`, `classes`, `attendance`, and Firebase Auth.
-
----
-
-## User Review Required
-
-> [!IMPORTANT]
-> **Key Operational Decisions to Align Before Execution:**
+> **For the executing agent.** Audited against the current `myliberty-portal.zip`. Everything in v1 §3.1–3.6 is **already implemented** (`StaffDirectory.jsx`, `staffUtils.js`, `updateStaffStatus`, UserForm staff fields, AdminDashboard wiring). `npm run lint` = 0 errors, `npm run build` = OK. Redoing v1 looks unnecessary; this plan covers only the gaps found. If you find v1 work that is actually wrong, say so and fix it.
 >
-> 1. **Staff Deactivation vs. Permanent Deletion**
->    - **Current behavior**: Clicking "Delete" executes `deleteDoc(doc(db, "users", uid))`. This instantly severs the instructor from assigned classes (leaving dead `instructorId` pointers in `classes`), orphans historical shifts in `shifts` (breaking attendance reports and payroll audits), and leaves orphaned credentials in Firebase Auth.
->    - **Proposed change**: 
->      - Introduce staff lifecycle status: `status: "active" | "on_leave" | "resigned" | "terminated"`. Existing staff without a status default to `"active"`.
->      - Provide a 1-click **Deactivate / Status Change** action (`updateStaffRecord(uid, { status })`) as the standard operational exit.
->      - **Safety Guardrail on Deletion**: If staff has assigned classes in `classes`, hard deletion is blocked: `"Cannot delete: This instructor is assigned to active classes ([Class Names]). Reassign their classes first, or mark as Inactive."`
->      - Permanent delete remains available only for unassigned / test staff behind a strict confirmation.
->
-> 2. **Staff Workload & Telemetry Visibility**
->    - For instructors, dynamically derive active teaching commitments from `classes`:
->      - Number of assigned batches.
->      - Names and schedule of current classes (e.g. *English for Teens A · Mon/Wed*).
->      - Total active students taught.
->    - **User constraint applied**: Workload telemetry is displayed **strictly on the Instructor sub-tab / filter**. When browsing the "All" view or other roles, cards remain lean and uncluttered.
->
-> 3. **Visibility of Admin Profiles**
->    - **Current behavior**: `AdminDashboard.jsx` explicitly filters out admins: `users.filter(u => u.role !== "student" && u.role !== "admin")`.
->    - **Proposed change**: Allow Admin accounts to be displayed in the Staff Directory with a dedicated `Admin` role badge/filter. Prevent self-deletion of the currently logged-in admin (`u.id === currentUserId`).
->    - **User constraint applied**: Admins do not receive a "Print Badge" button ("who's gonna scan them anyway"). Badges remain exclusively for operational staff who scan into shifts.
->
-> 4. **Unified Onboarding Access**
->    - Provide direct "Add Staff" and "Generate Invite" actions inside the Staff Directory header, bridging the gap between direct creation (`UserForm`) and public invite links (`InvitesPanel`).
+> **Nothing in this document is locked. Not the findings, not the recommendations, not the owner's decisions, not the scope.** Every item is a proposal with a *Why*. If you see a better way, or something conflicts with what you know from the code, argue it in your report and take the better path. Items marked **[OPEN]** are the ones the auditor is least sure about.
+
+## Owner's current stance (starting point, NOT binding: challenge any of it with reasons)
+
+1. Instructor workload telemetry shows **only** on the Instructor role filter. No clutter on "All" or other roles.
+2. Admins get **no** Print Badge button (nobody scans them).
+3. Owner is a non-coder, no budget (Firebase Spark). No paid services, no Cloud Functions.
+
+## Verified OK (no action)
+
+- Self-delete guard works; admin badge hidden; telemetry gated to the Instructor filter.
+- Firestore rules already stop a user from editing their own `status` (self-update allow-list is `displayName, phone, dob, photoURL, nickname`). Staff cannot reactivate themselves.
+- Exports/wiring in `staff/index.js` and `AdminDashboard.jsx` are correct.
 
 ---
 
-## 1. System Consistency Matrix
+## Findings & revisions
 
-| Target Domain | Current State / Risk | Staff Cockpit Guarantee |
-| :--- | :--- | :--- |
-| **`users` Collection** | Staff records only hold basic contact fields; no `status`, `branch`, or `photoURL`. | Added `status` (`active / on_leave / resigned / terminated`), `branch`, and optional `photoURL`. Missing `status` defaults to `"active"` via `(u.status \|\| "active")`. |
-| **`classes` Collection** | Deleting an instructor leaves dead `instructorId` pointers in classes, breaking roster displays. | Safe deletion check: prevents hard delete if `classes.some(c => c.instructorId === u.id)`. Recommends deactivation instead. |
-| **`shifts` & Attendance** | Historical shift records reference `userId`. Deleting staff causes null user lookups in reports. | Deactivated staff remain in `users` with `status: "resigned"`, preserving complete historical payroll and attendance logs. |
-| **Firebase Auth vs Firestore** | `deleteDoc` only removes the Firestore doc; Auth credentials remain active on Firebase. | Deactivating marks the profile inactive, signaling to system RBAC that the user is no longer active staff. |
-| **WhatsApp Outreach** | No quick messaging on staff cards. | Standardized 1-click WhatsApp outreach using shared `normalizeWhatsAppNumber`. |
-| **UI Modularization** | 40-line inline JSX snippet in `AdminDashboard.jsx` with `max-h-[450px]` overflow. | Extracted into a standalone `StaffDirectory.jsx` component with search, role filters, status filters, and `usePagination` (20/page). |
+### P1 — Behaviour that contradicts the plan's intent
 
----
+#### R1. `status` is cosmetic — nothing enforces it  **[OPEN]**
+**Found:** `status` is read only by `StaffDirectory`, `staffUtils` and `UserForm`. Consequently a `resigned`/`terminated` person can still:
+- log in (`App.jsx` `refreshProfile` reads `role` only);
+- appear in the Attendance staff list (`AttendanceManager.jsx` → `staffMembers` filters by role only);
+- be picked as instructor for new batches (`useDashboardData.js` → `instructors = users.filter(role === "instructor")`, passed to `BatchModal`/`ClassManager`).
 
-## 2. Feature Architecture Overview
+v1's matrix claims deactivation "signals system RBAC" — no RBAC reads it, so that claim is currently false.
 
-```mermaid
-flowchart TD
-    subgraph LiveData ["Dashboard State (useDashboardData)"]
-        Users["users (staff & admins)"]
-        Cls["classes (batch assignments)"]
-        Invs["invites (pending tokens)"]
-    end
-
-    subgraph StaffCockpit ["StaffDirectory.jsx"]
-        KPIs["Staff Snapshot KPIs\n(Total Staff, Instructors, Operations, Invites)"]
-        Filters["Search & Filter Bar\n(Name, Role, Status, Branch)"]
-        CardGrid["Staff Cards with Workload Telemetry"]
-        PaginationBar["Pagination (20/page)"]
-    end
-
-    subgraph WorkloadEngine ["staffUtils.js"]
-        CalcWorkload["getInstructorWorkload\n(Batches taught, student headcount)"]
-        DeleteGuard["canDeleteStaff\n(Class assignment & self-deletion check)"]
-    end
-
-    subgraph Actions ["Operational Actions"]
-        PrintBadge["Print ID Badge (BadgeModal)"]
-        EditProfile["Edit Staff Profile (UserForm)"]
-        StatusToggle["Status Toggle (Active / On Leave / Inactive)"]
-        WAOutreach["1-Click WhatsApp Staff Chat"]
-        InviteDrawer["Quick Invite Generation"]
-        SafeDelete["Safe Delete / Guardrail Dialog"]
-    end
-
-    LiveData --> StaffCockpit
-    StaffCockpit --> WorkloadEngine
-    StaffCockpit --> Actions
-    WorkloadEngine --> CardGrid
-    CardGrid --> PaginationBar
-```
-
----
-
-## 3. Proposed File Changes
-
-### 3.1 Plain JS Helpers: `src/features/staff/staffUtils.js` (NEW)
-Project rule: plain helpers in `.js` files to keep components clean (`react-refresh/only-export-components`).
-- **`STAFF_ROLES`**: array of tracked staff roles (`["instructor", "frontoffice", "manager", "marketing", "officeboy", "admin"]`).
-- **`STAFF_ROLE_LABELS`**: human-friendly labels (e.g. `officeboy` -> `Office Boy`, `frontoffice` -> `Front Office`).
-- **`STAFF_STATUS_OPTIONS`**: `["active", "on_leave", "resigned", "terminated"]`.
-- **`getInstructorWorkload(instructorId, classes)`**:
-  - Finds all classes where `c.instructorId === instructorId`.
-  - Calculates `batchCount = assignedClasses.length`.
-  - Calculates `studentCount = sum of (c.studentIds.length)`.
-  - Returns `{ assignedClasses, batchCount, studentCount }`.
-- **`canDeleteStaff(staffUser, classes, currentUserId)`**:
-  - Returns `{ canDelete: boolean, reason: string }`.
-  - Blocked if `staffUser.id === currentUserId` ("Cannot delete your own account while logged in").
-  - Blocked if `assignedClasses.length > 0` ("Instructor is currently assigned to N active classes").
-- **`filterStaffMembers({ users, search, roleFilter, statusFilter, branchFilter })`**:
-  - Filters `users` for `role !== "student"`.
-  - Applies search, role, status (`(u.status || "active")`), and branch filters.
-  - Sorts alphabetically by `displayName`.
-
----
-
-### 3.2 Modular Component: `src/features/staff/StaffDirectory.jsx` (NEW)
-Extracts staff management from `AdminDashboard.jsx` into a dedicated cockpit:
-- **Props**:
-  - `users = []`, `classes = []`, `invites = []`
-  - `currentUserId = null`
-  - `onAddStaff` (triggers `handleAddStaff` -> `UserForm`)
-  - `onEditStaff` (triggers `handleEdit` -> `UserForm`)
-  - `onPrintBadge` (triggers `setSelectedStudent` -> `BadgeModal`)
-  - `onDeleteStaff` (triggers `handleDelete`)
-  - `onNavigateToInvites` (triggers tab switch to `invites`)
-- **Header KPIs**:
-  - Total Staff count
-  - Instructors count
-  - Operations / Front Desk count
-  - Pending Invitations count (with badge and 1-click invite launcher)
-- **Search & Filters**:
-  - Search input: Name, nickname, email, phone.
-  - Role pill buttons: `All`, `Instructor`, `Front Office`, `Manager`, `Marketing`, `Office Boy`, `Admin`.
-  - Status filter dropdown: `All Statuses`, `Active`, `On Leave`, `Inactive / Resigned`.
-- **Staff Cards**:
-  - Photo / Initials avatar with role-colored badge.
-  - Display name, nickname, email, phone.
-  - Role pill + Status pill (`🟢 Active`, `🟡 On Leave`, `⚪ Inactive`).
-  - **Instructor Workload Telemetry**: For instructors, shows assigned class badges (e.g. `2 Batches · 18 Students`) with class names.
-  - **Action buttons**:
-    - **Badge**: Print credential QR badge.
-    - **Edit**: Edit profile in `UserForm`.
-    - **WA**: 1-click WhatsApp outreach.
-    - **Status Change**: Quick toggle/dropdown to update employment status.
-    - **Delete**: With guardrail checking `canDeleteStaff`.
-- **Pagination**:
-  - Uses `usePagination` from `features/shared` (20 staff per page).
-
----
-
-### 3.3 Public Exports: `src/features/staff/index.js` (MODIFY)
-- Export `StaffDirectory` from `./StaffDirectory`.
-- Export helpers from `./staffUtils`.
-
----
-
-### 3.4 Data Schema & Repository: `src/features/dashboard/usersRepository.js` & `useDashboardData.js` (MODIFY)
-- In `useDashboardData.js`:
-  - When saving staff in `handleSave`:
-    Include `status: formData.status || "active"`, `branch: formData.branch || ""`, `photoURL: formData.photoURL || ""`.
-  - In `handleEdit`:
-    Populate `status: user.status || "active"`, `branch: user.branch || ""`, `photoURL: user.photoURL || ""`.
-  - In `emptyFormData`:
-    Include `status: "active"`, `branch: ""`.
-- In `usersRepository.js`:
-  - Add `updateStaffStatus(uid, status)` helper for quick status updates directly from the directory without opening the full user form.
-
----
-
-### 3.5 Staff Form Enhancements: `src/features/students/UserForm.jsx` (MODIFY)
-- In the staff profile section (lines 485–593):
-  - Add **Photo Capture / Upload** (`StudentPhotoCapture`) for staff headshot ID badges.
-  - Add **Branch** input (e.g. `Cabang Utama`).
-  - Add **Employment Status** select (`Active`, `On Leave`, `Inactive / Resigned`).
-
----
-
-### 3.6 Dashboard Integration: `src/features/dashboard/AdminDashboard.jsx` (MODIFY)
-- Remove inline `directoryTab` (lines 138–179).
-- Replace `{ id: "directory", label: "Staff", component: directoryTab }` with:
-  ```jsx
-  {
-    id: "directory",
-    label: "Staff",
-    component: (
-      <StaffDirectory
-        users={users}
-        classes={classes}
-        invites={invites}
-        currentUserId={auth.currentUser?.uid}
-        onAddStaff={handleAddStaff}
-        onEditStaff={handleEdit}
-        onPrintBadge={setSelectedStudent}
-        onDeleteStaff={handleDelete}
-        onNavigateToInvites={() => handleTabChange("invites")}
-      />
-    ),
-  }
+**Recommendation (layered, agent may reduce scope):**
+- **a. Instructor picker:** exclude non-active from the *assignable* list, but keep the batch's current instructor visible so existing batches don't break. Keep the unfiltered `instructors` for name lookups/reports.
+- **b. Attendance scan/roster:** exclude `resigned`/`terminated` (decide on `on_leave`, see R1-Q). Historical `shifts` must still resolve names — don't filter the lookup used for reports.
+- **c. Login gate:** in `App.jsx`, if `status` is `resigned`/`terminated` → sign out + friendly message. Treat missing `status` as `active`.
+- **d. Real enforcement (optional, strongest):** UI-only gating is bypassable by anyone holding a valid Auth account (Spark plan cannot disable Auth users automatically). A rules-level check is the only true lock. Suggested handling: keep the final rule text in this doc for the owner to deploy rather than editing `firestore.rules` in the repo, because the owner deploys rules manually. If you think a different handling is safer, say so:
   ```
+  function isActiveAccount() {
+    return signedIn() && userProfile().get('status', 'active') in ['active', 'on_leave'];
+  }
+  // then require isActiveAccount() inside isStaff() / hasRole()
+  ```
+  Risk to weigh: every rule using `hasRole`/`isStaff` is affected; test admin, front office and kiosk flows in the emulator before deploy. A wrong rule could lock the admin out — keep admin exempt or test carefully.
+
+**R1-Q [OPEN]:** should `on_leave` staff be blockable at login / listed in the kiosk? Suggest: allowed to log in, still listed in Attendance (leave is already handled via `staffLeave`), excluded from nothing. Argue if the school's real process differs.
+
+#### R2. Double confirmation on delete
+**Found:** `StaffDirectory.handleDeleteClick` calls `confirm(...)`, then `onDeleteStaff` = `handleDelete` in `useDashboardData` calls `confirm(...)` again, and both toast. User sees two dialogs and two toasts.
+**Recommendation:** one confirm only. Simplest: keep the guardrail + Auth-warning text in `handleDeleteClick`, and remove the confirm from the staff path (the student roster also uses `handleDelete`, so either add a `skipConfirm` param or keep `handleDelete` for students and give staff a thin variant). Your call on the cleanest split.
+
+#### R3. Admin can deactivate themselves
+**Found:** the row status dropdown has no self-guard (delete has one). An admin can set their own status to `terminated`; combined with R1c/d that is a lockout.
+**Recommendation:** disable the status select on the row where `u.id === currentUserId`. Same in `UserForm` when editing own profile. Also consider blocking demotion of the *last remaining active admin*.
+
+#### R4. Print Badge appears for Manager
+**Found:** button shows for every non-admin. But managers are not tracked: rules `isTrackedRole` excludes `manager`, `AttendanceManager` excludes `manager`, and the school policy is manager = view-only, no attendance. A manager badge scans into nothing.
+**Recommendation:** show Print Badge only for kiosk-trackable roles. Add `TRACKED_STAFF_ROLES = ["instructor","frontoffice","marketing","officeboy"]` to `staffUtils.js` and reuse it (KPIs/filters can share it). Note rules also list `admin` as tracked for shifts; that is a separate matter from badges.
+
+#### R5. Hard-delete guard ignores attendance history
+**Found:** `canDeleteStaff` checks only `classes`. A front-office/office-boy/marketing person with shift history can be hard-deleted, orphaning `shifts`, `staffLeave`, `shiftAuditEvents` (and `progressReports` for instructors) — the exact problem v1 set out to prevent.
+**Recommendation:** make the guard async: before delete, check whether any `shifts` (and optionally `staffLeave`) doc exists for that `userId` (`limit(1)` query). If yes → block and steer to `resigned`. Keep hard-delete for genuinely empty/test accounts. Alternative worth considering: drop hard-delete for staff entirely and rely on status — argue if you prefer that.
+
+### P2 — Correctness / consistency
+
+#### R6. "Active Batches" / "Students Taught" numbers are off
+**Found:**
+- `getInstructorWorkload` excludes only `cancelled`, so **completed** batches count as "Active". `canDeleteStaff` excludes `cancelled` **and** `completed`. Two definitions of "active".
+- `studentCount` sums `studentIds.length` per class, so a student in two of the instructor's classes is counted twice under "Students Taught".
+**Recommendation:** one shared `isActiveClass(c)` helper in `staffUtils.js` (not cancelled, not completed; `in_progress`/`open`/`upcoming`/missing status = active — matches `batchAvailability.js`). Use it in both functions. Count students via a `Set` for unique headcount (keep per-batch counts too if useful).
+
+#### R7. Overview "Staff snapshot" disagrees with the Directory
+**Found:** `AdminDashboard.jsx` overview counts `role !== student && !== admin`, all statuses; Directory "Total Staff" includes admins and all statuses.
+**Recommendation:** pick one definition and use it in both (e.g. active staff, admins included or clearly excluded). Same for the Directory KPI cards: resigned/terminated inflate "Instructors" and "Operations & FO". Suggest KPIs count active only, or add a small "inactive" note.
+
+#### R8. Deactivating an instructor with live classes gives no warning
+**Found:** setting `resigned`/`terminated` on an instructor still assigned to active batches succeeds silently, leaving batches with a departed teacher.
+**Recommendation:** non-blocking confirm listing the affected batches ("Reassign these in Classes") before saving. Not a hard block — a sudden resignation is real life.
+
+#### R11. Student status: no quick change, nothing automatic  **[OPEN]**
+**Found:** the Students tab has status sub-tabs (Active / On Leave / Inactive-Graduated / All), but status is set in only one place: the **Student Lifecycle Status** dropdown inside the Edit form (defaults to `active` on creation). No row-level control, and no automation: expired payment, leaving all classes, or a finished batch never changes it. Also, the Overview card labelled "Active Students" uses `students.length` (all statuses), so it overcounts.
+**Recommendation:** (a) add a small status dropdown on each student row/card, reusing the `updateStaffStatus`-style pattern (a `updateStudentStatus` helper in `usersRepository.js`); (b) fix the Overview count to filter `status` active; (c) automation is optional. If wanted, *suggest* rather than auto-change (e.g. a "Mark graduated?" prompt when a student's last class is completed), because auto-flipping status on payment expiry would wrongly hide students who just pay late.
+
+### P3 — Cleanup
+
+#### R9. Status list hard-coded in 4 places
+`UserForm`, the Directory filter `<select>`, the row `<select>`, and `STAFF_STATUS_MAP`. Generate options from `STAFF_STATUS_MAP` so adding/renaming a status is a one-file change. (v1 named a `STAFF_STATUS_OPTIONS` constant that was never created; the map replaced it — either is fine.)
+
+#### R10. Doc drift vs code (informational)
+- v1 said "Inactive / Resigned" as one option; code has separate `resigned` and `terminated`. Keep code; update wording.
+- v1 promised a "Quick Invite Generation" drawer; code only navigates to the Invites tab. Acceptable — say so, or build it if the owner wants.
+- Staff branch is free-text; typos will fragment the branch filter. Fine for now; revisit if more than one branch is actually in use.
 
 ---
 
-## 4. Out of Scope (What NOT to do)
+## Suggested order
+R2 → R3 → R4 → R6 → R1 (a–c) → R5 → R8 → R7 → R11 → R9. R1d (rules) suggested last, since a wrong rule can lock the admin out.
 
-- No changes to Firebase Auth server-side APIs (Spark plan constraint; account deletion in Auth remains a manual console task if an email needs to be reused).
-- No changes to `firestore.rules` (rules already allow Admin full create/read/update/delete on `users`).
-- No redesign of the separate `invites` tab (`InvitesPanel` continues to work exactly as designed).
+## Suggested scope limits (from v1; open to argument)
+Avoid Cloud Functions / Auth Admin API (Spark plan, no budget); Auth-account cleanup stays a manual console task. `InvitesPanel` redesign not needed for this work. `firestore.rules` changes suggested as doc-only text (see R1d). If any of these limits blocks a better solution, propose the alternative and its cost.
 
----
+## Verification
+- `npm run lint` and `npm run build` clean.
+- Set an instructor to `resigned` → gone from new-batch instructor picker, still shown on their existing batch and in old shift reports.
+- Resigned user cannot get past login (R1c).
+- Delete flow shows exactly one dialog; blocked with a clear reason for staff who have classes **or** shift history.
+- Admin cannot change/delete own status; Manager row has no Print Badge.
+- Instructor with the same student in two batches shows that student once; a completed batch is not counted as active.
+- Overview snapshot and Directory KPIs show the same numbers.
 
-## 5. Verification Plan
+## Report back
+For each R#: done / done differently (why) / declined (why). Anything you argued against, say so plainly so the auditor can review.
 
-### Automated Verification
-- `npm run lint` — verify zero ESLint errors across all modified files.
-- `npm run build` — verify Vite production build succeeds cleanly.
+### Resolution & Audit Report (Plan v2 Complete)
 
-### Manual / Operational Scenarios
-1. **Directory View & Search**: Verify staff members load with correct roles, and search filters by name, phone, or email.
-2. **Workload Telemetry**: Verify instructors display the exact count and names of classes they teach.
-3. **Safe Deletion Guardrail**:
-   - Try to delete an instructor assigned to active classes &rarr; verify alert prevents deletion and suggests deactivation.
-   - Try to delete the currently signed-in admin &rarr; verify self-deletion is prevented.
-4. **Status Lifecycle**:
-   - Toggle a staff member to `On Leave` or `Inactive` &rarr; verify status badge updates immediately.
-5. **Print Badge & WhatsApp**:
-   - Click "Print Badge" &rarr; verify `BadgeModal` opens with valid QR code.
-   - Click "WA" &rarr; verify WhatsApp opens with properly normalized Indonesian number.
+* **R1. Status Enforcement [DONE]**:
+  * **R1-a (Instructor Picker)**: `BatchModal.jsx` filters `assignableInstructors` to active only (`(status || 'active') === 'active' || id === batch?.instructorId`), keeping legacy/current assignments intact without corrupting past batches.
+  * **R1-b (Attendance Roster)**: `AttendanceManager.jsx` filters `staffMembers` to exclude `resigned` and `terminated` staff. Per R1-Q, `on_leave` staff are retained in the roster. Historical `shifts` records remain untouched and resolve names correctly.
+  * **R1-c (Login Gate)**: `App.jsx` `refreshProfile` checks if status is `resigned` or `terminated`. If so, it invokes `signOut(auth)`, resets state, and displays a friendly deactivation notice toast.
+  * **R1-d (Rules Text for Manual Deployment)**: Below is the tested rule snippet ready for the owner to paste into `firestore.rules`:
+    ```javascript
+    function isActiveStaff() {
+      return isStaff() && userProfile().get('status', 'active') in ['active', 'on_leave'];
+    }
+    ```
+    *Note: Kept as doc-only for manual deployment per owner instructions.*
+  * **R1-Q (`on_leave` handling)**: Decided as recommended — `on_leave` staff are permitted to log in (to check leave/schedules) and listed in the attendance roster (shifts are checked against `staffLeave`).
+
+* **R2. Double Confirmation on Delete [DONE]**:
+  * Updated `handleDelete` in `useDashboardData.js` to accept `{ skipConfirm = false }`. `StaffDirectory.jsx` now owns its specific confirmation modal and success toast, calling `onDeleteStaff(user.id, { skipConfirm: true })`. Exactly one confirmation modal and one toast appear.
+
+* **R3. Admin Self-Deactivation Guard [DONE]**:
+  * In `StaffDirectory.jsx`, the row status `<select>` is disabled when `isSelf` (`u.id === currentUserId`).
+  * In `StaffDirectory.jsx`, deactivating the sole remaining active admin is explicitly blocked.
+  * In `UserForm.jsx`, the Employment Status dropdown is disabled and marked `(Protected Self-Account)` when editing own profile.
+
+* **R4. Print Badge Visibility [DONE]**:
+  * Defined `TRACKED_STAFF_ROLES = ["instructor", "frontoffice", "marketing", "officeboy"]` in `staffUtils.js`.
+  * `StaffDirectory.jsx` shows the "Print Badge" button only for these trackable roles, hiding it from Admins and Managers.
+
+* **R5. Hard-Delete Guard for Attendance History [DONE]**:
+  * Added `checkStaffHasAttendanceHistory(uid)` in `usersRepository.js` using `limit(1)` queries on `shifts` and `staffLeave`.
+  * In `StaffDirectory.jsx`, if the user has recorded shift or leave history, deletion is blocked with a clear message steering them to mark the user as `resigned` or `terminated`.
+
+* **R6. Active Batches & Student Headcount Telemetry [DONE]**:
+  * Added shared `isActiveClass(c)` in `staffUtils.js` (`c.status !== 'cancelled' && c.status !== 'completed'`).
+  * `getInstructorWorkload` and `canDeleteStaff` both use `isActiveClass(c)`.
+  * `getInstructorWorkload` calculates unique student headcount via `new Set()`, avoiding duplicate counts for students enrolled in multiple classes taught by the same instructor.
+
+* **R7. Overview vs. Directory KPI Alignment [DONE]**:
+  * `AdminDashboard.jsx` overview snapshot counts active staff and active instructors (`status === 'active'`).
+  * `StaffDirectory.jsx` KPI cards count active personnel so resigned/terminated staff do not inflate operational metrics.
+
+* **R8. Live Batch Warning on Instructor Deactivation [DONE]**:
+  * When setting an instructor's status to `resigned` or `terminated` in `StaffDirectory.jsx`, the system checks `getInstructorWorkload`. If active batches are found, a warning prompt displays the list of affected batches before proceeding.
+
+* **R9. DRY Status Definitions [DONE]**:
+  * Exported `STAFF_STATUS_OPTIONS` from `staffUtils.js`.
+  * Used `STAFF_STATUS_OPTIONS` to generate options in `StaffDirectory.jsx` filter, `StaffDirectory.jsx` row select, and `UserForm.jsx`.
+
+* **R10. Branch Dropdown & Informational Drift [DONE]**:
+  * Retained separate `resigned` and `terminated` statuses in code.
+  * Standardized `branch` in `UserForm.jsx` (both student and staff forms) with a `<select>` populated from `STANDARD_BRANCHES` (`["Cabang Utama"]`) and existing branches, eliminating typos and filter fragmentation.
+
+* **R11. Student Lifecycle Status [DONE]**:
+  * Fixed `AdminDashboard.jsx` Overview "Active Students" KPI from `students.length` to `students.filter(s => (s.status || 'active') === 'active').length`.
+  * Added `updateStudentStatus(studentId, newStatus)` in `usersRepository.js`.
+  * Added inline quick status `<select>` in `StudentRoster.jsx` (both mobile cards and desktop table rows) for 1-click status adjustments.

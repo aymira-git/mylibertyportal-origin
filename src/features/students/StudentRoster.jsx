@@ -20,6 +20,7 @@ import {
   fetchPendingPromotions,
   promoteStudentLevel,
 } from "./progressReportsRepository";
+import { updateStudentStatus } from "../dashboard/usersRepository";
 import {
   Users,
   Search,
@@ -125,6 +126,20 @@ export default function StudentRoster({
   const [selectedTransferStudent, setSelectedTransferStudent] = useState(null); // { student, sourceClass }
   const [statusFilter, setStatusFilter] = useState("active"); // "active" | "on_leave" | "inactive_graduated" | "all"
   const [actionFilter, setActionFilter] = useState("all"); // "all" | "unassigned" | "due_or_expired" | "beginner" | "intermediate" | "fluent"
+  const [updatingStatusId, setUpdatingStatusId] = useState(null);
+
+  const handleStatusChange = async (student, newStatus) => {
+    if ((student.status || "active") === newStatus) return;
+    setUpdatingStatusId(student.id);
+    try {
+      await updateStudentStatus(student.id, newStatus);
+      toast(`Updated ${student.displayName || "Student"}'s status to ${newStatus}.`);
+    } catch (err) {
+      toast("Error updating student status: " + err.message, "error");
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
 
   const loadPendingPromotions = () => {
     fetchPendingPromotions()
@@ -506,9 +521,24 @@ export default function StudentRoster({
                       <h4 className="truncate text-sm font-extrabold text-slate-900">
                         {s.displayName || "Unnamed student"}
                       </h4>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
-                        {statusBadge.label}
-                      </span>
+                      {!readOnly ? (
+                        <select
+                          value={s.effectiveStatus}
+                          disabled={updatingStatusId === s.id}
+                          onChange={(e) => handleStatusChange(s, e.target.value)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border outline-none cursor-pointer ${statusBadge.tone}`}
+                          title="Change student lifecycle status"
+                        >
+                          <option value="active">Active</option>
+                          <option value="on_leave">On Leave</option>
+                          <option value="graduated">Graduated</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
+                          {statusBadge.label}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <p className="text-[11px] font-mono text-slate-400">ID: {s.id.slice(0, 10)}</p>
@@ -803,9 +833,24 @@ export default function StudentRoster({
                     </div>
                   </td>
                   <td className="p-3.5 whitespace-nowrap">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
-                      {statusBadge.label}
-                    </span>
+                    {!readOnly ? (
+                      <select
+                        value={s.effectiveStatus}
+                        disabled={updatingStatusId === s.id}
+                        onChange={(e) => handleStatusChange(s, e.target.value)}
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border outline-none cursor-pointer ${statusBadge.tone}`}
+                        title="Change student lifecycle status"
+                      >
+                        <option value="active">Active</option>
+                        <option value="on_leave">On Leave</option>
+                        <option value="graduated">Graduated</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    ) : (
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
+                        {statusBadge.label}
+                      </span>
+                    )}
                   </td>
                   <td className="p-3.5 text-slate-600">
                     <p className="font-semibold text-slate-800">{s.parentName || "—"}</p>
