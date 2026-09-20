@@ -664,6 +664,14 @@ function InstructorProgress() {
 
 export default function InstructorDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const isClassPhotoAction = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return new URLSearchParams(window.location.search).get("action") === "class-photo";
+    } catch {
+      return false;
+    }
+  }, []);
   const [kioskOpen, setKioskOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -763,6 +771,7 @@ export default function InstructorDashboard() {
         title="Student Attendance Scanner"
         studentsOnly={true}
         extraContent={<ClassPhotoShare />}
+        initialScrollToExtra={isClassPhotoAction}
       />
     </div>
   );

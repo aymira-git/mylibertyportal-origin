@@ -1,6 +1,6 @@
-# Reports & Attendance System Modernization (revision 6, 2026-09-20)
+# Reports & Attendance System Modernization (revision 7, 2026-09-20)
 
-> **How to read this file.** This revision follows Kifry's latest answers (below) and a re-check of the zip. Anything marked *Audit note* is Claude's reading of the code. Claude is AI and can make mistakes, so please re-check each note against the real files before acting on it. The executing agent is welcome to disagree, reorder, or counter-propose; a short line of reasoning under the item helps Kifry follow along. Kifry keeps the final say on product intent.
+> **How to read this file.** This revision follows Kifry's latest answers (below) and a re-check of the zip. Anything marked *Audit note* is Claude's reading of the code. Claude is AI and can make mistakes, so please re-check each note against the real files before acting on it. The executing agent is welcome to disagree, reorder, or counter-propose; a short line of reasoning under the item helps Kifry follow along. Kifry keeps the final say on product intent. Revision 7 also folds in a second set of guardrail notes Kifry shared (data-model care, build order, narrow live listeners, provisional At-Risk rule, capability map); they are reworded here as suggestions so the agent keeps room to argue.
 
 ## Current direction (Kifry's decisions, open to challenge)
 
@@ -28,6 +28,33 @@
 | Reports → Learner Progress / Admissions / Instructor Punctuality | Analytics | Per role, see section 5 |
 
 Manager has no kiosk button (view-only, consistent with the earlier attendance plan).
+
+A handy way to think about it: **Kiosk = do (scan)**, **Reports = understand**, **Dashboard = overview**. One exception by Kifry's choice: Admin's fixes (correct a shift, log leave) are "do" actions that also live in Reports.
+
+## Capability map (draft; agent to verify against the code and complete)
+
+Suggested habit: give each existing capability a confirmed, working destination before its old screen is removed. Rows marked (+) were added during this audit and are worth a second look.
+
+| Existing capability | Proposed home | Role |
+|---|---|---|
+| Student scanning | Kiosk | Admin, Front Office, Instructor |
+| Staff scanning (clock in/out) | Kiosk | Admin |
+| Class photo share | Instructor kiosk view | Instructor |
+| Today's student check-ins | Reports → Today's Check-ins | Admin, Manager (view), Front Office (all), Instructor (own students) |
+| Staff history + CSV | Reports → Staff Duty Logs | Admin, Manager (view) |
+| Own clock in/out log (+) | Reports → My Duty Log | Front Office, Instructor |
+| Shift correction and deletion (with audit event) | Reports → Staff Duty Logs | Admin |
+| Staff leave (log and delete) | Reports → Staff Duty Logs | Admin |
+| Auto-closed shift review ("mark reviewed") | Reports → Staff Duty Logs | Admin |
+| Stale and duplicate-open shift flags (+) | Reports → Staff Duty Logs | Admin |
+| At-a-glance counts: on duty, stale, auto-closed, late today, on leave | Reports → Staff Duty Logs | Admin |
+| Status / role / date filters on the duty list (+) | Reports → Staff Duty Logs | Admin |
+| Instructor punctuality and analytics | Reports → Instructor Punctuality / My Duty Log | Admin, Manager, Instructor |
+| Learner analytics | Reports → Learner Progress | Admin, Manager, Front Office, Instructor |
+| Admissions analytics | Reports → Admissions | Admin, Manager, Front Office |
+| CSV exports | Matching Reports sub-tab | per role |
+| Instructor Overview "Scan Attendance" quick action (+) | Opens the kiosk view | Instructor |
+| PWA shortcuts `?action=attendance` and `?action=class-photo` (+) | Open the kiosk view | Admin (optional), Front Office, Instructor |
 
 ## Proposed changes
 
@@ -58,7 +85,14 @@ Manager has no kiosk button (view-only, consistent with the earlier attendance p
   - Own leave (`staffLeave` is readable by its owner) could appear in the same log as an optional extra.
 - **Admin-only actions:** correction and delete via `ShiftAdjustmentModal`, leave via `StaffLeaveModal`, review of auto-closed shifts.
   - Admin and Manager both pass `isAdminView` today, so the component probably needs a `role` (or `canEdit`) prop to show write buttons only to Admin. Rules already reject Manager writes; the UI would simply avoid offering them.
-- **Live counts.** *Audit note:* Reports loads shifts once through a date window (`fetchStaffShifts`), while `AttendanceManager` listens live to the entire `shifts` collection, whose cost grows every month. A middle path: keep the windowed history fetch and add a small live listener for still-open shifts only (`clockOut == null`, a handful of documents) to drive "on duty now" and stale counts. Agent may propose something simpler, such as a refresh button.
+- **Live counts.** *Audit note:* Reports loads shifts once through a date window (`fetchStaffShifts`), while `AttendanceManager` listens live to the entire `shifts` collection, whose cost grows every month. Suggested principle: real-time only where it clearly helps (Today's Check-ins, and currently open shifts); historical staff reports use windowed queries; the rest of Reports stays a normal fetch. If the open-shifts listener turns out complicated, a manual refresh button is a fine substitute for Admin. Each existing count needs a data source, and they differ:
+
+  | Count | Possible source | Audit note |
+  |---|---|---|
+  | On duty now, stale, duplicate-open | Live listener on `clockOut == null` (a handful of documents) | Matches the narrow-listener idea |
+  | Auto-closed awaiting review | Query on `autoClosed == true`, then filter `reviewStatus !== "reviewed"` on the client | `autoCloseShift` writes a `clockOut`, so these shifts are closed and the open-shifts listener will not see them. Unreviewed ones may also be older than the history window |
+  | Late arrivals today | Today's shifts (open and closed) by WITA day boundaries | The old code compared `clockIn.slice(0, 10)` (a UTC date) with the WITA date, which misses shifts between 00:00 and 08:00 WITA |
+  | On leave today | `staffLeave` (small collection) | Leave dates are plain dates, so no time zone issue |
 - **Leave** (`staffLeave`, small collection) can be read alongside so leave shows as leave rather than absence.
 - **Branded CSV.** *Audit note:* `exportTableCSV(filename, headers, rows)` writes headers as row 1. A title line above them makes Sheets and Excel treat the title as the header, which hurts sorting and filters, and the helper is shared by other exports. Ideas: an optional `meta` argument (off by default), branding in the filename only, or a metadata block below the data. Filenames such as `MYLIBERTY-Staff-Attendance-YYYY-MM-DD.csv` look fine.
 - *Audit note:* the current exports use the full arrays and ignore on-screen search and filters. Exporting what is on screen (or labelling it clearly) avoids surprises.
@@ -71,7 +105,7 @@ Manager has no kiosk button (view-only, consistent with the earlier attendance p
 - **Purpose:** during the day, Admin, Front Office and Instructors see who has scanned in and who is expected but has not.
 - **Data:** student scans in `attendance` (fields: `userId`, `displayName`, `role`, `timestamp` ISO string, `method`). A live listener limited to today (`timestamp >= start of today in WITA`) reads only a small number of documents. `attendance` is readable by all staff under the rules.
 - **Instructor scope:** *Audit note:* for Instructors, `fetchStudentProgressData` already limits `classes` to their own, but `attendance` comes back for everyone, so the view would filter scans to students in the instructor's own classes on the client.
-- **"Expected today":** *Audit note:* `getTodaysClasses(classes)` in `attendance/punctuality.js` picks classes by weekday, and each class has `studentIds`. Comparing those students with today's scans gives an "expected but not yet in" list. Scan records carry no class, so a student enrolled in two classes is hard to attribute to one; showing the class list next to the name is one way to keep it honest. The helper uses the device's weekday, which is fine on a WITA reception PC but is worth a WITA-aware check.
+- **"Expected today":** *Audit note:* `getTodaysClasses(classes)` in `attendance/punctuality.js` picks classes by weekday, and each class has `studentIds`. Comparing those students with today's scans gives an "expected but not yet in" list. Scan records carry no class or session (fields are `userId`, `displayName`, `role`, `timestamp`, `method`), so the report can show "student checked in today" and does not show "student attended this specific class". Suggested wording on screen keeps those apart, with the student's class memberships shown next to the name for context and no guessing of which class the scan belonged to. If class-level attendance becomes a need later, adding an explicit class or session reference to the attendance record would be cleaner than inferring one. The helper uses the device's weekday, which is fine on a WITA reception PC but is worth a WITA-aware check.
 - **Active students only** (`isActiveStudent`), so graduated or paused students stay off the missing list.
 - **Sharing the load:** Front Office could work the "not yet in" list. A one-tap WhatsApp follow-up (student phone exists; `normalizeWhatsAppNumber` is in `finance/receiptMessages.js`) is an idea only, left to the agent and Kifry.
 - Front Office default sub-tab becomes this one; Admin may prefer Staff Duty as default.
@@ -79,6 +113,7 @@ Manager has no kiosk button (view-only, consistent with the earlier attendance p
 ### 5. Reports → Learner Progress, Admissions, Instructor Punctuality
 
 - **At-Risk flag (Learner Progress).** *Audit note:* the list currently includes every `role == "student"` record plus archived ones rebuilt from old attendance, and the KPI says "All statuses". Suggested definition to refine: student is `active`, not archived, joined more than 14 days ago (`joinedDate` exists), and has no check-in in the last 14 WITA days. "0 check-ins" then means none in the loaded window, so the label could say so. The Historical Horizon starts at 30 days, which covers 14; a dedicated 14-day query would make the flag independent of the dropdown. School breaks and once-a-week classes can make 14 days normal, so a configurable threshold is worth weighing.
+  - **Treat the 14-day rule as version 1.** It is a provisional product rule, not proof of real attendance risk, since not every learner is expected daily. Keeping the rule in one small function (for example an `atRisk.js` helper) lets it be swapped later without redesigning the report. A natural next step is expected versus actual sessions in a period (for example 4 expected and 1 attended looks different from 2 expected and 2 attended); `parseClassDays` in `attendance/punctuality.js` (not exported yet) already turns a class's days into weekdays, and comparing at the student's day level needs no class attribution on scans. The on-screen label could read something like "No check-in in 14+ days" rather than a stronger claim; agent's call.
 - Health filter (All, At Risk, Regular) and Branch filter as originally proposed. Student `branch` is already on the user document (`UserForm`, `applicationsRepository`); older records could be treated as `"Cabang Utama"`.
 - **Admissions & Lead Velocity.** `fetchAdmissionsReportData(since)` reading `applications` and `classes`.
   - *Audit note:* `submittedAt` is an ISO string (`FormSync.gs`), so `where("submittedAt", ">=", since)` should work; records lacking it would be skipped silently.
@@ -109,16 +144,23 @@ Manager has no kiosk button (view-only, consistent with the earlier attendance p
 4. **Instructor:** sidebar kiosk works on a phone; Overview "Scan Attendance" opens it; the class photo tool sits inside the kiosk view and works on a phone before and after scanning, and `/?action=class-photo` lands on it; Reports opens on a valid sub-tab, Today's Check-ins shows only their own students, and My Duty Log shows only their own shifts with punctuality; `/?action=attendance` opens the scanner.
 
 **Data checks:**
-- A student scanned at 06:30 WITA appears under Today; a graduated student stays off the "expected" list.
+- Time boundaries (WITA is UTC+8): scans at 07:59 and 08:00 WITA (the UTC date flips), at 23:59 and 00:01 WITA (the WITA date flips), and at 06:30 WITA all land on the correct WITA day in Today's Check-ins, "late today", and the presets.
+- A graduated student stays off the "expected" list; Today's Check-ins wording stays clear of claiming a specific class was attended.
 - A student who joined 3 days ago, a graduated student, and an archived student stay off the At Risk list; a genuinely inactive active student appears.
 - Admissions: Pending + Approved + Rejected equals total inquiries in the period; seat fill matches the Available Batches screen.
 - Exported CSV row counts match what is on screen.
+- Regression matrix worth running at the end: each role (Admin, Manager, Front Office, Instructor) against those time cases, plus a month boundary for Punctuality and Admissions grouping.
+- Each row of the capability map has a working destination before its old screen is removed.
 
 ## Suggested order (agent may reorder)
 
-1. Shared kiosk launcher and sidebar buttons for Admin, Front Office, Instructor (check mobile).
-2. Move Admin actions into Reports → Staff Duty Logs; relocate `ClassPhotoShare`; then remove the Admin and Instructor tabs.
-3. Today's Check-ins sub-tab and Front Office default.
-4. Branded CSV approach, branch filter, presets.
-5. At-Risk, Admissions, role-aware tabs.
-6. Optional items (windowing, doc merge), then the verification plan.
+The idea behind this order: data first, then permissions, then screens, with old screens removed last. It treats the work as more than a navigation move.
+
+1. Data queries and WITA day boundaries, ideally one shared helper reused by Today's Check-ins, presets, "late today" and At-Risk.
+2. Confirm each query works for each role under the current `firestore.rules` (no rules change is expected; worth proving per role).
+3. Shared kiosk launcher and sidebar buttons for Admin, Front Office, Instructor (additive, old tabs still in place; check mobile).
+4. Reports destinations: Today's Check-ins, own duty logs, Admin actions in Staff Duty Logs.
+5. Reports analytics: At-Risk, Admissions, branded CSV approach, branch filter, presets.
+6. Remaining moves from the capability map (class photo, quick action, PWA shortcuts).
+7. Remove the Admin and Instructor tabs once every capability-map row has a confirmed home.
+8. Optional items (doc merge, Instructor Punctuality windowing), then the full role and date regression matrix.

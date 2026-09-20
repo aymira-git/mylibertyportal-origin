@@ -202,7 +202,7 @@ export default function AdminDashboard() {
         />
       ),
     },
-    { id: "reports", label: "Reports", component: <ReportsDashboard isAdminView={true} isFrontOffice={false} /> },
+    { id: "reports", label: "Reports", component: <ReportsDashboard isAdminView={true} isFrontOffice={false} canEdit={true} /> },
     {
       id: "misc",
       label: "Tasks",

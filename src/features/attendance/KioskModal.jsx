@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import Kiosk from "./Kiosk";
 
@@ -12,7 +12,10 @@ export default function KioskModal({
   title = "Attendance Scanner Station",
   studentsOnly = false,
   extraContent = null,
+  initialScrollToExtra = false,
 }) {
+  const extraRef = useRef(null);
+
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;
@@ -22,6 +25,16 @@ export default function KioskModal({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
+
+  // Auto-scroll to extra content if requested (e.g. ?action=class-photo)
+  useEffect(() => {
+    if (isOpen && initialScrollToExtra && extraRef.current) {
+      const timer = setTimeout(() => {
+        extraRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, initialScrollToExtra]);
 
   if (!isOpen) return null;
 
@@ -49,7 +62,7 @@ export default function KioskModal({
       <div className="w-full max-w-xl space-y-6 pb-12">
         <Kiosk title={title} studentsOnly={studentsOnly} />
         {extraContent && (
-          <div className="pt-2">
+          <div ref={extraRef} className="pt-2">
             {extraContent}
           </div>
         )}

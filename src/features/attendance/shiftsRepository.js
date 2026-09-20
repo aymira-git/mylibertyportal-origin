@@ -71,6 +71,10 @@ export function clockOutShift(shiftId, clockOutAt = new Date()) {
   return updateDoc(doc(db, "shifts", shiftId), { clockOut: clockOutAt.toISOString() });
 }
 
+export function markShiftReviewed(shiftId) {
+  return updateDoc(doc(db, "shifts", shiftId), { reviewStatus: "reviewed" });
+}
+
 /**
  * Executes a class transition atomically: clocks out previous shift
  * and creates new shift in a single Firestore writeBatch.

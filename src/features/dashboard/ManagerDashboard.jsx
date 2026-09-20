@@ -1124,7 +1124,7 @@ export default function ManagerDashboard() {
     {
       id: "reports",
       label: "Reports & Analytics",
-      component: <ReportsDashboard isAdminView={true} isFrontOffice={false} />,
+      component: <ReportsDashboard isAdminView={true} isFrontOffice={false} canEdit={false} />,
     },
     {
       id: "ai",
