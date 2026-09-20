@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { db } from "../../firebase";
+import { auth, db } from "../../firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useToast, useConfirm } from "../shared";
 import { buildStudentRecord, isActiveStudent } from "../students";
-import { createInvite, deleteInvite, createTodo, deleteTodo } from "../staff";
+import { createInvite, deleteInvite, createTodo, deleteTodo, toggleTodoComplete } from "../staff";
 import { saveStudentRecord, updateStaffRecord, createStaffAccount, deleteUserProfile } from "./usersRepository";
 
 const emptyFormData = {
@@ -252,16 +252,32 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
     }
   };
 
-  const handleAddTodo = async ({ text, type, isPinned, assignee }) => {
+  const handleAddTodo = async (todoData) => {
     try {
-      await createTodo({ text, type, isPinned, assignee });
-    } catch (err) { toast(err.message, "error"); }
+      await createTodo(todoData);
+      toast("Directive issued successfully.", "success");
+      return true;
+    } catch (err) {
+      toast("Failed to issue directive: " + err.message, "error");
+      return false;
+    }
+  };
+
+  const handleToggleTodo = async (todoId, completed) => {
+    try {
+      await toggleTodoComplete(todoId, completed, auth.currentUser);
+    } catch (err) {
+      toast("Error updating directive: " + err.message, "error");
+    }
   };
 
   const handleDeleteTodo = async (todoId) => {
     try {
       await deleteTodo(todoId);
-    } catch (err) { toast("Error deleting task: " + err.message, "error"); }
+      toast("Directive deleted.", "info");
+    } catch (err) {
+      toast("Error deleting directive: " + err.message, "error");
+    }
   };
 
   const handleCreateInvite = async (email, role, branch = "Cabang Utama") => {
@@ -310,7 +326,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
     editId, setEditId, selectedStudent, setSelectedStudent,
     formData, setFormData,
     handleSave, handleEdit, handleAddStaff, handleAddStudent, handleDelete,
-    handleAddTodo, handleDeleteTodo,
+    handleAddTodo, handleDeleteTodo, handleToggleTodo,
     handleCreateInvite, handleDeleteInvite,
     getStudentClasses, instructors, activeInstructors, students, unenrolledStudents, pendingApplications,
   };

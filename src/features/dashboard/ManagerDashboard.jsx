@@ -4,7 +4,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { AIAssistant, DashboardShell, LevelBadge, useToast, WelcomeBanner } from "../shared";
 import { GraduationCap, BookOpen, UserPlus, Users, ExternalLink } from "lucide-react";
 import { ReportsDashboard } from "../reports";
-import { TasksPanel, createTodo, deleteTodo } from "../staff";
+import { TasksPanel, createTodo, deleteTodo, toggleTodoComplete } from "../staff";
 import { AvailableBatches } from "../classes";
 import { getShiftStatus } from "../attendance";
 
@@ -819,7 +819,15 @@ function ClassesAndCoverageTab({ classes, users, currentUserId }) {
   );
 }
 
-function StaffDirectivesTab({ todos, onAddTodo, onDeleteTodo, todosPermission = true }) {
+function StaffDirectivesTab({
+  todos,
+  users = [],
+  currentUser = null,
+  onAddTodo,
+  onDeleteTodo,
+  onToggleTodo,
+  todosPermission = true,
+}) {
   const activeCount = todos.filter((t) => !t.completed).length;
   const pinnedCount = todos.filter((t) => t.isPinned || t.type === "deadline").length;
   const deptCounts = useMemo(() => {
@@ -882,7 +890,14 @@ function StaffDirectivesTab({ todos, onAddTodo, onDeleteTodo, todosPermission = 
         </div>
       </div>
 
-      <TasksPanel todos={todos} onAddTodo={onAddTodo} onDeleteTodo={onDeleteTodo} />
+      <TasksPanel
+        todos={todos}
+        users={users}
+        currentUser={currentUser}
+        onAddTodo={onAddTodo}
+        onDeleteTodo={onDeleteTodo}
+        onToggleTodo={onToggleTodo}
+      />
     </div>
   );
 }
@@ -995,6 +1010,29 @@ export default function ManagerDashboard() {
     }
   };
 
+  const handleToggleTodo = async (todoId, completed) => {
+    try {
+      if (todoId.startsWith("local-")) {
+        setTodos((prev) =>
+          prev.map((t) =>
+            t.id === todoId
+              ? {
+                  ...t,
+                  completed,
+                  completedAt: completed ? new Date().toISOString() : null,
+                  completedByName: completed ? (auth.currentUser?.displayName || "Manager") : null,
+                }
+              : t
+          )
+        );
+        return;
+      }
+      await toggleTodoComplete(todoId, completed, auth.currentUser);
+    } catch (err) {
+      toast("Error updating directive: " + err.message, "error");
+    }
+  };
+
   // Derived datasets
   const students = useMemo(() => users.filter((u) => u.role === "student"), [users]);
   const activeStudents = useMemo(() => students.filter((s) => (s.status || "active") === "active"), [students]);
@@ -1062,8 +1100,11 @@ export default function ManagerDashboard() {
       component: (
         <StaffDirectivesTab
           todos={todos}
+          users={users}
+          currentUser={auth.currentUser}
           onAddTodo={handleAddTodo}
           onDeleteTodo={handleDeleteTodo}
+          onToggleTodo={handleToggleTodo}
           todosPermission={todosPermission}
         />
       ),

@@ -21,7 +21,7 @@ export default function AdminDashboard() {
     editId, selectedStudent, setSelectedStudent,
     formData, setFormData,
     handleSave, handleEdit, handleAddStaff, handleAddStudent, handleDelete,
-    handleAddTodo, handleDeleteTodo,
+    handleAddTodo, handleDeleteTodo, handleToggleTodo,
     handleCreateInvite, handleDeleteInvite,
     getStudentClasses, instructors, students, unenrolledStudents, pendingApplications,
   } = useDashboardData({ setActiveTab: handleTabChange });
@@ -205,7 +205,14 @@ export default function AdminDashboard() {
       label: "Tasks",
       badge: todos.filter(t => !t.completed).length || null,
       component: (
-        <TasksPanel todos={todos} onAddTodo={handleAddTodo} onDeleteTodo={handleDeleteTodo} />
+        <TasksPanel
+          todos={todos}
+          users={users}
+          currentUser={auth.currentUser}
+          onAddTodo={handleAddTodo}
+          onDeleteTodo={handleDeleteTodo}
+          onToggleTodo={handleToggleTodo}
+        />
       ),
     },
     { id: "aiAssistant", label: "AI Assistant", component: <AIAssistant /> },

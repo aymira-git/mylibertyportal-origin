@@ -107,10 +107,12 @@ service cloud.firestore {
     }
 
     match /todos/{todoId} {
-      // Admins/Office/Manager handle all; Office Boy handles their own tasks
-      allow read: if isAdmin() || isManager() || isFrontOffice() || hasRole('officeboy');
-      allow update: if isAdmin() || isManager() || isFrontOffice() || (hasRole('officeboy') && resource.data.assignee in ['officeboy', 'all']);
+      // All active staff can read directives to receive their assignments
+      allow read: if isStaff();
+      // Admins and Managers issue directives; Front Office can manage desk directives
       allow create, delete: if isAdmin() || isManager() || isFrontOffice();
+      // All staff can update directives (to toggle completion status, timestamps, etc.)
+      allow update: if isStaff();
     }
 
     match /attendance/{attendanceId} {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { auth } from "../../firebase";
 import { useDashboardData } from "./useDashboardData";
 import { AIAssistant, DashboardShell, WelcomeBanner, useToast } from "../shared";
 import { ReportsDashboard } from "../reports";
@@ -38,7 +39,7 @@ export default function FrontOfficeDashboard() {
     editId, selectedStudent, setSelectedStudent,
     formData, setFormData,
     handleSave, handleEdit, handleAddStudent, handleDelete,
-    handleAddTodo, handleDeleteTodo,
+    handleAddTodo, handleDeleteTodo, handleToggleTodo,
     getStudentClasses, instructors, students, unenrolledStudents, pendingApplications,
   } = useDashboardData({ restrictedRead: true, setActiveTab });
 
@@ -251,7 +252,14 @@ export default function FrontOfficeDashboard() {
       label: "Tasks",
       badge: todos.filter(t => !t.completed).length || null,
       component: (
-        <TasksPanel todos={todos} onAddTodo={handleAddTodo} onDeleteTodo={handleDeleteTodo} />
+        <TasksPanel
+          todos={todos}
+          users={users}
+          currentUser={auth.currentUser}
+          onAddTodo={handleAddTodo}
+          onDeleteTodo={handleDeleteTodo}
+          onToggleTodo={handleToggleTodo}
+        />
       ),
     },
     { id: "aiAssistant", label: "AI Assistant", component: <AIAssistant /> },

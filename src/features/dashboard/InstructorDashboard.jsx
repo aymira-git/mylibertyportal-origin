@@ -5,6 +5,7 @@ import { Kiosk } from "../attendance";
 import { ClassPhotoShare, TeachingMaterial, AvailableBatches } from "../classes";
 import { ReportsDashboard } from "../reports";
 import { StudentProgressForm, StudentRoster, BadgeModal, fetchInstructorProgressReports } from "../students";
+import { useStaffDirectives, StaffDirectivesWidget } from "../staff";
 import { auth, db } from "../../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import {
@@ -673,6 +674,14 @@ export default function InstructorDashboard() {
   const classes = useMemo(() => uniqueClasses(rawClasses), [rawClasses]);
   const [allClasses, setAllClasses] = useState([]);
 
+  const {
+    activeDirectives,
+    completedDirectives,
+    pendingCount: pendingDirectivesCount,
+    loading: directivesLoading,
+    handleToggle: handleToggleDirective,
+  } = useStaffDirectives("instructor");
+
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "classes"), (snap) => {
       setAllClasses(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -692,6 +701,20 @@ export default function InstructorDashboard() {
           onNavigate={setActiveTab}
           onSelectClass={(classId) => setSelectedClassFilter(classId)}
           allClasses={allClasses}
+        />
+      ),
+    },
+    {
+      id: "directives",
+      label: "Directives",
+      badge: pendingDirectivesCount || null,
+      component: (
+        <StaffDirectivesWidget
+          activeDirectives={activeDirectives}
+          completedDirectives={completedDirectives}
+          loading={directivesLoading}
+          onToggle={handleToggleDirective}
+          roleLabel="Faculty & Instructors"
         />
       ),
     },

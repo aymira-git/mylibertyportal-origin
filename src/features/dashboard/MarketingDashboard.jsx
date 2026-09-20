@@ -4,6 +4,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { WelcomeBanner, DashboardShell, useToast } from "../shared";
 import { UserPlus, BookOpen, Users, Copy, Check, ExternalLink } from "lucide-react";
 import { AvailableBatches } from "../classes";
+import { useStaffDirectives, StaffDirectivesWidget } from "../staff";
 
 function MarketingOverview({
   leadCount,
@@ -125,6 +126,14 @@ export default function MarketingDashboard() {
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState([]);
 
+  const {
+    activeDirectives,
+    completedDirectives,
+    pendingCount: pendingDirectivesCount,
+    loading: directivesLoading,
+    handleToggle: handleToggleDirective,
+  } = useStaffDirectives("marketing");
+
   useEffect(() => {
     const unsubApplications = onSnapshot(
       collection(db, "applications"),
@@ -175,6 +184,22 @@ export default function MarketingDashboard() {
           openSeats={openSeats}
           onNavigate={setActiveTab}
         />
+      ),
+    },
+    {
+      id: "directives",
+      label: "Directives",
+      badge: pendingDirectivesCount || null,
+      component: (
+        <div className="max-w-4xl mx-auto">
+          <StaffDirectivesWidget
+            activeDirectives={activeDirectives}
+            completedDirectives={completedDirectives}
+            loading={directivesLoading}
+            onToggle={handleToggleDirective}
+            roleLabel="Marketing & Outreach"
+          />
+        </div>
       ),
     },
     {
