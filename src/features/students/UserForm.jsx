@@ -36,7 +36,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
   return (
     <form
       onSubmit={onSubmit}
-      className="bg-white p-6 rounded-2xl shadow-sm text-sm border border-slate-200 max-w-4xl mx-auto space-y-6"
+      className="bg-white p-6 rounded-2xl shadow-sm text-sm border border-slate-200 w-full space-y-6"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-2">
         <div>

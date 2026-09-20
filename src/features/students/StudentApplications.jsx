@@ -179,7 +179,7 @@ export default function StudentApplications({
   };
 
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm max-w-5xl mx-auto text-xs space-y-5">
+    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm w-full text-xs space-y-5">
       {/* Header */}
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-between sm:items-center pb-4 border-b border-slate-100">
         <div>

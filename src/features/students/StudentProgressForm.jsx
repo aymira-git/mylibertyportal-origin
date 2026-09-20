@@ -94,7 +94,7 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
   };
 
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-sm max-w-4xl mx-auto space-y-6">
+    <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-sm w-full space-y-6">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
         <div className="flex items-center gap-3">

@@ -41,9 +41,9 @@ export default function DashboardShell({
       />
 
       {/* Desktop & Tablet: Grouped Sidebar with Refined Lucide Icons & Active Brand Pill */}
-      <div className="hidden md:flex md:flex-row gap-6 items-start">
+      <div className="hidden md:flex md:flex-row gap-5 lg:gap-6 items-start w-full">
         {/* Modern School Management Sidebar */}
-        <aside className="w-60 lg:w-64 shrink-0 bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs flex flex-col gap-3.5 sticky top-5 self-start">
+        <aside className="w-56 lg:w-60 shrink-0 bg-white rounded-2xl border border-slate-200/90 p-3 shadow-2xs flex flex-col gap-3 sticky top-5 self-start">
           {/* Header Identity & Quick Action */}
           <div>
             {title && (
@@ -130,7 +130,7 @@ export default function DashboardShell({
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 w-full">
           {active?.component}
         </main>
       </div>

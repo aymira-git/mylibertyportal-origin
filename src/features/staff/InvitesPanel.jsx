@@ -129,7 +129,7 @@ export default function InvitesPanel({
   };
 
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-150 max-w-5xl mx-auto space-y-6">
+    <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-150 w-full space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
         <div>

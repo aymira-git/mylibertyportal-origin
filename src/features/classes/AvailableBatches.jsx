@@ -253,7 +253,7 @@ export default function AvailableBatches({
   // FULL AVAILABLE BATCHES VIEW (For Classes Tab across all Dashboards)
   // ──────────────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* Header Banner & Control Bar */}
       <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">

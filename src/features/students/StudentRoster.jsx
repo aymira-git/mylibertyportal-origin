@@ -42,6 +42,7 @@ export default function StudentRoster({
   handleDelete,
   handleAddStudent,
   readOnly = false,
+  canEditStatus = true,
 }) {
   const toast = useToast();
   const confirm = useConfirm();
@@ -349,7 +350,7 @@ export default function StudentRoster({
   };
 
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-slate-200/90 max-w-6xl mx-auto space-y-5">
+    <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-slate-200/90 w-full space-y-5">
       {/* Header Panel */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-3">
@@ -410,6 +411,7 @@ export default function StudentRoster({
       <StudentRosterMobileList
         pageItems={pageItems}
         readOnly={readOnly}
+        canEditStatus={canEditStatus}
         updatingStatusId={updatingStatusId}
         pendingPromotionsMap={pendingPromotionsMap}
         onStatusChange={handleStatusChange}
@@ -430,6 +432,7 @@ export default function StudentRoster({
         studentSortAsc={studentSortAsc}
         onSort={handleStudentSort}
         readOnly={readOnly}
+        canEditStatus={canEditStatus}
         updatingStatusId={updatingStatusId}
         pendingPromotionsMap={pendingPromotionsMap}
         onStatusChange={handleStatusChange}

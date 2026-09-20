@@ -26,6 +26,7 @@ export default function StudentRosterTable({
   studentSortAsc,
   onSort,
   readOnly = false,
+  canEditStatus = true,
   updatingStatusId = null,
   pendingPromotionsMap = {},
   onStatusChange,
@@ -168,7 +169,7 @@ export default function StudentRosterTable({
                   </div>
                 </td>
                 <td className="p-3.5 whitespace-nowrap">
-                  {!readOnly ? (
+                  {!readOnly && canEditStatus ? (
                     <select
                       value={s.effectiveStatus}
                       disabled={updatingStatusId === s.id}

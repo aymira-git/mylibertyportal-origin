@@ -78,7 +78,7 @@ export default function StaffDirectivesWidget({
 
   if (loading) {
     return (
-      <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center space-y-3 max-w-4xl mx-auto">
+      <div className="bg-white p-8 rounded-3xl border border-slate-200 text-center space-y-3 w-full">
         <p className="text-slate-400 text-xs font-semibold animate-pulse">
           Loading assigned directives...
         </p>
@@ -90,7 +90,7 @@ export default function StaffDirectivesWidget({
   const unpinnedItems = activeDirectives.filter((d) => !d.isPinned);
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* ── Directives Header ── */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

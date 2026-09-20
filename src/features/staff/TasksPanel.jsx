@@ -207,7 +207,7 @@ export default function TasksPanel({
   }, [todos, statusFilter, targetFilter, priorityFilter, searchQuery]);
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto text-sm">
+    <div className="space-y-8 w-full text-sm">
       {/* ── Corkboard Section (Pinned Urgent Directives) ── */}
       {pinnedDirectives.length > 0 && (
         <div className="space-y-3">

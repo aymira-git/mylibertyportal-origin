@@ -150,7 +150,7 @@ export default function ClassManager({
   };
 
   return (
-    <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200/90 max-w-6xl mx-auto space-y-6 shadow-sm">
+    <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200/90 w-full space-y-6 shadow-sm">
       {/* ── Cockpit Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div>

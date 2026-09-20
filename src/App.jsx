@@ -204,7 +204,7 @@ function App() {
       <div>
         <div className="bg-white p-3.5 sm:p-4 md:px-6 shadow-xs border-b border-slate-200/80">
           {/* Top Navigation Bar */}
-          <div className="flex justify-between items-center max-w-[1800px] mx-auto gap-4">
+          <div className="flex justify-between items-center w-full mx-auto gap-4">
             {/* Top Left: School Branding */}
             <div className="flex items-center gap-2.5 shrink-0">
               <img
@@ -244,7 +244,7 @@ function App() {
           </div>
         </div>
 
-        <div className="p-4 md:p-6 max-w-[1800px] mx-auto">
+        <div className="p-3 sm:p-4 md:p-6 w-full">
           {/* Dynamic Role Router Switcher — each branch is its own chunk,
               only the matching one is ever fetched for a given user */}
           <Suspense fallback={<LoadingFallback />}>
@@ -277,7 +277,7 @@ function App() {
 
       {/* Global Application Footer */}
       <footer className="mt-auto border-t border-slate-200/80 bg-white/80 py-4 px-4 sm:px-6">
-        <div className="max-w-[1800px] mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-slate-500 text-xs">
+        <div className="w-full mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-slate-500 text-xs">
           <div className="flex flex-col gap-0.5 text-left">
             <span>&copy; {new Date().getFullYear()} MY LIBERTY International English School</span>
             <a

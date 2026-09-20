@@ -35,7 +35,7 @@ export default function AdminDashboard() {
   } = useDashboardData({ setActiveTab: handleTabChange });
 
   const overviewTab = (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 w-full">
       <WelcomeBanner
         portalLabel="Administrative Portal"
         roleLabel="System Administrator"

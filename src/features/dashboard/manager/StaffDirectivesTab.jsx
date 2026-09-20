@@ -22,7 +22,7 @@ export function StaffDirectivesTab({
   }, [todos]);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
         <h2 className="text-2xl font-black text-[#1a3a8f]">Staff Directives &amp; Delegation</h2>
         <p className="text-sm text-slate-500">

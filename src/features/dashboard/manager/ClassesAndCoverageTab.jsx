@@ -64,7 +64,7 @@ export function ClassesAndCoverageTab({ classes, users, currentUserId }) {
   const totalEnrolledSeats = augmentedClasses.reduce((sum, c) => sum + c.studentCount, 0);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Subtab Navigation */}
       <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200/80 w-fit flex-wrap gap-1">
         <button

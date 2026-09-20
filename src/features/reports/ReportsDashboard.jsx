@@ -42,7 +42,7 @@ export default function ReportsDashboard({
   };
 
   return (
-    <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200/90 space-y-6 text-sm max-w-6xl mx-auto shadow-sm">
+    <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200/90 space-y-6 text-sm w-full shadow-sm">
       {/* ── Cockpit Header & Export ── */}
       <div className="space-y-4 border-b border-slate-100 pb-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

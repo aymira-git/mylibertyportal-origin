@@ -69,7 +69,7 @@ export default function InstructorProgress() {
   }
 
   return (
-    <div className="space-y-5 max-w-4xl mx-auto">
+    <div className="space-y-5 w-full">
       {/* Tab switcher: New Assessment vs History */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 shadow-2xs">
         <div className="flex gap-2">

@@ -21,6 +21,7 @@ import {
 export default function StudentRosterMobileList({
   pageItems = [],
   readOnly = false,
+  canEditStatus = true,
   updatingStatusId = null,
   pendingPromotionsMap = {},
   onStatusChange,
@@ -72,7 +73,7 @@ export default function StudentRosterMobileList({
                     <h4 className="truncate text-sm font-extrabold text-slate-900">
                       {s.displayName || "Unnamed student"}
                     </h4>
-                    {!readOnly ? (
+                    {!readOnly && canEditStatus ? (
                       <select
                         value={s.effectiveStatus}
                         disabled={updatingStatusId === s.id}

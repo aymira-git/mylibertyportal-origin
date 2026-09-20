@@ -92,7 +92,7 @@ export default function TeachingMaterial() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-5xl mx-auto">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 w-full">
       {/* ── Left: Add New Material Form ── */}
       <div className="lg:col-span-5 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
         <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">

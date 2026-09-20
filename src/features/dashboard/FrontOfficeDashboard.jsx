@@ -58,7 +58,7 @@ export default function FrontOfficeDashboard() {
   };
 
   const overviewTab = (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 w-full">
       <WelcomeBanner
         portalLabel="Front Desk Portal"
         roleLabel="Front Office Desk"
@@ -201,6 +201,7 @@ export default function FrontOfficeDashboard() {
           handleEdit={handleEdit}
           handleDelete={handleDelete}
           handleAddStudent={handleAddStudent}
+          canEditStatus={false}
         />
       ),
     },

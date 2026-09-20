@@ -211,7 +211,7 @@ export default function StaffDirectory({
   };
 
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm max-w-6xl mx-auto text-xs space-y-6">
+    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm w-full text-xs space-y-6">
       {/* Cockpit Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-100">
         <div>

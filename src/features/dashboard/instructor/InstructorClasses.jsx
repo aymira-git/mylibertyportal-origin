@@ -43,7 +43,7 @@ export default function InstructorClasses({
 
   if (subTab === "all_batches") {
     return (
-      <div className="space-y-5 max-w-6xl mx-auto">
+      <div className="space-y-5 w-full">
         <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200/80 w-fit">
           <button
             onClick={() => setSubTab("my_classes")}
@@ -85,7 +85,7 @@ export default function InstructorClasses({
   }
   if (classes.length === 0) {
     return (
-      <div className="space-y-5 max-w-6xl mx-auto">
+      <div className="space-y-5 w-full">
         <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200/80 w-fit">
           <button
             onClick={() => setSubTab("my_classes")}
@@ -114,7 +114,7 @@ export default function InstructorClasses({
   const worksheets = classes.filter((cls) => cls.worksheetUrl);
 
   return (
-    <div className="space-y-5 max-w-6xl mx-auto">
+    <div className="space-y-5 w-full">
       {/* ── Subtab Switcher ── */}
       <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200/80 w-fit">
         <button
@@ -222,7 +222,7 @@ export default function InstructorClasses({
 
       {/* ── Syllabi Resources (if not filtered or all) ── */}
       {selectedClassFilter === "all" && worksheets.length > 0 && (
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs max-w-6xl mx-auto space-y-3">
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs w-full space-y-3">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-emerald-600" />
             <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">

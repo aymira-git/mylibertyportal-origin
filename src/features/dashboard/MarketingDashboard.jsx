@@ -31,7 +31,7 @@ function MarketingOverview({
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 w-full">
       <WelcomeBanner
         portalLabel="Admissions & Outreach"
         roleLabel="Marketing Representative"
@@ -191,7 +191,7 @@ export default function MarketingDashboard() {
       label: "Directives",
       badge: pendingDirectivesCount || null,
       component: (
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full">
           <StaffDirectivesWidget
             activeDirectives={activeDirectives}
             completedDirectives={completedDirectives}
@@ -207,7 +207,7 @@ export default function MarketingDashboard() {
       label: "Available Batches",
       badge: openSeats > 0 ? `${openSeats} open` : null,
       component: (
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full">
           <AvailableBatches
             classes={classes}
             canEdit={false}

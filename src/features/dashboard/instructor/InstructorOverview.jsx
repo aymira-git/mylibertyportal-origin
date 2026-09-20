@@ -30,7 +30,7 @@ export default function InstructorOverview({
   const worksheets = useMemo(() => classes.filter((cls) => cls.worksheetUrl), [classes]);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* ── Welcome Banner ── */}
       <WelcomeBanner
         portalLabel="Faculty Portal"

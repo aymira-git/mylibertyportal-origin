@@ -21,7 +21,7 @@ export function ManagerOverview({
     classesWithIssues.length;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Executive Command & Welcome Banner */}
       <WelcomeBanner
         portalLabel="Executive Command"

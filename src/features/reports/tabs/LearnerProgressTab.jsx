@@ -50,14 +50,17 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
         ...progress.map((p) => p.studentId),
       ]);
 
-      const relevantStudentIds = isAdminView
+      const relevantStudentIds = (isAdminView || isFrontOffice)
         ? null
         : new Set(fetchedClasses.flatMap((c) => c.studentIds || []));
 
       const studentList = Array.from(allStudentIds)
         .filter((id) => {
           if (usersById[id]) {
-            return usersById[id].role === "student" && (isAdminView || relevantStudentIds.has(id));
+            return (
+              usersById[id].role === "student" &&
+              (isAdminView || isFrontOffice || relevantStudentIds.has(id))
+            );
           }
           return isAdminView || isFrontOffice;
         })
