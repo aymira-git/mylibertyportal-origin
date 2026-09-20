@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useInstructorRoster } from "./useInstructorRoster";
 import { AIAssistant, DashboardShell, LevelBadge, WelcomeBanner } from "../shared";
-import { Kiosk } from "../attendance";
+import { KioskModal, KioskSidebarButton } from "../attendance";
 import { ClassPhotoShare, TeachingMaterial, AvailableBatches } from "../classes";
 import { ReportsDashboard } from "../reports";
 import { StudentProgressForm, StudentRoster, BadgeModal, fetchInstructorProgressReports } from "../students";
@@ -34,7 +34,15 @@ function uniqueClasses(classes) {
   });
 }
 
-function InstructorOverview({ classes, students, instructorName, onNavigate, onSelectClass, allClasses = [] }) {
+function InstructorOverview({
+  classes,
+  students,
+  instructorName,
+  onNavigate,
+  onOpenKiosk,
+  onSelectClass,
+  allClasses = [],
+}) {
   const enrolledIds = useMemo(() => new Set(classes.flatMap((cls) => cls.studentIds || [])), [classes]);
   const enrolledStudents = useMemo(() => students.filter((student) => enrolledIds.has(student.id)), [students, enrolledIds]);
   const worksheets = useMemo(() => classes.filter((cls) => cls.worksheetUrl), [classes]);
@@ -74,8 +82,8 @@ function InstructorOverview({ classes, students, instructorName, onNavigate, onS
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <button
-            onClick={() => onNavigate("kiosk")}
-            className="p-3 bg-slate-50 hover:bg-indigo-50/60 border border-slate-200/80 hover:border-indigo-200 rounded-2xl text-left transition group"
+            onClick={onOpenKiosk}
+            className="p-3 bg-slate-50 hover:bg-indigo-50/60 border border-slate-200/80 hover:border-indigo-200 rounded-2xl text-left transition group cursor-pointer"
           >
             <Clock className="w-4 h-4 text-[#1a3a8f] mb-1.5 group-hover:scale-110 transition-transform" />
             <p className="font-extrabold text-xs text-slate-800">Scan Attendance</p>
@@ -655,18 +663,15 @@ function InstructorProgress() {
 }
 
 export default function InstructorDashboard() {
-  const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window === "undefined") return "overview";
+  const [activeTab, setActiveTab] = useState("overview");
+  const [kioskOpen, setKioskOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
     try {
-      const params = new URLSearchParams(window.location.search);
-      const action = params.get("action");
-      if (action === "class-photo" || action === "attendance") {
-        return "kiosk";
-      }
+      const action = new URLSearchParams(window.location.search).get("action");
+      return action === "attendance" || action === "class-photo";
     } catch {
-      // Ignore URL parsing errors
+      return false;
     }
-    return "overview";
   });
   const [selectedClassFilter, setSelectedClassFilter] = useState("all");
 
@@ -699,6 +704,7 @@ export default function InstructorDashboard() {
           students={students}
           instructorName={instructorName}
           onNavigate={setActiveTab}
+          onOpenKiosk={() => setKioskOpen(true)}
           onSelectClass={(classId) => setSelectedClassFilter(classId)}
           allClasses={allClasses}
         />
@@ -716,16 +722,6 @@ export default function InstructorDashboard() {
           onToggle={handleToggleDirective}
           roleLabel="Faculty & Instructors"
         />
-      ),
-    },
-    {
-      id: "kiosk",
-      label: "Attendance & Kiosk",
-      component: (
-        <div className="space-y-6 max-w-xl mx-auto">
-          <Kiosk title="Student Attendance Scanner" studentsOnly={true} />
-          <ClassPhotoShare />
-        </div>
       ),
     },
     {
@@ -752,6 +748,21 @@ export default function InstructorDashboard() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         title="Instructor Portal"
+        extraSidebarContent={
+          <KioskSidebarButton
+            onClick={() => setKioskOpen(true)}
+            label="Attendance & Kiosk"
+          />
+        }
+      />
+
+      {/* Standalone Full-Screen Kiosk Station with ClassPhotoShare */}
+      <KioskModal
+        isOpen={kioskOpen}
+        onClose={() => setKioskOpen(false)}
+        title="Student Attendance Scanner"
+        studentsOnly={true}
+        extraContent={<ClassPhotoShare />}
       />
     </div>
   );

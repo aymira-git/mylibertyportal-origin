@@ -4,7 +4,7 @@ import { useDashboardData } from "./useDashboardData";
 import { AIAssistant, DashboardShell, WelcomeBanner, useToast } from "../shared";
 import { ReportsDashboard } from "../reports";
 import { StudentApplications, StudentRoster, UserForm, BadgeModal, isActiveStudent } from "../students";
-import { Kiosk } from "../attendance";
+import { KioskModal, KioskSidebarButton } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { TasksPanel } from "../staff";
 import {
@@ -14,7 +14,6 @@ import {
   BarChart3,
   Send,
   MessageCircle,
-  Sparkles,
   UserPlus,
   GraduationCap,
   BookOpen,
@@ -24,7 +23,7 @@ import {
 export default function FrontOfficeDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [waPhone, setWaPhone] = useState("");
-  const [receptionMode, setReceptionMode] = useState(() => {
+  const [kioskOpen, setKioskOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
       return new URLSearchParams(window.location.search).get("action") === "attendance";
@@ -57,33 +56,6 @@ export default function FrontOfficeDashboard() {
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
     setWaPhone("");
   };
-
-  // Full-screen takeover — deliberately rendered before DashboardShell, same
-  // as before, since Reception Mode replaces the whole workspace including
-  // the sidebar, not just the content pane.
-  if (receptionMode) {
-    return (
-      <div className="fixed inset-0 z-[1000] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto">
-        <div className="w-full max-w-xl flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2 text-white">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Live Reception Desk Station
-            </span>
-          </div>
-          <button
-            onClick={() => setReceptionMode(false)}
-            className="bg-white/10 hover:bg-white/20 text-white px-3.5 py-1.5 rounded-xl font-bold text-xs transition border border-white/10 flex items-center gap-1.5"
-          >
-            <span>Exit Fullscreen</span>
-          </button>
-        </div>
-        <div className="w-full max-w-xl">
-          <Kiosk title="Front Office Student Scan Station" studentsOnly={true} />
-        </div>
-      </div>
-    );
-  }
 
   const overviewTab = (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -177,7 +149,7 @@ export default function FrontOfficeDashboard() {
               <span className="truncate">Open Reports</span>
             </button>
             <button
-              onClick={() => setReceptionMode(true)}
+              onClick={() => setKioskOpen(true)}
               className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200/80 text-xs font-bold text-[#1a3a8f] hover:bg-indigo-100 transition flex items-center gap-2"
             >
               <ScanLine className="w-4 h-4 text-[#1a3a8f] shrink-0" />
@@ -275,19 +247,6 @@ export default function FrontOfficeDashboard() {
     },
   ];
 
-  const launchReceptionButton = (
-    <button
-      onClick={() => setReceptionMode(true)}
-      className="w-full px-3 py-2.5 rounded-xl text-left font-extrabold text-xs bg-[#1a3a8f] text-white shadow-sm hover:bg-[#122b6e] transition flex items-center justify-between gap-2 border border-indigo-400/30 group cursor-pointer"
-    >
-      <div className="flex items-center gap-2">
-        <ScanLine className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-        <span>Reception Kiosk</span>
-      </div>
-      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-    </button>
-  );
-
   return (
     <div className="p-5 bg-[#f0f2f5] rounded-2xl min-h-[500px]">
       <DashboardShell
@@ -295,7 +254,15 @@ export default function FrontOfficeDashboard() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         title="Front Office"
-        extraSidebarContent={launchReceptionButton}
+        extraSidebarContent={<KioskSidebarButton onClick={() => setKioskOpen(true)} label="Reception Kiosk" />}
+      />
+
+      {/* Standalone Full-Screen Kiosk Station */}
+      <KioskModal
+        isOpen={kioskOpen}
+        onClose={() => setKioskOpen(false)}
+        title="Front Office Student Scan Station"
+        studentsOnly={true}
       />
 
       {/* ID Badge Modal */}

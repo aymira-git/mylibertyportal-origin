@@ -2,34 +2,7 @@ import { auth, db } from "../../firebase";
 import { collection, getDocs, getDoc, doc, query, where } from "firebase/firestore";
 
 /**
- * All direct Firestore reads for the Reports dashboard live here instead
- * of inside ReportsDashboard.jsx. This domain is read-only from the
- * dashboard's point of view — the one exception is auto-closing stale
- * shifts while loading them, which reuses the same autoCloseShift write
- * the attendance Kiosk already uses, not a new write path.
- *
- * These functions return raw arrays of plain data. All the filtering,
- * grouping, and shaping of what the dashboard actually displays stays in
- * ReportsDashboard.jsx — same boundary as every other repository in this
- * app: this file only owns "what's in the database," not "how it's
- * presented."
- */
-
-// Auto-closing stale shifts during read has been decoupled per Step 1.
-// Shifts are now classified on-the-fly using getShiftStatus(), preventing
-// uninvited write side-effects when opening Reports.
-
-/**
- * `shifts` and `attendance` are the only two collections in this app that
- * grow without limit — one document per clock-in, per person, per day,
- * forever. Everything else is bounded by the size of the school. Reading
- * them whole was fine in month one and gets steadily more expensive every
- * month after, so both are now read through a date window.
- *
- * `since` is an ISO date string (or null for "everything"). It compares
- * against `clockIn` / `timestamp`, which are stored as ISO strings —
- * lexicographic order matches chronological order for that format, so a
- * plain >= works without touching the schema.
+ * All direct Firestore reads for the Reports domain live here.
  */
 
 export async function fetchStaffShifts(isAdminView, since = null) {
@@ -38,10 +11,6 @@ export async function fetchStaffShifts(isAdminView, since = null) {
   if (!isAdminView) filters.push(where("userId", "==", auth.currentUser?.uid));
   if (since) filters.push(where("clockIn", ">=", since));
 
-  // Still-open shifts are fetched separately and WITHOUT the date window.
-  // An unclosed shift from before the window would otherwise never be seen
-  // by the auto-close pass below and would stay open forever. There are
-  // only ever a handful of these, so it's a cheap extra query.
   const openFilters = [where("clockOut", "==", null)];
   if (!isAdminView) openFilters.push(where("userId", "==", auth.currentUser?.uid));
 
@@ -54,21 +23,75 @@ export async function fetchStaffShifts(isAdminView, since = null) {
   [...shiftsSnap.docs, ...openSnap.docs].forEach(d => byId.set(d.id, d));
   const shiftDocs = [...byId.values()];
 
-  const existingUserIds = new Set();
+  const existingUsersMap = new Map();
 
   if (isAdminView) {
     const usersSnap = await getDocs(collection(db, "users"));
-    usersSnap.docs.forEach(userDoc => existingUserIds.add(userDoc.id));
+    usersSnap.docs.forEach(u => existingUsersMap.set(u.id, { id: u.id, ...u.data() }));
   } else if (auth.currentUser?.uid) {
     const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
-    if (userDoc.exists()) existingUserIds.add(userDoc.id);
+    if (userDoc.exists()) existingUsersMap.set(userDoc.id, { id: userDoc.id, ...userDoc.data() });
+  }
+
+  // Fetch leaves if admin or user
+  let leaves = [];
+  try {
+    const leaveQuery = isAdminView
+      ? collection(db, "staffLeave")
+      : query(collection(db, "staffLeave"), where("userId", "==", auth.currentUser?.uid));
+    const leaveSnap = await getDocs(leaveQuery);
+    leaves = leaveSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.warn("staffLeave query error (ignored):", err);
   }
 
   const raw = shiftDocs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .filter(shift => existingUserIds.has(shift.userId))
+    .map(d => {
+      const data = d.data();
+      const user = existingUsersMap.get(data.userId);
+      return {
+        id: d.id,
+        ...data,
+        branch: user?.branch || data.branch || "Cabang Utama",
+      };
+    })
+    .filter(shift => existingUsersMap.has(shift.userId))
     .sort((a, b) => (b.clockIn || "").localeCompare(a.clockIn || ""));
-  return raw;
+
+  const staffMembers = Array.from(existingUsersMap.values()).filter(
+    u => u.role && u.role !== "student"
+  );
+
+  return { shifts: raw, staffMembers, leaves };
+}
+
+export async function fetchTodayScansData(sinceWitaIso, isAdminView, isFrontOffice) {
+  const attendanceQuery = query(
+    collection(db, "attendance"),
+    where("timestamp", ">=", sinceWitaIso)
+  );
+
+  const classesQuery = isAdminView || isFrontOffice
+    ? collection(db, "classes")
+    : query(collection(db, "classes"), where("instructorId", "==", auth.currentUser?.uid));
+
+  const usersQuery = isAdminView
+    ? collection(db, "users")
+    : query(collection(db, "users"), where("role", "in", isFrontOffice ? ["student", "instructor"] : ["student"]));
+
+  const [attendanceSnap, classesSnap, usersSnap] = await Promise.all([
+    getDocs(attendanceQuery),
+    getDocs(classesQuery),
+    getDocs(usersQuery),
+  ]);
+
+  return {
+    scans: attendanceSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    classes: classesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    students: usersSnap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(u => u.role === "student"),
+  };
 }
 
 export async function fetchStudentProgressData(isAdminView, isFrontOffice, since = null) {
@@ -78,11 +101,6 @@ export async function fetchStudentProgressData(isAdminView, isFrontOffice, since
   const progressQuery = isAdminView || isFrontOffice
     ? collection(db, "progressReports")
     : query(collection(db, "progressReports"), where("instructorId", "==", auth.currentUser?.uid));
-  // Admin can read the full users collection unfiltered (their role
-  // grants that outright). An instructor can only read documents where
-  // role == "student" — but Firestore requires the QUERY itself to carry
-  // that same filter, or it rejects the whole request rather than
-  // silently returning a partial result.
   const usersQuery = isAdminView
     ? collection(db, "users")
     : query(collection(db, "users"), where("role", "in", isFrontOffice ? ["student", "instructor"] : ["student"]));
@@ -104,10 +122,23 @@ export async function fetchStudentProgressData(isAdminView, isFrontOffice, since
   };
 }
 
+export async function fetchAdmissionsReportData(since = null) {
+  const appQuery = since
+    ? query(collection(db, "applications"), where("submittedAt", ">=", since))
+    : collection(db, "applications");
+
+  const [appsSnap, classesSnap] = await Promise.all([
+    getDocs(appQuery),
+    getDocs(collection(db, "classes")),
+  ]);
+
+  return {
+    applications: appsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    classes: classesSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+  };
+}
+
 export async function fetchInstructorAnalyticsData(isAdminView, uid) {
-  // Admin sees every instructor's classes and shifts. An instructor
-  // viewing their own analytics only ever fetches their own — there's no
-  // reason (or permission) for them to see colleagues'.
   const classesQuery = isAdminView
     ? collection(db, "classes")
     : query(collection(db, "classes"), where("instructorId", "==", uid));
@@ -125,8 +156,6 @@ export async function fetchInstructorAnalyticsData(isAdminView, uid) {
     const usersSnap = await getDocs(query(collection(db, "users"), where("role", "==", "instructor")));
     instructors = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   } else {
-    // Non-admins can't query for OTHER instructors' profiles at all —
-    // only their own doc is readable. That's all this view needs anyway.
     const selfDoc = await getDoc(doc(db, "users", uid));
     instructors = selfDoc.exists() ? [{ id: selfDoc.id, ...selfDoc.data() }] : [];
   }

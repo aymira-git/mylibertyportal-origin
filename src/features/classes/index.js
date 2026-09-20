@@ -8,3 +8,4 @@ export { default as TransferModal } from "./TransferModal";
 export { default as EnrollModal } from "./EnrollModal";
 export { default as BatchOutreachPanel } from "./BatchOutreachPanel";
 export * from "./scheduleConflict";
+export * from "./batchAvailability";

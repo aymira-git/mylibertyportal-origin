@@ -5,12 +5,20 @@ import { AIAssistant, DashboardShell, WelcomeBanner } from "../shared";
 import { UserPlus, GraduationCap, BookOpen, AlertCircle, ArrowRight } from "lucide-react";
 import { ReportsDashboard } from "../reports";
 import { StudentApplications, UserForm, StudentRoster, BadgeModal } from "../students";
-import { AttendanceManager } from "../attendance";
+import { KioskModal, KioskSidebarButton } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { StaffDirectory, InvitesPanel, TasksPanel } from "../staff";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [kioskOpen, setKioskOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return new URLSearchParams(window.location.search).get("action") === "attendance";
+    } catch {
+      return false;
+    }
+  });
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -166,11 +174,6 @@ export default function AdminDashboard() {
       ),
     },
     {
-      id: "kiosk",
-      label: "Attendance",
-      component: <AttendanceManager users={users} instructors={instructors} />,
-    },
-    {
       id: "directory",
       label: "Staff",
       component: (
@@ -227,7 +230,21 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-5 bg-[#f0f2f5] rounded-2xl min-h-[500px]">
-      <DashboardShell tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} title="Admin Panel" />
+      <DashboardShell
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        title="Admin Panel"
+        extraSidebarContent={<KioskSidebarButton onClick={() => setKioskOpen(true)} label="Attendance Kiosk" />}
+      />
+
+      {/* Standalone Full-Screen Kiosk Station */}
+      <KioskModal
+        isOpen={kioskOpen}
+        onClose={() => setKioskOpen(false)}
+        title="Campus Attendance Scanner"
+        studentsOnly={false}
+      />
 
       {/* ID Badge Modal */}
       <BadgeModal

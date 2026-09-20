@@ -1,11 +1,20 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { auth } from "../../firebase";
-import { computeMonthlyPunctuality, getShiftStatus } from "../attendance";
-import { exportTableCSV, Pagination, usePagination } from "../shared";
+import {
+  computeMonthlyPunctuality,
+  getShiftStatus,
+  getTodaysClasses,
+  ShiftAdjustmentModal,
+  StaffLeaveModal,
+} from "../attendance";
+import { getBatchAvailability } from "../classes";
+import { exportTableCSV, Pagination, usePagination, useToast } from "../shared";
 import {
   fetchStaffShifts,
+  fetchTodayScansData,
   fetchStudentProgressData,
-  fetchInstructorAnalyticsData
+  fetchAdmissionsReportData,
+  fetchInstructorAnalyticsData,
 } from "./reportsRepository";
 import {
   GraduationCap,
@@ -17,7 +26,13 @@ import {
   ChevronDown,
   ChevronRight,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Calendar,
+  CheckCircle2,
+  XCircle,
+  TrendingUp,
+  Users,
+  Edit2,
 } from "lucide-react";
 
 function uniqueClasses(classes) {
@@ -30,34 +45,92 @@ function uniqueClasses(classes) {
   });
 }
 
-export default function ReportsDashboard({ isAdminView = false, isFrontOffice = false }) {
-  const [subTab, setSubTab] = useState(isFrontOffice ? "students" : "staff");
+function getStartOfTodayWitaIso() {
+  const d = new Date();
+  const witaOffsetMs = 480 * 60000;
+  const witaTime = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) + witaOffsetMs);
+  witaTime.setHours(0, 0, 0, 0);
+  return new Date(witaTime.getTime() - witaOffsetMs).toISOString();
+}
+
+function getTodayWitaString() {
+  const d = new Date();
+  const witaOffsetMs = 480 * 60000;
+  const witaDate = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) + witaOffsetMs);
+  return witaDate.toISOString().slice(0, 10);
+}
+
+export default function ReportsDashboard({
+  isAdminView = false,
+  isFrontOffice = false,
+}) {
+  const toast = useToast();
+  const currentUser = auth.currentUser;
+  const isActualAdmin = isAdminView && !isFrontOffice;
+
+  // Default initial subTab
+  const [subTab, setSubTab] = useState(isFrontOffice || !isAdminView ? "today" : "staff");
+
+  // Shared Horizon Range (0 = all, or days)
+  const [rangeDays, setRangeDays] = useState(30);
+  const rangeToSince = (days) => (days === 0 ? null : new Date(Date.now() - days * 86400000).toISOString());
+
+  // Branch filter
+  const [branchFilter, setBranchFilter] = useState("all");
+
+  // ─── Sub-Tab 1: Today's Check-ins ──────────────────────────────────────────
+  const [todayScans, setTodayScans] = useState([]);
+  const [todayClasses, setTodayClasses] = useState([]);
+  const [allStudentsList, setAllStudentsList] = useState([]);
+  const [todayLoading, setTodayLoading] = useState(true);
+  const [todayFilter, setTodayFilter] = useState("all"); // "all" | "checked_in" | "missing"
+  const [todaySearch, setTodaySearch] = useState("");
+
+  const fetchTodayScans = useCallback(async () => {
+    setTodayLoading(true);
+    try {
+      const startIso = getStartOfTodayWitaIso();
+      const data = await fetchTodayScansData(startIso, isAdminView, isFrontOffice);
+      setTodayScans(data.scans || []);
+      setTodayClasses(uniqueClasses(data.classes || []));
+      setAllStudentsList(data.students || []);
+    } catch (err) {
+      console.error("fetchTodayScans error:", err);
+      toast("Error loading today's scans: " + err.message, "error");
+    } finally {
+      setTodayLoading(false);
+    }
+  }, [isAdminView, isFrontOffice, toast]);
+
+  // ─── Sub-Tab 2: Staff Duty Logs ────────────────────────────────────────────
   const [shifts, setShifts] = useState([]);
+  const [staffMembers, setStaffMembers] = useState([]);
+  const [shiftsLoading, setShiftsLoading] = useState(true);
+  const [staffSearch, setStaffSearch] = useState("");
+  const [editingShift, setEditingShift] = useState(null);
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+
+  const fetchShifts = useCallback(async () => {
+    setShiftsLoading(true);
+    try {
+      const data = await fetchStaffShifts(isAdminView, rangeToSince(rangeDays));
+      setShifts(data.shifts || []);
+      setStaffMembers(data.staffMembers || []);
+    } catch (err) {
+      console.error("fetchShifts error:", err);
+    } finally {
+      setShiftsLoading(false);
+    }
+  }, [isAdminView, rangeDays]);
+
+  // ─── Sub-Tab 3: Learner Progress & Attendance ──────────────────────────────
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("all");
+  const [healthFilter, setHealthFilter] = useState("all"); // "all" | "at_risk" | "regular"
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
-  const [analytics, setAnalytics] = useState([]);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
-  const [rangeDays, setRangeDays] = useState(90);
-
   const [studentSearch, setStudentSearch] = useState("");
-  const [staffSearch, setStaffSearch] = useState("");
-
-  const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-
-  const rangeToSince = (days) => (days === 0 ? null : new Date(Date.now() - days * 86400000).toISOString());
-
-  const fetchShifts = useCallback(async () => {
-    try {
-      setShifts(await fetchStaffShifts(isAdminView, rangeToSince(rangeDays)));
-    } catch (err) {
-      console.error(err);
-    }
-  }, [isAdminView, rangeDays]);
 
   const fetchStudentProgress = useCallback(async () => {
     setStudentsLoading(true);
@@ -83,6 +156,8 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
         ? null
         : new Set(fetchedClasses.flatMap((c) => c.studentIds || []));
 
+      const fourteenDaysAgo = Date.now() - 14 * 86400000;
+
       const studentList = Array.from(allStudentIds)
         .filter((id) => {
           if (usersById[id]) {
@@ -92,7 +167,6 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
         })
         .map((id) => {
           const u = usersById[id];
-
           const enrolledClasses = fetchedClasses
             .filter((c) => (c.studentIds || []).includes(id))
             .map((c) => ({
@@ -113,11 +187,23 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
 
           const capturedName = history[0]?.displayName || assessments[0]?.studentName || "Former Student";
           const displayName = u ? u.displayName : `${capturedName} (Archived)`;
+          const branch = u?.branch || "Cabang Utama";
+          const joinedDate = u?.joinedDate ? new Date(u.joinedDate).getTime() : 0;
+          const lastCheckInTime = history[0]?.timestamp ? new Date(history[0].timestamp).getTime() : 0;
+
+          // At-Risk determination: Active student, joined > 14 days ago, and no check-in in last 14 days
+          const isActive = u && (u.status || "active") === "active";
+          const joinedOver14Days = joinedDate > 0 ? joinedDate < fourteenDaysAgo : true;
+          const inactiveLast14Days = lastCheckInTime === 0 || lastCheckInTime < fourteenDaysAgo;
+          const isAtRisk = isActive && joinedOver14Days && inactiveLast14Days;
 
           return {
             id,
             displayName,
+            branch,
             isArchived: !u,
+            status: u?.status || "active",
+            isAtRisk,
             classes: enrolledClasses,
             attendanceCount: history.length,
             lastCheckIn: history[0]?.timestamp || null,
@@ -135,6 +221,30 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
       setStudentsLoading(false);
     }
   }, [isAdminView, isFrontOffice, selectedClassId, rangeDays]);
+
+  // ─── Sub-Tab 4: Admissions & Lead Velocity ─────────────────────────────────
+  const [admissionsData, setAdmissionsData] = useState({ applications: [], classes: [] });
+  const [admissionsLoading, setAdmissionsLoading] = useState(true);
+  const [admissionsSearch, setAdmissionsSearch] = useState("");
+
+  const fetchAdmissions = useCallback(async () => {
+    setAdmissionsLoading(true);
+    try {
+      const data = await fetchAdmissionsReportData(rangeToSince(rangeDays));
+      setAdmissionsData(data);
+    } catch (err) {
+      console.error("fetchAdmissions error:", err);
+    } finally {
+      setAdmissionsLoading(false);
+    }
+  }, [rangeDays]);
+
+  // ─── Sub-Tab 5: Instructor Punctuality ─────────────────────────────────────
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [analytics, setAnalytics] = useState([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   const fetchInstructorAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
@@ -166,162 +276,284 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
     }
   }, [isAdminView, selectedYear, selectedMonth]);
 
+  // Trigger fetches on subTab change
   useEffect(() => {
     let active = true;
     (async () => {
+      if (subTab === "today" && active) await fetchTodayScans();
       if (subTab === "staff" && active) await fetchShifts();
       if (subTab === "students" && active) await fetchStudentProgress();
+      if (subTab === "admissions" && active) await fetchAdmissions();
       if (subTab === "instructors" && active) await fetchInstructorAnalytics();
     })();
     return () => {
       active = false;
     };
-  }, [subTab, fetchShifts, fetchStudentProgress, fetchInstructorAnalytics]);
+  }, [subTab, fetchTodayScans, fetchShifts, fetchStudentProgress, fetchAdmissions, fetchInstructorAnalytics]);
 
-  // Filtered lists for search
+  // ─── Calculations for Today's Check-ins ────────────────────────────────────
+  const todayComputed = useMemo(() => {
+    // Classes scheduled today
+    const scheduledToday = getTodaysClasses(todayClasses);
+    const expectedStudentIds = new Set(scheduledToday.flatMap((c) => c.studentIds || []));
+    const scannedUserIds = new Set(todayScans.map((s) => s.userId));
+
+    // Active expected students
+    const expectedStudents = allStudentsList.filter((s) => {
+      if ((s.status || "active") !== "active") return false;
+      return expectedStudentIds.has(s.id);
+    });
+
+    const checkedInStudents = expectedStudents.filter((s) => scannedUserIds.has(s.id));
+    const missingStudents = expectedStudents.filter((s) => !scannedUserIds.has(s.id));
+
+    return {
+      scheduledClassesCount: scheduledToday.length,
+      expectedCount: expectedStudents.length,
+      checkedInCount: checkedInStudents.length,
+      missingCount: missingStudents.length,
+      expectedStudents,
+      checkedInStudents,
+      missingStudents,
+    };
+  }, [todayClasses, todayScans, allStudentsList]);
+
+  // Filtered Today List
+  const filteredTodayList = useMemo(() => {
+    let list;
+    if (todayFilter === "checked_in") {
+      list = todayComputed.checkedInStudents;
+    } else if (todayFilter === "missing") {
+      list = todayComputed.missingStudents;
+    } else {
+      list = todayComputed.expectedStudents;
+    }
+
+    if (branchFilter !== "all") {
+      list = list.filter((s) => (s.branch || "Cabang Utama") === branchFilter);
+    }
+
+    if (todaySearch.trim()) {
+      const q = todaySearch.toLowerCase();
+      list = list.filter((s) => (s.displayName || "").toLowerCase().includes(q));
+    }
+
+    return list;
+  }, [todayComputed, todayFilter, branchFilter, todaySearch]);
+
+  // ─── Filtered Shifts List ──────────────────────────────────────────────────
   const filteredShifts = useMemo(() => {
-    if (!staffSearch.trim()) return shifts;
-    const q = staffSearch.toLowerCase();
-    return shifts.filter(
-      (s) =>
-        (s.displayName || "").toLowerCase().includes(q) ||
-        (s.role || "").toLowerCase().includes(q) ||
-        (s.className || "").toLowerCase().includes(q)
-    );
-  }, [shifts, staffSearch]);
+    let list = shifts;
+    if (branchFilter !== "all") {
+      list = list.filter((s) => (s.branch || "Cabang Utama") === branchFilter);
+    }
+    if (staffSearch.trim()) {
+      const q = staffSearch.toLowerCase();
+      list = list.filter(
+        (s) =>
+          (s.displayName || "").toLowerCase().includes(q) ||
+          (s.role || "").toLowerCase().includes(q) ||
+          (s.className || "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [shifts, branchFilter, staffSearch]);
 
   const shiftPage = usePagination(filteredShifts, 20);
 
+  // ─── Filtered Students List ────────────────────────────────────────────────
   const filteredStudents = useMemo(() => {
-    if (!studentSearch.trim()) return students;
-    const q = studentSearch.toLowerCase();
-    return students.filter(
-      (s) =>
-        (s.displayName || "").toLowerCase().includes(q) ||
-        s.classes.some((c) => c.className.toLowerCase().includes(q))
-    );
-  }, [students, studentSearch]);
+    let list = students;
+    if (branchFilter !== "all") {
+      list = list.filter((s) => s.branch === branchFilter);
+    }
+    if (healthFilter === "at_risk") {
+      list = list.filter((s) => s.isAtRisk);
+    } else if (healthFilter === "regular") {
+      list = list.filter((s) => !s.isAtRisk && !s.isArchived);
+    }
+    if (studentSearch.trim()) {
+      const q = studentSearch.toLowerCase();
+      list = list.filter(
+        (s) =>
+          (s.displayName || "").toLowerCase().includes(q) ||
+          s.classes.some((c) => c.className.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [students, branchFilter, healthFilter, studentSearch]);
 
-  // Aggregate KPI summary metrics
-  const kpiData = useMemo(() => {
-    if (subTab === "staff") {
-      const activeCount = shifts.filter((s) => getShiftStatus(s) === "on_duty").length;
-      const autoClosedCount = shifts.filter((s) => s.autoClosed).length;
-      return {
-        metric1: { label: "Total Shift Logs", value: shifts.length, sub: "In selected period" },
-        metric2: { label: "Currently On Duty", value: activeCount, sub: "Live clocked-in staff" },
-        metric3: { label: "Auto-Closed Logs", value: autoClosedCount, sub: "System auto-terminations" },
-      };
-    }
-    if (subTab === "students") {
-      const totalCheckIns = students.reduce((sum, s) => sum + s.attendanceCount, 0);
-      const totalAssessments = students.reduce((sum, s) => sum + s.assessments.length, 0);
-      return {
-        metric1: { label: "Tracked Learners", value: students.length, sub: "All statuses / records" },
-        metric2: { label: "Session Check-Ins", value: totalCheckIns, sub: "Cumulative attendances" },
-        metric3: { label: "Official Reports", value: totalAssessments, sub: "Graded evaluations" },
-      };
-    }
-    if (subTab === "instructors") {
-      const validRates = analytics.filter((a) => a.punctualityRate !== null);
-      const avgRate = validRates.length > 0
-        ? Math.round(validRates.reduce((acc, a) => acc + a.punctualityRate, 0) / validRates.length)
-        : null;
-      const totalAttended = analytics.reduce((acc, a) => acc + a.sessionsAttended, 0);
-      return {
-        metric1: { label: "Teaching Staff", value: analytics.length, sub: "Active instructors" },
-        metric2: { label: "Avg Punctuality", value: avgRate !== null ? `${avgRate}%` : "N/A", sub: "15-min policy benchmark" },
-        metric3: { label: "Delivered Sessions", value: totalAttended, sub: "Verified teaching shifts" },
-      };
-    }
+  // ─── Admissions Calculations ───────────────────────────────────────────────
+  const admissionsCalculated = useMemo(() => {
+    const apps = admissionsData.applications || [];
+    const cls = admissionsData.classes || [];
+
+    const pending = apps.filter((a) => (a.status || "pending") === "pending").length;
+    const approved = apps.filter((a) => a.status === "approved").length;
+    const rejected = apps.filter((a) => a.status === "rejected").length;
+
+    // Enrolled: approved applications whose studentId or email is enrolled in any class
+    const enrolledIds = new Set(cls.flatMap((c) => c.studentIds || []));
+    const enrolled = apps.filter((a) => a.status === "approved" && a.studentId && enrolledIds.has(a.studentId)).length;
+
+    // Total seat capacity & availability
+    let totalCapacity = 0;
+    let totalAvailableSeats = 0;
+    cls.forEach((c) => {
+      const avail = getBatchAvailability(c);
+      totalCapacity += avail.capacity;
+      totalAvailableSeats += avail.seatsAvailable;
+    });
+
+    const seatOccupancy = totalCapacity > 0
+      ? Math.round(((totalCapacity - totalAvailableSeats) / totalCapacity) * 100)
+      : 0;
+
     return {
-      metric1: { label: "Records", value: 0, sub: "" },
-      metric2: { label: "Rate", value: "-", sub: "" },
-      metric3: { label: "Verified", value: 0, sub: "" },
+      totalInquiries: apps.length,
+      pending,
+      approved,
+      rejected,
+      enrolled,
+      seatOccupancy,
+      totalCapacity,
+      totalAvailableSeats,
     };
-  }, [subTab, shifts, students, analytics]);
+  }, [admissionsData]);
 
+  // ─── CSV Export Functionality ──────────────────────────────────────────────
   const exportCSV = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    if (subTab === "staff") {
-      const headers = ["Name", "Role", "Class", "Clock In", "Clock Out", "Status"];
-      const rows = shifts.map((s) => [
+    const todayStr = getTodayWitaString();
+
+    if (subTab === "today") {
+      const headers = ["Student Name", "Status Today", "Campus Branch", "Scan Timestamp", "Method"];
+      const scannedMap = new Map(todayScans.map((s) => [s.userId, s]));
+      const rows = filteredTodayList.map((s) => {
+        const scan = scannedMap.get(s.id);
+        return [
+          s.displayName,
+          scan ? "Checked In" : "Missing / Not In",
+          s.branch || "Cabang Utama",
+          scan?.timestamp ? new Date(scan.timestamp).toLocaleTimeString() : "—",
+          scan?.method || "—",
+        ];
+      });
+      exportTableCSV(`MYLIBERTY-Todays-Checkins-${todayStr}`, headers, rows);
+    } else if (subTab === "staff") {
+      const headers = ["Staff Name", "Role", "Campus Branch", "Class", "Clock In", "Clock Out", "Derived Status", "Auto-Closed"];
+      const rows = filteredShifts.map((s) => [
         s.displayName,
         s.role,
+        s.branch || "Cabang Utama",
         s.className || "",
         s.clockIn ? new Date(s.clockIn).toLocaleString() : "",
         s.clockOut ? new Date(s.clockOut).toLocaleString() : "",
-        s.autoClosed ? "Auto-Closed" : s.clockOut ? "Clocked Out" : "Active",
+        getShiftStatus(s),
+        s.autoClosed ? "YES" : "NO",
       ]);
-      exportTableCSV(`staff-attendance-${today}`, headers, rows);
+      exportTableCSV(`MYLIBERTY-Staff-Attendance-${todayStr}`, headers, rows);
     } else if (subTab === "students") {
-      const headers = ["Name", "Classes", "Check-ins", "Last Check-in", "Assessments"];
-      const rows = students.map((s) => [
+      const headers = ["Learner Name", "Campus Branch", "Status", "Drop-out Alert", "Classes", "Check-ins", "Last Check-in", "Evaluations"];
+      const rows = filteredStudents.map((s) => [
         s.displayName,
+        s.branch,
+        s.status,
+        s.isAtRisk ? "AT RISK (14d+ Inactive)" : "Normal",
         s.classes.map((c) => c.className).join("; "),
         s.attendanceCount,
-        s.lastCheckIn ? new Date(s.lastCheckIn).toLocaleDateString() : "",
+        s.lastCheckIn ? new Date(s.lastCheckIn).toLocaleDateString() : "Never",
         s.assessments.length,
       ]);
-      exportTableCSV(`student-progress-${today}`, headers, rows);
+      exportTableCSV(`MYLIBERTY-Learner-Progress-${todayStr}`, headers, rows);
+    } else if (subTab === "admissions") {
+      const headers = ["Applicant Name", "Program Applied", "Campus Branch", "Status", "Submission Date"];
+      const rows = (admissionsData.applications || []).map((a) => [
+        a.fullName || a.studentName || "Prospective Student",
+        a.program || a.courseType || "General English",
+        a.branch || "Cabang Utama",
+        a.status || "pending",
+        a.submittedAt ? new Date(a.submittedAt).toLocaleDateString() : "",
+      ]);
+      exportTableCSV(`MYLIBERTY-Admissions-Analytics-${todayStr}`, headers, rows);
     } else if (subTab === "instructors") {
       const monthNames = [
         "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
+        "July", "August", "September", "October", "November", "December",
       ];
       const headers = [
-        "Instructor", "Punctuality %", "Scheduled", "Attended", "Late", "Absent", "Avg Min Late", "Auto-Closed", "Data Quality"
+        "Instructor", "Punctuality %", "Scheduled", "Attended", "Late Arrivals", "Absences", "Avg Tardiness (min)", "Data Quality",
       ];
       const rows = analytics.map((a) => [
         a.instructorName,
-        a.punctualityRate === null ? "N/A" : a.punctualityRate,
+        a.punctualityRate === null ? "N/A" : `${a.punctualityRate}%`,
         a.sessionsScheduled,
         a.sessionsAttended,
         a.late,
         a.absent,
         a.avgMinutesLate,
-        a.autoClosedCount,
-        a.limitedAccuracy ? "Limited accuracy" : "Measured",
+        a.limitedAccuracy ? "Partial (Legacy)" : "Verified",
       ]);
-      exportTableCSV(`instructor-analytics-${monthNames[selectedMonth]}-${selectedYear}`, headers, rows);
+      exportTableCSV(`MYLIBERTY-Instructor-Punctuality-${monthNames[selectedMonth]}-${selectedYear}`, headers, rows);
     }
   };
 
   return (
-    <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200/90 space-y-6 text-sm max-w-5xl mx-auto shadow-sm">
-      {/* ── Sub-Tab Switcher & Action Controls ── */}
+    <div className="bg-white p-5 sm:p-7 rounded-3xl border border-slate-200/90 space-y-6 text-sm max-w-6xl mx-auto shadow-sm">
+      {/* ── Cockpit Header & Export ── */}
       <div className="space-y-4 border-b border-slate-100 pb-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="font-extrabold text-slate-900 text-xl tracking-tight">Institutional Reports & Analytics</h3>
-            <p className="text-xs text-slate-500 font-medium">Audit logs, attendance metrics, and instructional punctuality records</p>
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-slate-900 text-xl tracking-tight">
+                Institutional Reports &amp; Analytics
+              </h3>
+              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-[#1a3a8f] font-extrabold text-[10px] tracking-wide">
+                WITA (UTC+8)
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              MYLIBERTY International English School — Operational audit logs &amp; performance metrics
+            </p>
           </div>
 
           <button
             onClick={exportCSV}
-            className="inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-xs transition shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-xs transition shrink-0 active:scale-95 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export CSV Dataset</span>
           </button>
         </div>
 
-        {/* Pill Nav */}
-        <div className="flex flex-wrap gap-2">
-          {!isFrontOffice && (
-            <button
-              onClick={() => setSubTab("staff")}
-              className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition flex items-center gap-2 ${
-                subTab === "staff"
-                  ? "bg-[#1a3a8f] text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>Staff Duty Logs</span>
-            </button>
-          )}
+        {/* Navigation Pills */}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {/* Sub-Tab: Today's Check-ins */}
+          <button
+            onClick={() => setSubTab("today")}
+            className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition flex items-center gap-2 ${
+              subTab === "today"
+                ? "bg-[#1a3a8f] text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Today&apos;s Check-ins</span>
+          </button>
 
+          {/* Sub-Tab: Staff Duty Logs */}
+          <button
+            onClick={() => setSubTab("staff")}
+            className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition flex items-center gap-2 ${
+              subTab === "staff"
+                ? "bg-[#1a3a8f] text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>{isActualAdmin || isAdminView ? "Staff Duty Logs" : "My Duty Log"}</span>
+          </button>
+
+          {/* Sub-Tab: Learner Progress & Attendance */}
           <button
             onClick={() => setSubTab("students")}
             className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition flex items-center gap-2 ${
@@ -331,9 +563,25 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
             }`}
           >
             <GraduationCap className="w-3.5 h-3.5" />
-            <span>Learner Progress & Attendance</span>
+            <span>Learner Progress</span>
           </button>
 
+          {/* Sub-Tab: Admissions Velocity (Admin, Manager, Front Office) */}
+          {(isAdminView || isFrontOffice) && (
+            <button
+              onClick={() => setSubTab("admissions")}
+              className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition flex items-center gap-2 ${
+                subTab === "admissions"
+                  ? "bg-[#1a3a8f] text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>Admissions &amp; Leads</span>
+            </button>
+          )}
+
+          {/* Sub-Tab: Instructor Punctuality (Admin, Manager, Instructor) */}
           {!isFrontOffice && (
             <button
               onClick={() => setSubTab("instructors")}
@@ -344,13 +592,49 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
               }`}
             >
               <UserCheck className="w-3.5 h-3.5" />
-              <span>Instructor Punctuality</span>
+              <span>{isActualAdmin || isAdminView ? "Instructor Punctuality" : "My Punctuality"}</span>
             </button>
           )}
         </div>
 
-        {/* Filter Controls Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+        {/* Global Controls & Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
+          {/* Branch Filter */}
+          <div className="space-y-1">
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Campus Branch
+            </label>
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full p-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+            >
+              <option value="all">All Campuses</option>
+              <option value="Cabang Utama">Cabang Utama</option>
+            </select>
+          </div>
+
+          {/* Date Horizon Presets (for staff, students, admissions) */}
+          {subTab !== "today" && subTab !== "instructors" && (
+            <div className="space-y-1">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Historical Horizon
+              </label>
+              <select
+                value={rangeDays}
+                onChange={(e) => setRangeDays(Number(e.target.value))}
+                className="w-full p-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+              >
+                <option value={7}>Last 7 Days</option>
+                <option value={30}>Last 30 Calendar Days</option>
+                <option value={90}>Last 90 Calendar Days</option>
+                <option value={365}>Last 12 Months</option>
+                <option value={0}>All Recorded History</option>
+              </select>
+            </div>
+          )}
+
+          {/* Cohort filter for students */}
           {subTab === "students" && (
             <div className="space-y-1">
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
@@ -359,7 +643,7 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
               <select
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+                className="w-full p-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
               >
                 <option value="all">All Academic Cohorts</option>
                 {classes.map((cls) => (
@@ -371,38 +655,39 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
             </div>
           )}
 
-          {subTab !== "instructors" && (
+          {/* Health Filter for students */}
+          {subTab === "students" && (
             <div className="space-y-1">
               <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                Historical Horizon
+                Attendance Health
               </label>
               <select
-                value={rangeDays}
-                onChange={(e) => setRangeDays(Number(e.target.value))}
-                className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+                value={healthFilter}
+                onChange={(e) => setHealthFilter(e.target.value)}
+                className="w-full p-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
               >
-                <option value={30}>Last 30 Calendar Days</option>
-                <option value={90}>Last 90 Calendar Days</option>
-                <option value={365}>Last 12 Months</option>
-                <option value={0}>All Recorded History</option>
+                <option value="all">All Learners</option>
+                <option value="at_risk">🚨 At Risk (14+ Days Inactive)</option>
+                <option value="regular">Regular Attendees</option>
               </select>
             </div>
           )}
 
+          {/* Monthly / Yearly for Instructors */}
           {subTab === "instructors" && (
             <>
               <div className="space-y-1">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  Reporting Month
+                  Audit Month
                 </label>
                 <select
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+                  className="w-full p-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
                 >
                   {[
                     "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"
+                    "July", "August", "September", "October", "November", "December",
                   ].map((m, i) => (
                     <option key={i} value={i}>
                       {m}
@@ -415,152 +700,274 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   Academic Year
                 </label>
-                <div className="flex gap-2">
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(Number(e.target.value))}
-                    className="flex-1 p-2.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
-                  >
-                    {[now.getFullYear(), now.getFullYear() - 1].map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={fetchInstructorAnalytics}
-                    disabled={analyticsLoading}
-                    className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 transition"
-                    title="Refresh data"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${analyticsLoading ? "animate-spin text-[#1a3a8f]" : ""}`} />
-                  </button>
-                </div>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="w-full p-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+                >
+                  {[now.getFullYear(), now.getFullYear() - 1].map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
               </div>
             </>
           )}
-
-          {/* Search box for Staff / Student */}
-          {subTab === "staff" && (
-            <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                Filter Staff
-              </label>
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search name, role, class..."
-                  value={staffSearch}
-                  onChange={(e) => setStaffSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
-                />
-              </div>
-            </div>
-          )}
-
-          {subTab === "students" && (
-            <div className="space-y-1">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                Filter Students
-              </label>
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search by student name..."
-                  value={studentSearch}
-                  onChange={(e) => setStudentSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
-                />
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* ── Metric Summary Bento Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{kpiData.metric1.label}</p>
-          <p className="text-2xl font-black text-[#1a3a8f]">{kpiData.metric1.value}</p>
-          <p className="text-[10px] text-slate-500 font-medium">{kpiData.metric1.sub}</p>
-        </div>
-        <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{kpiData.metric2.label}</p>
-          <p className="text-2xl font-black text-slate-900">{kpiData.metric2.value}</p>
-          <p className="text-[10px] text-slate-500 font-medium">{kpiData.metric2.sub}</p>
-        </div>
-        <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{kpiData.metric3.label}</p>
-          <p className="text-2xl font-black text-slate-900">{kpiData.metric3.value}</p>
-          <p className="text-[10px] text-slate-500 font-medium">{kpiData.metric3.sub}</p>
-        </div>
-      </div>
+      {/* ── SUB-TAB 1: TODAY'S CHECK-INS ─────────────────────────────────────── */}
+      {subTab === "today" && (
+        <div className="space-y-4">
+          {/* Summary Bento */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#1a3a8f]">
+                Expected Today
+              </p>
+              <p className="text-2xl font-black text-slate-900 mt-1">{todayComputed.expectedCount}</p>
+              <p className="text-[10px] text-slate-500 font-medium">In {todayComputed.scheduledClassesCount} classes</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                Checked In
+              </p>
+              <p className="text-2xl font-black text-emerald-950 mt-1">{todayComputed.checkedInCount}</p>
+              <p className="text-[10px] text-emerald-700 font-medium">Recorded at kiosk</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-800">
+                Not Yet In
+              </p>
+              <p className="text-2xl font-black text-rose-950 mt-1">{todayComputed.missingCount}</p>
+              <p className="text-[10px] text-rose-700 font-medium">Pending arrival</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Arrival Rate
+              </p>
+              <p className="text-2xl font-black text-slate-800 mt-1">
+                {todayComputed.expectedCount > 0
+                  ? `${Math.round((todayComputed.checkedInCount / todayComputed.expectedCount) * 100)}%`
+                  : "N/A"}
+              </p>
+              <p className="text-[10px] text-slate-400 font-medium">Daily attendance</p>
+            </div>
+          </div>
 
-      {/* ── SubTab 1: Staff Shifts ── */}
+          {/* Sub-Filters and Search */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setTodayFilter("all")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  todayFilter === "all" ? "bg-[#1a3a8f] text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                All Expected ({todayComputed.expectedCount})
+              </button>
+              <button
+                onClick={() => setTodayFilter("checked_in")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  todayFilter === "checked_in" ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Checked In ({todayComputed.checkedInCount})
+              </button>
+              <button
+                onClick={() => setTodayFilter("missing")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  todayFilter === "missing" ? "bg-rose-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Missing ({todayComputed.missingCount})
+              </button>
+            </div>
+
+            <div className="relative flex-1 sm:max-w-xs">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search learner by name..."
+                value={todaySearch}
+                onChange={(e) => setTodaySearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+              />
+            </div>
+          </div>
+
+          {/* List of Today's Expected Students */}
+          {todayLoading ? (
+            <div className="p-12 text-center text-slate-400 text-xs italic flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin text-[#1a3a8f]" />
+              <span>Checking live attendance records for today...</span>
+            </div>
+          ) : filteredTodayList.length === 0 ? (
+            <div className="p-10 text-center text-slate-400 text-xs italic bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+              No learners match your today filter.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+              {filteredTodayList.map((student) => {
+                const scan = todayScans.find((s) => s.userId === student.id);
+                const isCheckedIn = Boolean(scan);
+                return (
+                  <div
+                    key={student.id}
+                    className="p-3.5 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 bg-white hover:border-slate-300 transition shadow-2xs"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                          isCheckedIn ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                        }`}
+                      >
+                        {isCheckedIn ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-extrabold text-slate-900 text-xs truncate">
+                          {student.displayName}
+                        </p>
+                        <p className="text-[11px] text-slate-400 font-medium">
+                          {student.branch || "Cabang Utama"}
+                          {scan && ` · Scanned at ${new Date(scan.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      <span
+                        className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                          isCheckedIn
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            : "bg-rose-50 text-rose-800 border-rose-200"
+                        }`}
+                      >
+                        {isCheckedIn ? "Present" : "Not In Yet"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SUB-TAB 2: STAFF DUTY LOGS ───────────────────────────────────────── */}
       {subTab === "staff" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-[#1a3a8f]" />
-              <span>Staff Clock-In / Clock-Out Ledger</span>
-            </h4>
-            <span className="text-[11px] text-slate-400 font-medium">{filteredShifts.length} Shift records</span>
-          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-[#1a3a8f]" />
+                <span>{isActualAdmin || isAdminView ? "Staff Clock-In / Clock-Out Ledger" : "My Clock-In / Out History"}</span>
+              </h4>
+              <p className="text-[11px] text-slate-400 font-medium">
+                {filteredShifts.length} Shift records in selected horizon
+              </p>
+            </div>
 
-          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-            {shiftPage.pageItems.map((s) => (
-              <div
-                key={s.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-2xl hover:bg-indigo-50/30 transition shadow-2xs"
+            {/* Admin actions: Log leave & Adjust */}
+            {isActualAdmin && (
+              <button
+                onClick={() => setLeaveModalOpen(true)}
+                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-extrabold text-slate-900 text-xs">{s.displayName}</p>
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full capitalize">
-                      {s.role}
-                    </span>
-                    {s.className && (
-                      <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
-                        {s.className}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-400 font-medium mt-1">
-                    Clock-In: {s.clockIn ? new Date(s.clockIn).toLocaleString() : "N/A"}
-                    {s.clockOut && ` · Out: ${new Date(s.clockOut).toLocaleTimeString()}`}
-                  </p>
-                  {s.autoClosed && (
-                    <p className="text-[10px] font-bold text-amber-700 flex items-center gap-1 mt-0.5">
-                      <AlertTriangle className="w-3 h-3 text-amber-600" />
-                      <span>Auto-closed — session exceeded shift window without check-out</span>
-                    </p>
-                  )}
-                </div>
-
-                <div className="self-start sm:self-auto shrink-0">
-                  <span
-                    className={`inline-block px-2.5 py-1 rounded-full font-bold text-[10px] uppercase tracking-wider ${
-                      s.autoClosed
-                        ? "bg-amber-100 text-amber-900 border border-amber-200"
-                        : s.clockOut
-                        ? "bg-slate-200 text-slate-800"
-                        : "bg-emerald-100 text-emerald-900 border border-emerald-200 animate-pulse"
-                    }`}
-                  >
-                    {s.autoClosed ? "Auto-Closed" : s.clockOut ? "Completed" : "Active On Duty"}
-                  </span>
-                </div>
-              </div>
-            ))}
-
-            {filteredShifts.length === 0 && (
-              <div className="p-8 text-center text-slate-400 text-xs italic bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
-                No staff clock-in records match the current filter range.
-              </div>
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Log Staff Leave / Absence</span>
+              </button>
             )}
           </div>
+
+          {/* Search Box */}
+          <div className="relative max-w-sm">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search staff, role, or cohort class..."
+              value={staffSearch}
+              onChange={(e) => setStaffSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+            />
+          </div>
+
+          {shiftsLoading ? (
+            <div className="p-12 text-center text-slate-400 text-xs italic flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin text-[#1a3a8f]" />
+              <span>Loading duty records...</span>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+              {shiftPage.pageItems.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-2xl hover:bg-indigo-50/30 transition shadow-2xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-extrabold text-slate-900 text-xs">{s.displayName}</p>
+                      <span className="text-[10px] font-bold text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full capitalize">
+                        {s.role}
+                      </span>
+                      {s.branch && (
+                        <span className="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                          {s.branch}
+                        </span>
+                      )}
+                      {s.className && (
+                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                          {s.className}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-medium">
+                      Clock-In: {s.clockIn ? new Date(s.clockIn).toLocaleString() : "N/A"}
+                      {s.clockOut && ` · Out: ${new Date(s.clockOut).toLocaleTimeString()}`}
+                    </p>
+                    {s.autoClosed && (
+                      <p className="text-[10px] font-bold text-amber-700 flex items-center gap-1 mt-0.5">
+                        <AlertTriangle className="w-3 h-3 text-amber-600" />
+                        <span>Auto-closed session exceeded shift window</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={`inline-block px-2.5 py-1 rounded-full font-bold text-[10px] uppercase tracking-wider ${
+                        s.autoClosed
+                          ? "bg-amber-100 text-amber-900 border border-amber-200"
+                          : s.clockOut
+                          ? "bg-slate-200 text-slate-800"
+                          : "bg-emerald-100 text-emerald-900 border border-emerald-200 animate-pulse"
+                      }`}
+                    >
+                      {s.autoClosed ? "Auto-Closed" : s.clockOut ? "Completed" : "Active On Duty"}
+                    </span>
+
+                    {/* Admin Shift Adjustment */}
+                    {isActualAdmin && (
+                      <button
+                        onClick={() => setEditingShift(s)}
+                        className="p-1.5 text-slate-400 hover:text-[#1a3a8f] rounded-lg hover:bg-slate-200/60 transition"
+                        title="Adjust / Audit Shift"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {filteredShifts.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs italic bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+                  No staff clock-in records match the current filter range.
+                </div>
+              )}
+            </div>
+          )}
 
           <Pagination
             page={shiftPage.page}
@@ -574,40 +981,66 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
         </div>
       )}
 
-      {/* ── SubTab 2: Student Progress & Attendance ── */}
+      {/* ── SUB-TAB 3: LEARNER PROGRESS & ATTENDANCE ─────────────────────────── */}
       {subTab === "students" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
-              <GraduationCap className="w-4 h-4 text-[#1a3a8f]" />
-              <span>Learner Attendance & Evaluation Archives</span>
-            </h4>
-            <span className="text-[11px] text-slate-400 font-medium">{filteredStudents.length} Students</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+                <GraduationCap className="w-4 h-4 text-[#1a3a8f]" />
+                <span>Learner Attendance, Health &amp; Evaluation Archives</span>
+              </h4>
+              <p className="text-[11px] text-slate-400 font-medium">
+                {filteredStudents.length} Students in registry
+              </p>
+            </div>
+
+            <div className="relative max-w-sm">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by student name..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+              />
+            </div>
           </div>
 
           {studentsLoading ? (
             <div className="p-12 text-center text-slate-400 text-xs italic flex items-center justify-center gap-2">
               <RefreshCw className="w-4 h-4 animate-spin text-[#1a3a8f]" />
-              <span>Querying student registry & progress records...</span>
+              <span>Querying student registry &amp; progress records...</span>
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-xs italic bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
-              No enrolled learners found for the selected criteria.
+              No enrolled learners match your filters.
             </div>
           ) : (
             <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
               {filteredStudents.map((s) => (
                 <div
                   key={s.id}
-                  className="p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl hover:bg-white hover:border-indigo-200 transition shadow-2xs space-y-3"
+                  className={`p-4 rounded-2xl border transition shadow-2xs space-y-3 ${
+                    s.isAtRisk ? "bg-rose-50/40 border-rose-200" : "bg-slate-50/70 border-slate-200/80 hover:bg-white"
+                  }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <p className="font-extrabold text-slate-900 text-sm">{s.displayName}</p>
+                        {s.isAtRisk && (
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-rose-600 text-white shadow-2xs flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            At Risk (14d+ Inactive)
+                          </span>
+                        )}
+                        <span className="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                          {s.branch}
+                        </span>
                         {s.isArchived && (
                           <span className="text-[9px] font-bold text-slate-400 bg-slate-200/80 px-2 py-0.5 rounded-full">
-                            Archived Student
+                            Archived
                           </span>
                         )}
                       </div>
@@ -635,13 +1068,10 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
                       <span className="text-[10px] text-slate-400 font-medium">
                         Last: {s.lastCheckIn ? new Date(s.lastCheckIn).toLocaleDateString() : "Never"}
                       </span>
-                      <span className="text-[11px] font-bold text-indigo-700">
-                        {s.assessments.length} evaluation{s.assessments.length === 1 ? "" : "s"}
-                      </span>
                     </div>
                   </div>
 
-                  {/* Latest Assessment Highlights */}
+                  {/* Most Recent Assessment */}
                   {s.assessments.length > 0 && (
                     <div className="bg-white rounded-xl border border-slate-200/80 p-3 space-y-2">
                       <div className="flex items-center justify-between">
@@ -652,7 +1082,6 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
                           Band: {s.assessments[0].overallScore || "—"} / 100
                         </span>
                       </div>
-
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         <div>
                           <span className="text-[10px] text-slate-400 font-medium">Date</span>
@@ -713,13 +1142,116 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
         </div>
       )}
 
-      {/* ── SubTab 3: Instructor Analytics & Punctuality ── */}
+      {/* ── SUB-TAB 4: ADMISSIONS & LEAD VELOCITY ─────────────────────────────── */}
+      {subTab === "admissions" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#1a3a8f]">Total Inquiries</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">{admissionsCalculated.totalInquiries}</p>
+              <p className="text-[10px] text-slate-500 font-medium">Registrations</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800">Pending Review</p>
+              <p className="text-2xl font-black text-amber-950 mt-1">{admissionsCalculated.pending}</p>
+              <p className="text-[10px] text-amber-700 font-medium">Awaiting call</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Approved</p>
+              <p className="text-2xl font-black text-emerald-950 mt-1">{admissionsCalculated.approved}</p>
+              <p className="text-[10px] text-emerald-700 font-medium">Admitted students</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-100">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-800">Enrolled</p>
+              <p className="text-2xl font-black text-blue-950 mt-1">{admissionsCalculated.enrolled}</p>
+              <p className="text-[10px] text-blue-700 font-medium">In cohort batch</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Seat Occupancy</p>
+              <p className="text-2xl font-black text-slate-900 mt-1">{admissionsCalculated.seatOccupancy}%</p>
+              <p className="text-[10px] text-slate-400 font-medium">{admissionsCalculated.totalAvailableSeats} open seats</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+            <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-[#1a3a8f]" />
+              <span>Applicant Pipeline &amp; Conversion Ledger</span>
+            </h4>
+            <div className="relative max-w-sm">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search applicant name or phone..."
+                value={admissionsSearch}
+                onChange={(e) => setAdmissionsSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+              />
+            </div>
+          </div>
+
+          {admissionsLoading ? (
+            <div className="p-12 text-center text-slate-400 text-xs italic flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin text-[#1a3a8f]" />
+              <span>Aggregating admissions data...</span>
+            </div>
+          ) : admissionsData.applications.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs italic bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
+              No admissions records found in the selected horizon.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+              {admissionsData.applications
+                .filter((a) => {
+                  if (branchFilter !== "all" && (a.branch || "Cabang Utama") !== branchFilter) return false;
+                  if (admissionsSearch.trim()) {
+                    const q = admissionsSearch.toLowerCase();
+                    const matchName = (a.fullName || a.studentName || "").toLowerCase().includes(q);
+                    const matchPhone = (a.phone || "").includes(q);
+                    if (!matchName && !matchPhone) return false;
+                  }
+                  return true;
+                })
+                .map((app) => (
+                  <div
+                    key={app.id}
+                    className="p-3.5 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 bg-white hover:border-slate-300 transition shadow-2xs"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-extrabold text-slate-900 text-xs truncate">
+                        {app.fullName || app.studentName || "Prospective Student"}
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-medium">
+                        {app.program || app.courseType || "General English"} · {app.branch || "Cabang Utama"}
+                        {app.submittedAt && ` · Applied: ${new Date(app.submittedAt).toLocaleDateString()}`}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border shrink-0 ${
+                        app.status === "approved"
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                          : app.status === "rejected"
+                          ? "bg-slate-100 text-slate-600 border-slate-200"
+                          : "bg-amber-50 text-amber-800 border-amber-200"
+                      }`}
+                    >
+                      {app.status || "Pending"}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── SUB-TAB 5: INSTRUCTOR PUNCTUALITY & READINESS ─────────────────────── */}
       {subTab === "instructors" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
               <UserCheck className="w-4 h-4 text-[#1a3a8f]" />
-              <span>Instructor Punctuality & Attendance Audit</span>
+              <span>Instructor Punctuality &amp; Attendance Audit</span>
             </h4>
             <span className="text-[11px] text-slate-400 font-medium">15-Minute Readiness Policy</span>
           </div>
@@ -801,6 +1333,31 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Modals for Admin ── */}
+      {isActualAdmin && editingShift && (
+        <ShiftAdjustmentModal
+          shift={editingShift}
+          actor={currentUser}
+          onClose={() => setEditingShift(null)}
+          onSuccess={() => {
+            setEditingShift(null);
+            fetchShifts();
+          }}
+        />
+      )}
+
+      {isActualAdmin && leaveModalOpen && (
+        <StaffLeaveModal
+          staff={staffMembers}
+          actor={currentUser}
+          onClose={() => setLeaveModalOpen(false)}
+          onSuccess={() => {
+            setLeaveModalOpen(false);
+            fetchShifts();
+          }}
+        />
       )}
     </div>
   );
