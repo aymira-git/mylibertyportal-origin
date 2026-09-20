@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { PaymentModal } from "../finance";
 import { TransferModal } from "../classes";
 import {
@@ -6,7 +6,6 @@ import {
   Pagination,
   usePagination,
   getPaymentHealthStatus,
-  PAYMENT_PLANS,
   getTier,
   getNextLevel,
   useToast,
@@ -22,80 +21,16 @@ import {
 } from "./progressReportsRepository";
 import { updateStudentStatus, checkStudentHasHistory } from "../dashboard/usersRepository";
 import { removeStudentFromClass } from "../classes/classesRepository";
-import { isActiveStudent, STUDENT_STATUS_MAP, STUDENT_STATUS_OPTIONS } from "./studentRecord";
+import { isActiveStudent, STUDENT_STATUS_MAP } from "./studentRecord";
+import { getStudentPlanLabel } from "./studentRosterBadges";
+import StudentRosterFilters from "./StudentRosterFilters";
+import StudentRosterMobileList from "./StudentRosterMobileList";
+import StudentRosterTable from "./StudentRosterTable";
 import {
   Users,
-  Search,
   FileSpreadsheet,
-  QrCode,
-  Edit2,
-  Trash2,
-  ChevronUp,
-  ChevronDown,
-  X,
   UserPlus,
-  MessageCircle,
-  ArrowRightLeft,
-  Sparkles,
 } from "lucide-react";
-
-function getInitials(name) {
-  if (!name) return "?";
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-}
-
-function getStudentPlanLabel(student) {
-  if (!student.paymentPlan) return null;
-  if (student.paymentPlan === "custom") return "Custom";
-  return PAYMENT_PLANS[student.paymentPlan]?.label || student.paymentPlan;
-}
-
-function getHealthBadgeClasses(tone) {
-  switch (tone) {
-    case "emerald":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:ring-emerald-400";
-    case "amber":
-      return "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 hover:ring-amber-400";
-    case "rose":
-      return "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 hover:ring-rose-400";
-    case "slate":
-    default:
-      return "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:ring-slate-400";
-  }
-}
-
-function getHealthBadgeReadOnlyClasses(tone) {
-  switch (tone) {
-    case "emerald":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    case "amber":
-      return "bg-amber-50 text-amber-700 border-amber-200";
-    case "rose":
-      return "bg-rose-50 text-rose-700 border-rose-200";
-    case "slate":
-    default:
-      return "bg-slate-100 text-slate-600 border-slate-200";
-  }
-}
-
-function getStatusBadge(status) {
-  const eff = status || "active";
-  return STUDENT_STATUS_MAP[eff] || STUDENT_STATUS_MAP.active;
-}
-
-function openWhatsAppParentChat(parentPhone, parentName, studentName) {
-  const formatted = normalizeWhatsAppNumber(parentPhone);
-  if (!formatted) return;
-  const greeting = parentName ? `Halo Bapak/Ibu ${parentName}, ` : "Halo, ";
-  const text = `${greeting}kami dari Liberty English Course ingin menginformasikan mengenai ananda ${studentName || "siswa"}...`;
-  const url = `https://wa.me/${formatted}?text=${encodeURIComponent(text)}`;
-  window.open(url, "_blank");
-}
 
 export default function StudentRoster({
   students = [],
@@ -106,7 +41,7 @@ export default function StudentRoster({
   handleEdit,
   handleDelete,
   handleAddStudent,
-  readOnly = false
+  readOnly = false,
 }) {
   const toast = useToast();
   const confirm = useConfirm();
@@ -207,7 +142,7 @@ export default function StudentRoster({
     await handleDelete(student.id, { skipConfirm: true });
   };
 
-  const loadPendingPromotions = () => {
+  const loadPendingPromotions = useCallback(() => {
     fetchPendingPromotions()
       .then((reports) => {
         setPendingPromotions(reports);
@@ -215,7 +150,7 @@ export default function StudentRoster({
       .catch((err) => {
         console.error("Error loading pending promotions:", err);
       });
-  };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -388,7 +323,7 @@ export default function StudentRoster({
       "Plan",
       "Paid Until",
       "Class",
-      "Instructor"
+      "Instructor",
     ];
     const rows = sortedStudents.map((s) => {
       const planLabel = getStudentPlanLabel(s) || "—";
@@ -407,7 +342,7 @@ export default function StudentRoster({
         planLabel,
         s.paidUntil || s.lastPaymentPeriod || "—",
         s.studentClasses.length ? s.studentClasses.map((c) => c.className).join(", ") : "Unassigned",
-        s.studentClasses.length ? s.studentClasses.map((c) => c.instructorName || "Unassigned").join(", ") : "—"
+        s.studentClasses.length ? s.studentClasses.map((c) => c.instructorName || "Unassigned").join(", ") : "—",
       ];
     });
     exportTableCSV(`student-roster-${new Date().toISOString().slice(0, 10)}`, headers, rows);
@@ -431,7 +366,7 @@ export default function StudentRoster({
           {handleAddStudent && !readOnly && (
             <button
               onClick={handleAddStudent}
-              className="inline-flex items-center gap-1.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-xs"
+              className="inline-flex items-center gap-1.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-xs cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>Add Student</span>
@@ -439,7 +374,7 @@ export default function StudentRoster({
           )}
           <button
             onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-2xs"
+            className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-2xs cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             <span>Export CSV</span>
@@ -450,655 +385,63 @@ export default function StudentRoster({
         </div>
       </div>
 
-      {/* Search Input Bar */}
-      <div className="relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-        <input
-          type="text"
-          placeholder="Search students by name, phone, or ID code..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-9 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium bg-slate-50/50 focus:bg-white focus:border-[#1a3a8f] focus:ring-1 focus:ring-[#1a3a8f] outline-none transition"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-
       {/* Operational Quick Filters Bar */}
-      <div className="space-y-2.5 pt-1">
-        {/* Status Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs border-b border-slate-100 no-scrollbar">
-          {[
-            { id: "active", label: "Active", count: statusCounts.active },
-            { id: "on_leave", label: "On Leave", count: statusCounts.onLeave },
-            { id: "inactive_graduated", label: "Inactive / Graduated", count: statusCounts.inactiveGrad },
-            { id: "all", label: "All Records", count: statusCounts.total },
-          ].map((tab) => {
-            const isSelected = statusFilter === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setStatusFilter(tab.id);
-                  setPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
-                  isSelected
-                    ? "bg-[#1a3a8f] text-white shadow-xs"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <span>{tab.label}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
-                    isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Action & Tier Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
-            Filter:
-          </span>
-          {[
-            { id: "all", label: "All" },
-            {
-              id: "unassigned",
-              label: `⚠️ Unassigned (${actionCounts.unassigned})`,
-              tone: actionCounts.unassigned > 0 ? "text-amber-700 bg-amber-50 border-amber-200" : "",
-            },
-            {
-              id: "due_or_expired",
-              label: `💳 Due Soon / Expired (${actionCounts.dueOrExpired})`,
-              tone: actionCounts.dueOrExpired > 0 ? "text-rose-700 bg-rose-50 border-rose-200" : "",
-            },
-            { id: "beginner", label: "⭐ Beginner" },
-            { id: "intermediate", label: "⭐⭐ Intermediate" },
-            { id: "fluent", label: "⭐⭐⭐ Fluent" },
-          ].map((pill) => {
-            const isSelected = actionFilter === pill.id;
-            return (
-              <button
-                key={pill.id}
-                onClick={() => {
-                  setActionFilter(pill.id);
-                  setPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition whitespace-nowrap border ${
-                  isSelected
-                    ? "bg-[#1a3a8f] text-white border-[#1a3a8f] shadow-2xs"
-                    : pill.tone || "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <StudentRosterFilters
+        searchQuery={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          setPage(1);
+        }}
+        statusFilter={statusFilter}
+        onStatusFilterChange={(val) => {
+          setStatusFilter(val);
+          setPage(1);
+        }}
+        actionFilter={actionFilter}
+        onActionFilterChange={(val) => {
+          setActionFilter(val);
+          setPage(1);
+        }}
+        statusCounts={statusCounts}
+        actionCounts={actionCounts}
+      />
 
       {/* Mobile Card List View */}
-      <div className="space-y-3.5 md:hidden">
-        {pageItems.map((s) => {
-          const studentClasses = s.studentClasses;
-          const statusBadge = getStatusBadge(s.effectiveStatus);
-          const isPending = s.paymentStatus === "pending";
-          const health = isPending
-            ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
-            : getPaymentHealthStatus(s.paidUntil);
-          const planLabel = getStudentPlanLabel(s);
-          const canRemind = !readOnly && isActiveStudent(s) && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
-          const pendingPromotion = pendingPromotionsMap[s.id];
-          const nextLevel = pendingPromotion ? getNextLevel(s.currentLevel || "warrior") : null;
-
-          return (
-            <article
-              key={s.id}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3 hover:border-indigo-200 transition"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  {s.photoURL ? (
-                    <img
-                      src={s.photoURL}
-                      alt={s.displayName}
-                      className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1a3a8f] to-indigo-700 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                      {getInitials(s.displayName)}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h4 className="truncate text-sm font-extrabold text-slate-900">
-                        {s.displayName || "Unnamed student"}
-                      </h4>
-                      {!readOnly ? (
-                        <select
-                          value={s.effectiveStatus}
-                          disabled={updatingStatusId === s.id}
-                          onChange={(e) => handleStatusChange(s, e.target.value)}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border outline-none cursor-pointer ${statusBadge.tone}`}
-                          title="Change student lifecycle status"
-                        >
-                          {STUDENT_STATUS_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
-                          {statusBadge.label}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <p className="text-[11px] font-mono text-slate-400">ID: {s.id.slice(0, 10)}</p>
-                      {s.currentLevel && (
-                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100 uppercase">
-                          {s.currentLevel}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                    {readOnly ? (
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border ${getHealthBadgeReadOnlyClasses(health.tone)}`}
-                      >
-                        {health.label}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setPaymentStudent(s)}
-                        className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border transition shadow-2xs ${getHealthBadgeClasses(health.tone)}`}
-                      >
-                        {health.label}
-                      </button>
-                    )}
-
-                    {planLabel && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-[#1a3a8f] border border-indigo-100">
-                        {planLabel}
-                      </span>
-                    )}
-
-                    {canRemind && (
-                      <button
-                        type="button"
-                        onClick={(e) => handleSendRenewalReminder(e, s, health)}
-                        title="Send WhatsApp renewal reminder"
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition shadow-2xs"
-                      >
-                        <MessageCircle className="w-3 h-3" />
-                        <span>Remind</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {s.paidUntil ? (
-                    <p className="text-[10px] text-slate-500 font-medium whitespace-nowrap">
-                      Until {s.paidUntil}
-                      {health.remainingDays !== null && health.status === "due_soon" && (
-                        <span className="text-amber-600 font-semibold ml-1">({health.remainingDays}d)</span>
-                      )}
-                      {health.remainingDays !== null && health.status === "expired" && (
-                        <span className="text-rose-600 font-semibold ml-1">({Math.abs(health.remainingDays)}d ago)</span>
-                      )}
-                    </p>
-                  ) : s.lastPaymentPeriod ? (
-                    <p className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
-                      {s.lastPaymentPeriod}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-
-              {/* Promotion Banner if Eligible */}
-              {pendingPromotion && !readOnly && nextLevel && (
-                <div className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-indigo-50 p-2.5 rounded-xl border border-amber-200 text-xs">
-                  <div className="flex items-center gap-1.5 text-amber-900 font-bold">
-                    <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Eligible for {nextLevel.toUpperCase()}!</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handlePromote(s, pendingPromotion)}
-                    className="px-2.5 py-1 rounded-lg bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-[11px] shadow-xs transition shrink-0"
-                  >
-                    Promote
-                  </button>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2 text-xs border-y border-slate-100 py-2.5 text-slate-600">
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Parent</span>
-                  <span className="font-semibold text-slate-800">{s.parentName || "—"}</span>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="text-[11px] text-slate-500 truncate">{s.parentPhone || "No contact"}</p>
-                    {s.parentPhone && (
-                      <button
-                        type="button"
-                        onClick={() => openWhatsAppParentChat(s.parentPhone, s.parentName, s.displayName)}
-                        title="Chat with parent on WhatsApp"
-                        className="p-1 rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition shrink-0"
-                      >
-                        <MessageCircle className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Education / Joined</span>
-                  <span className="font-semibold text-slate-800 truncate block">
-                    {s.educationLevel || s.schoolOrJob || "—"}
-                  </span>
-                  <p className="text-[11px] text-slate-500">{s.effectiveJoinedDate || "—"}</p>
-                </div>
-                <div className="col-span-2 bg-slate-50/80 p-2.5 rounded-xl">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Enrolled Class</span>
-                  {studentClasses.length === 0 ? (
-                    !readOnly ? (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTransferStudent({ student: s, sourceClass: null })}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition shadow-2xs"
-                      >
-                        <UserPlus className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Assign Batch</span>
-                      </button>
-                    ) : (
-                      <span className="text-amber-700 font-semibold text-xs">Unassigned</span>
-                    )
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {studentClasses.map((c, idx) => (
-                        <div
-                          key={idx}
-                          className="inline-flex items-center gap-1.5 bg-indigo-50 text-[#1a3a8f] px-2.5 py-1 rounded-lg border border-indigo-100 text-xs font-bold"
-                        >
-                          <span>{c.className}</span>
-                          {!readOnly && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTransferStudent({ student: s, sourceClass: c })}
-                              title="Transfer batch"
-                              className="p-0.5 hover:text-[#122b6e] text-indigo-400 transition"
-                            >
-                              <ArrowRightLeft className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {(!readOnly || setSelectedStudent) && (
-                <div className="flex gap-2 pt-1">
-                  {setSelectedStudent && (
-                    <button
-                      onClick={() => setSelectedStudent(s)}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-[#1a3a8f] border border-indigo-100 py-2 px-3 rounded-xl text-xs font-bold transition"
-                    >
-                      <QrCode className="w-3.5 h-3.5" />
-                      <span>Badge</span>
-                    </button>
-                  )}
-                  {!readOnly && (
-                    <>
-                      <button
-                        onClick={() => handleEdit(s)}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 px-3 rounded-xl text-xs font-bold transition"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteStudent(s)}
-                        className="inline-flex items-center justify-center p-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition"
-                        title="Delete student"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-            </article>
-          );
-        })}
-        {sortedStudents.length === 0 && (
-          <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200/80 text-slate-500 text-xs">
-            No students found matching your criteria.
-          </div>
-        )}
-      </div>
+      <StudentRosterMobileList
+        pageItems={pageItems}
+        readOnly={readOnly}
+        updatingStatusId={updatingStatusId}
+        pendingPromotionsMap={pendingPromotionsMap}
+        onStatusChange={handleStatusChange}
+        onPaymentClick={(s) => setPaymentStudent(s)}
+        onSendRenewalReminder={handleSendRenewalReminder}
+        onPromote={handlePromote}
+        onAssignBatch={(s) => setSelectedTransferStudent({ student: s, sourceClass: null })}
+        onTransferBatch={(s, c) => setSelectedTransferStudent({ student: s, sourceClass: c })}
+        onBadgeClick={setSelectedStudent}
+        onEdit={handleEdit}
+        onDeleteStudent={handleDeleteStudent}
+      />
 
       {/* Desktop Full Table View */}
-      <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200/90 shadow-2xs">
-        <table className="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px] select-none">
-              <th
-                className="p-3.5 cursor-pointer hover:text-slate-900 transition"
-                onClick={() => handleStudentSort("displayName")}
-              >
-                <div className="flex items-center gap-1">
-                  <span>Student Name</span>
-                  {studentSortField === "displayName" &&
-                    (studentSortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#1a3a8f]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#1a3a8f]" />)}
-                </div>
-              </th>
-              <th className="p-3.5">Status</th>
-              <th
-                className="p-3.5 cursor-pointer hover:text-slate-900 transition"
-                onClick={() => handleStudentSort("parentName")}
-              >
-                <div className="flex items-center gap-1">
-                  <span>Parent Contact</span>
-                  {studentSortField === "parentName" &&
-                    (studentSortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#1a3a8f]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#1a3a8f]" />)}
-                </div>
-              </th>
-              <th
-                className="p-3.5 cursor-pointer hover:text-slate-900 transition"
-                onClick={() => handleStudentSort("educationLevel")}
-              >
-                <div className="flex items-center gap-1">
-                  <span>Education</span>
-                  {studentSortField === "educationLevel" &&
-                    (studentSortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#1a3a8f]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#1a3a8f]" />)}
-                </div>
-              </th>
-              <th
-                className="p-3.5 cursor-pointer hover:text-slate-900 transition"
-                onClick={() => handleStudentSort("dob")}
-              >
-                <div className="flex items-center gap-1">
-                  <span>DOB</span>
-                  {studentSortField === "dob" &&
-                    (studentSortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#1a3a8f]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#1a3a8f]" />)}
-                </div>
-              </th>
-              <th
-                className="p-3.5 cursor-pointer hover:text-slate-900 transition"
-                onClick={() => handleStudentSort("joinedDate")}
-              >
-                <div className="flex items-center gap-1">
-                  <span>Joined</span>
-                  {studentSortField === "joinedDate" &&
-                    (studentSortAsc ? <ChevronUp className="w-3.5 h-3.5 text-[#1a3a8f]" /> : <ChevronDown className="w-3.5 h-3.5 text-[#1a3a8f]" />)}
-                </div>
-              </th>
-              <th className="p-3.5">Payment</th>
-              <th className="p-3.5">Class Cohort</th>
-              <th className="p-3.5">Instructor</th>
-              {(!readOnly || setSelectedStudent) && <th className="p-3.5 text-right">Actions</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 bg-white">
-            {pageItems.map((s) => {
-              const studentClasses = s.studentClasses;
-              const statusBadge = getStatusBadge(s.effectiveStatus);
-              const isPending = s.paymentStatus === "pending";
-              const health = isPending
-                ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
-                : getPaymentHealthStatus(s.paidUntil);
-              const planLabel = getStudentPlanLabel(s);
-              const canRemind = !readOnly && isActiveStudent(s) && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
-              const pendingPromotion = pendingPromotionsMap[s.id];
-              const nextLevel = pendingPromotion ? getNextLevel(s.currentLevel || "warrior") : null;
-
-              return (
-                <tr key={s.id} className="hover:bg-slate-50/60 transition group">
-                  <td className="p-3.5 font-bold text-slate-900">
-                    <div className="flex items-center gap-2.5">
-                      {s.photoURL ? (
-                        <img
-                          src={s.photoURL}
-                          alt={s.displayName}
-                          className="w-8 h-8 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs"
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#1a3a8f] to-indigo-700 text-white font-extrabold text-[11px] flex items-center justify-center shrink-0 shadow-2xs">
-                          {getInitials(s.displayName)}
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-extrabold text-slate-900 group-hover:text-[#1a3a8f] transition">{s.displayName}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] font-mono text-slate-400 font-normal">ID: {s.id.slice(0, 10)}</span>
-                          {s.currentLevel && (
-                            <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100 uppercase">
-                              {s.currentLevel}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    {!readOnly ? (
-                      <select
-                        value={s.effectiveStatus}
-                        disabled={updatingStatusId === s.id}
-                        onChange={(e) => handleStatusChange(s, e.target.value)}
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border outline-none cursor-pointer ${statusBadge.tone}`}
-                        title="Change student lifecycle status"
-                      >
-                        {STUDENT_STATUS_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
-                        {statusBadge.label}
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-3.5 text-slate-600">
-                    <p className="font-semibold text-slate-800">{s.parentName || "—"}</p>
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-[11px] text-slate-400">{s.parentPhone || "No contact"}</p>
-                      {s.parentPhone && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openWhatsAppParentChat(s.parentPhone, s.parentName, s.displayName);
-                          }}
-                          title="Chat with parent on WhatsApp"
-                          className="p-0.5 rounded text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-3.5 text-slate-600 font-medium whitespace-nowrap">
-                    {s.educationLevel || s.schoolOrJob || "—"}
-                  </td>
-                  <td className="p-3.5 text-slate-500 whitespace-nowrap text-[11px]">{s.dob || "—"}</td>
-                  <td className="p-3.5 text-slate-600 font-semibold whitespace-nowrap">{s.effectiveJoinedDate || "—"}</td>
-                  <td className="p-3.5">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {readOnly ? (
-                        <span
-                          className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getHealthBadgeReadOnlyClasses(health.tone)}`}
-                        >
-                          {health.label}
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => setPaymentStudent(s)}
-                          title="Click to manage payments"
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border transition shadow-2xs hover:ring-2 hover:ring-offset-1 ${getHealthBadgeClasses(health.tone)}`}
-                        >
-                          {health.label}
-                        </button>
-                      )}
-
-                      {planLabel && (
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-[#1a3a8f] border border-indigo-100">
-                          {planLabel}
-                        </span>
-                      )}
-
-                      {canRemind && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleSendRenewalReminder(e, s, health)}
-                          title="Send WhatsApp renewal reminder"
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition shadow-2xs"
-                        >
-                          <MessageCircle className="w-3 h-3" />
-                          <span>Remind</span>
-                        </button>
-                      )}
-                    </div>
-
-                    {s.paidUntil ? (
-                      <p className="text-[10px] text-slate-500 mt-1 font-medium whitespace-nowrap">
-                        Until {s.paidUntil}
-                        {health.remainingDays !== null && health.status === "due_soon" && (
-                          <span className="text-amber-600 font-semibold ml-1">({health.remainingDays}d left)</span>
-                        )}
-                        {health.remainingDays !== null && health.status === "expired" && (
-                          <span className="text-rose-600 font-semibold ml-1">({Math.abs(health.remainingDays)}d ago)</span>
-                        )}
-                      </p>
-                    ) : s.lastPaymentPeriod ? (
-                      <p className="text-[10px] text-slate-400 mt-1 font-medium whitespace-nowrap">
-                        {s.lastPaymentPeriod}
-                      </p>
-                    ) : null}
-                  </td>
-                  <td className="p-3.5">
-                    {studentClasses.length === 0 ? (
-                      !readOnly ? (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTransferStudent({ student: s, sourceClass: null })}
-                          className="inline-flex items-center gap-1 text-amber-800 font-bold bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-md text-[11px] border border-amber-200 transition shadow-2xs"
-                          title="Assign to a batch"
-                        >
-                          <UserPlus className="w-3 h-3 text-amber-600" />
-                          <span>Assign Batch</span>
-                        </button>
-                      ) : (
-                        <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded text-[11px] border border-amber-200/60 whitespace-nowrap">
-                          Unassigned
-                        </span>
-                      )
-                    ) : (
-                      studentClasses.map((c, idx) => (
-                        <div key={idx} className="mb-1 last:mb-0 whitespace-nowrap inline-flex items-center gap-1.5 mr-2">
-                          <span className="text-[#1a3a8f] font-bold text-[11px] bg-indigo-50/80 px-2 py-0.5 rounded-md border border-indigo-100">
-                            {c.className}
-                          </span>
-                          {!readOnly && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTransferStudent({ student: s, sourceClass: c })}
-                              title="Transfer to another batch"
-                              className="p-0.5 text-slate-400 hover:text-[#1a3a8f] hover:bg-indigo-50 rounded transition"
-                            >
-                              <ArrowRightLeft className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </td>
-                  <td className="p-3.5">
-                    {studentClasses.length === 0 ? (
-                      <span className="text-slate-400 text-xs">—</span>
-                    ) : (
-                      studentClasses.map((c, idx) => (
-                        <div key={idx} className="mb-1 last:mb-0 whitespace-nowrap">
-                          <span className="text-slate-700 font-medium text-[11px]">
-                            {c.instructorName || "Unassigned"}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </td>
-                  {(!readOnly || setSelectedStudent) && (
-                    <td className="p-3.5 text-right font-bold whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 justify-end">
-                        {pendingPromotion && !readOnly && nextLevel && (
-                          <button
-                            type="button"
-                            onClick={() => handlePromote(s, pendingPromotion)}
-                            className="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2 py-1 rounded-lg font-bold text-[11px] transition shadow-2xs"
-                            title={`Promote to ${nextLevel.toUpperCase()}`}
-                          >
-                            <Sparkles className="w-3 h-3 text-amber-600 animate-pulse" />
-                            <span>Promote</span>
-                          </button>
-                        )}
-                        {setSelectedStudent && (
-                          <button
-                            onClick={() => setSelectedStudent(s)}
-                            className="inline-flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 text-[#1a3a8f] border border-indigo-200/60 px-2.5 py-1 rounded-lg font-bold text-[11px] transition shadow-2xs"
-                            title="View / Print ID Badge"
-                          >
-                            <QrCode className="w-3.5 h-3.5" />
-                            <span>Badge</span>
-                          </button>
-                        )}
-                        {!readOnly && (
-                          <>
-                            <button
-                              onClick={() => handleEdit(s)}
-                              className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg font-bold text-[11px] transition shadow-2xs"
-                              title="Edit profile"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                              <span>Edit</span>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteStudent(s)}
-                              className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition"
-                              title="Delete record"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <StudentRosterTable
+        pageItems={pageItems}
+        studentSortField={studentSortField}
+        studentSortAsc={studentSortAsc}
+        onSort={handleStudentSort}
+        readOnly={readOnly}
+        updatingStatusId={updatingStatusId}
+        pendingPromotionsMap={pendingPromotionsMap}
+        onStatusChange={handleStatusChange}
+        onPaymentClick={(s) => setPaymentStudent(s)}
+        onSendRenewalReminder={handleSendRenewalReminder}
+        onPromote={handlePromote}
+        onAssignBatch={(s) => setSelectedTransferStudent({ student: s, sourceClass: null })}
+        onTransferBatch={(s, c) => setSelectedTransferStudent({ student: s, sourceClass: c })}
+        onBadgeClick={setSelectedStudent}
+        onEdit={handleEdit}
+        onDeleteStudent={handleDeleteStudent}
+      />
 
       {/* Pagination Footer */}
       <Pagination

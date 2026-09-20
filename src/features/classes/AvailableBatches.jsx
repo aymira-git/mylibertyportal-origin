@@ -1,23 +1,10 @@
 import { useState, useMemo } from "react";
 import {
   BookOpen,
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  User,
   Plus,
-  Edit2,
-  Trash2,
-  Share2,
-  Check,
   Search,
-  ArrowRight,
-  ExternalLink,
-  UserPlus,
 } from "lucide-react";
 import {
-  LevelBadge,
   LEVELS,
   LEVEL_KEYS,
   TIERS,
@@ -28,6 +15,8 @@ import {
 } from "../shared";
 import BatchModal from "./BatchModal";
 import EnrollModal from "./EnrollModal";
+import BatchesOverviewWidget from "./BatchesOverviewWidget";
+import AvailableBatchCard from "./AvailableBatchCard";
 import { deleteClass } from "./classesRepository";
 
 export default function AvailableBatches({
@@ -81,7 +70,6 @@ export default function AvailableBatches({
       const occupancyRate = Math.min(100, Math.round((studentCount / capacity) * 100));
 
       // Determine computed availability status following the roadmap lifecycle:
-      // OPEN and active_enrollment_count < capacity and not cancelled and not completed
       let computedStatus = cls.status || "open";
       if (cls.status === "cancelled") {
         computedStatus = "cancelled";
@@ -220,212 +208,22 @@ export default function AvailableBatches({
     }
   };
 
-  // Helper for status badge styling across all lifecycle states
-  const renderStatusPill = (status, seatsAvailable) => {
-    if (status === "cancelled") {
-      return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-          Cancelled
-        </span>
-      );
-    }
-    if (status === "completed") {
-      return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
-          Completed
-        </span>
-      );
-    }
-    if (status === "in_progress") {
-      return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-          Ongoing
-        </span>
-      );
-    }
-    if (status === "full" || seatsAvailable === 0) {
-      return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
-          Full / Waitlist
-        </span>
-      );
-    }
-    if (status === "filling_fast" || seatsAvailable <= 3) {
-      return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200 animate-pulse">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-          Filling Fast ({seatsAvailable} left)
-        </span>
-      );
-    }
-    if (status === "upcoming") {
-      return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-          Upcoming Intake
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-        Open ({seatsAvailable} seats)
-      </span>
-    );
-  };
-
   // ──────────────────────────────────────────────────────────────────────────
   // COMPACT OVERVIEW WIDGET VIEW (For Admin / Front Office / Manager / Instructor)
   // ──────────────────────────────────────────────────────────────────────────
   if (isOverviewWidget) {
-    const displayList = augmentedBatches.slice(0, 4);
-
     return (
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-[#1a3a8f] flex items-center justify-center font-bold">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
-                <span>Available Batches &amp; Seat Openings</span>
-                {stats.totalOpenSeats > 0 && (
-                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                    {stats.totalOpenSeats} open seats
-                  </span>
-                )}
-              </h4>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Live capacity across academy cohorts and intake schedules
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {canAdminister && (
-              <button
-                onClick={handleOpenAddModal}
-                className="px-3 py-1.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white text-xs font-extrabold rounded-xl shadow-xs transition flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Add Batch</span>
-              </button>
-            )}
-            {onNavigateToClasses && (
-              <button
-                onClick={onNavigateToClasses}
-                className="text-xs font-bold text-[#1a3a8f] hover:underline flex items-center gap-1 p-1"
-              >
-                <span>View All ({augmentedBatches.length})</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Mini stats pill strip */}
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-            <p className="text-[10px] uppercase font-bold text-slate-400">Total Batches</p>
-            <p className="text-base font-black text-slate-800 mt-0.5">{stats.totalBatches}</p>
-          </div>
-          <div className="p-2.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
-            <p className="text-[10px] uppercase font-bold text-emerald-700">Open Seats</p>
-            <p className="text-base font-black text-emerald-800 mt-0.5">{stats.totalOpenSeats}</p>
-          </div>
-          <div className="p-2.5 bg-indigo-50/60 rounded-xl border border-indigo-100">
-            <p className="text-[10px] uppercase font-bold text-indigo-700">School Occupancy</p>
-            <p className="text-base font-black text-indigo-800 mt-0.5">{stats.overallOccupancy}%</p>
-          </div>
-        </div>
-
-        {/* Mini list of top available batches */}
-        {displayList.length === 0 ? (
-          <div className="py-6 text-center text-slate-400 text-xs font-medium">
-            No class batches scheduled yet.
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {displayList.map((batch) => (
-              <div
-                key={batch.id}
-                className="p-3 bg-slate-50/60 hover:bg-slate-50 rounded-2xl border border-slate-200/80 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
-              >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-extrabold text-slate-900 text-xs truncate">
-                      {batch.className}
-                    </span>
-                    <LevelBadge level={batch.classLevel || "warrior"} />
-                    {renderStatusPill(batch.computedStatus, batch.seatsAvailable)}
-                  </div>
-                  <div className="flex items-center gap-3 text-[11px] text-slate-500 font-medium">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-slate-400" />
-                      <span>{batch.schedule || batch.classDay}</span>
-                    </span>
-                    <span>·</span>
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-slate-400" />
-                      <span>{batch.classRoom || "Main Campus"}</span>
-                    </span>
-                    <span>·</span>
-                    <span className="text-slate-600 font-semibold">
-                      {batch.instructorName}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                  {/* Capacity indicator */}
-                  <div className="text-right">
-                    <p className="text-[11px] font-black text-slate-800">
-                      {batch.studentCount} / {batch.maxCapacity} seats
-                    </p>
-                    <div className="w-20 bg-slate-200 h-1.5 rounded-full overflow-hidden mt-0.5">
-                      <div
-                        className={`h-full rounded-full ${
-                          batch.seatsAvailable === 0
-                            ? "bg-rose-500"
-                            : batch.seatsAvailable <= 3
-                            ? "bg-amber-500"
-                            : "bg-emerald-500"
-                        }`}
-                        style={{ width: `${batch.occupancyRate}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {canAdminister && (
-                    <button
-                      onClick={() => handleOpenEditModal(batch)}
-                      title="Edit Batch"
-                      className="p-1.5 text-slate-500 hover:text-[#1a3a8f] hover:bg-white rounded-lg transition border border-transparent hover:border-slate-200"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-
-                  {canEnroll && batch.isAvailable && (
-                    <button
-                      onClick={() => setEnrollingBatch(batch)}
-                      title="Enroll Student"
-                      className="px-2.5 py-1.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white rounded-lg transition text-[11px] font-extrabold flex items-center gap-1 shadow-2xs cursor-pointer"
-                    >
-                      <UserPlus className="w-3 h-3" />
-                      <span>Enroll</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      <>
+        <BatchesOverviewWidget
+          augmentedBatches={augmentedBatches}
+          stats={stats}
+          canAdminister={canAdminister}
+          canEnroll={canEnroll}
+          onOpenAddModal={handleOpenAddModal}
+          onOpenEditModal={handleOpenEditModal}
+          onNavigateToClasses={onNavigateToClasses}
+          onSetEnrollingBatch={setEnrollingBatch}
+        />
 
         {/* Modal for direct enrollment & transfer */}
         {enrollingBatch && (
@@ -447,7 +245,7 @@ export default function AvailableBatches({
             existingClasses={classes}
           />
         )}
-      </div>
+      </>
     );
   }
 
@@ -476,7 +274,7 @@ export default function AvailableBatches({
           {canAdminister && (
             <button
               onClick={handleOpenAddModal}
-              className="px-4 py-2.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 shrink-0"
+              className="px-4 py-2.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Add Available Batch</span>
@@ -624,7 +422,7 @@ export default function AvailableBatches({
           {canAdminister && (
             <button
               onClick={handleOpenAddModal}
-              className="mt-2 px-4 py-2 bg-[#1a3a8f] text-white text-xs font-bold rounded-xl hover:bg-[#122b6e] transition inline-flex items-center gap-1.5"
+              className="mt-2 px-4 py-2 bg-[#1a3a8f] text-white text-xs font-bold rounded-xl hover:bg-[#122b6e] transition inline-flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create New Batch</span>
@@ -638,214 +436,19 @@ export default function AvailableBatches({
               currentUserId && batch.instructorId === currentUserId;
 
             return (
-              <div
+              <AvailableBatchCard
                 key={batch.id}
-                className={`bg-white rounded-3xl border p-5 transition-all flex flex-col justify-between space-y-4 hover:shadow-md ${
-                  isAssignedToCurrentUser
-                    ? "border-indigo-300 bg-indigo-50/20 shadow-xs"
-                    : "border-slate-200/90 shadow-2xs"
-                }`}
-              >
-                {/* Card Top: Level, Status & Actions */}
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <LevelBadge level={batch.classLevel || "warrior"} />
-                    <div className="flex items-center gap-1.5">
-                      {renderStatusPill(batch.computedStatus, batch.seatsAvailable)}
-
-                      {/* Edit / Delete strictly for Admin */}
-                      {canAdminister && (
-                        <div className="flex items-center gap-1 ml-1">
-                          <button
-                            onClick={() => handleOpenEditModal(batch)}
-                            title="Edit Batch"
-                            className="p-1.5 text-slate-400 hover:text-[#1a3a8f] hover:bg-slate-100 rounded-lg transition"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBatch(batch)}
-                            title="Delete Batch"
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Title & Intake */}
-                  <div>
-                    <h4 className="font-extrabold text-slate-900 text-base leading-snug">
-                      {batch.className}
-                    </h4>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5 flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-slate-400" />
-                      <span>Intake: {batch.classStartDate || "Rolling Admission"}</span>
-                    </p>
-                  </div>
-
-                  {/* Details Grid: Schedule, Room, Instructor */}
-                  <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100 space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span>Schedule</span>
-                      </span>
-                      <span className="font-extrabold text-slate-800 text-right">
-                        {batch.schedule || `${batch.classDay} @ ${batch.startTime} - ${batch.endTime}`}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        <span>Classroom</span>
-                      </span>
-                      <span className="font-bold text-slate-800">
-                        {batch.classRoom || "Main Campus"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        <span>Instructor</span>
-                      </span>
-                      <span
-                        className={`font-bold truncate max-w-[140px] text-right ${
-                          batch.instructorId ? "text-slate-800" : "text-amber-700"
-                        }`}
-                      >
-                        {batch.instructorName}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Notes / Description (if available) */}
-                  {batch.notes && (
-                    <p className="text-[11px] text-slate-600 bg-amber-50/60 p-2.5 rounded-xl border border-amber-100/80 line-clamp-2">
-                      <span className="font-bold text-amber-900">Note: </span>
-                      {batch.notes}
-                    </p>
-                  )}
-                </div>
-
-                {/* Card Bottom: Capacity Bar & Action Buttons */}
-                <div className="space-y-3 pt-2 border-t border-slate-100">
-                  {/* Capacity Progress Bar */}
-                  <div>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-extrabold text-slate-700 flex items-center gap-1">
-                        <Users className="w-3 h-3 text-[#1a3a8f]" />
-                        <span>{batch.studentCount} / {batch.maxCapacity} Enrolled</span>
-                      </span>
-                      <span
-                        className={`font-black text-xs ${
-                          batch.seatsAvailable === 0
-                            ? "text-rose-600"
-                            : batch.seatsAvailable <= 3
-                            ? "text-amber-600"
-                            : "text-emerald-700"
-                        }`}
-                      >
-                        {batch.seatsAvailable} seat{batch.seatsAvailable === 1 ? "" : "s"} left
-                      </span>
-                    </div>
-
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${
-                          batch.seatsAvailable === 0
-                            ? "bg-rose-500"
-                            : batch.seatsAvailable <= 3
-                            ? "bg-amber-500"
-                            : "bg-emerald-500"
-                        }`}
-                        style={{ width: `${batch.occupancyRate}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Syllabus link or Actions */}
-                  <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-                    {batch.worksheetUrl ? (
-                      <a
-                        href={batch.worksheetUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[11px] font-bold text-slate-600 hover:text-[#1a3a8f] inline-flex items-center gap-1"
-                      >
-                        <span>Syllabus</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    ) : (
-                      <span className="text-[11px] text-slate-400 font-medium">Standard Syllabus</span>
-                    )}
-
-                    {/* Actions container */}
-                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                      {/* Marketing Action */}
-                      {role === "marketing" && (
-                        <button
-                          onClick={() => handleCopyMarketingBlurb(batch)}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-extrabold shadow-xs transition flex items-center gap-1.5"
-                        >
-                          {copiedBatchId === batch.id ? (
-                            <>
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Copied!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Share2 className="w-3.5 h-3.5" />
-                              <span>Share for Leads</span>
-                            </>
-                          )}
-                        </button>
-                      )}
-
-                      {/* Admin Edit Batch */}
-                      {canAdminister && (
-                        <button
-                          onClick={() => handleOpenEditModal(batch)}
-                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-[#1a3a8f] rounded-xl text-[11px] font-extrabold transition flex items-center gap-1 border border-indigo-100"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                          <span>Edit</span>
-                        </button>
-                      )}
-
-                      {/* Operational Enrollment Action (Admin + Front Office) */}
-                      {canEnroll && (
-                        <button
-                          onClick={() => setEnrollingBatch(batch)}
-                          disabled={!batch.isAvailable}
-                          className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition flex items-center gap-1.5 ${
-                            batch.isAvailable
-                              ? "bg-[#1a3a8f] hover:bg-[#122b6e] text-white shadow-xs cursor-pointer"
-                              : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                          }`}
-                        >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          <span>
-                            {batch.isAvailable
-                              ? "Enroll Student"
-                              : batch.computedStatus === "full"
-                              ? "Batch Full"
-                              : batch.computedStatus === "cancelled"
-                              ? "Cancelled"
-                              : batch.computedStatus === "completed"
-                              ? "Completed"
-                              : "Unavailable"}
-                          </span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                batch={batch}
+                isAssignedToCurrentUser={isAssignedToCurrentUser}
+                canAdminister={canAdminister}
+                canEnroll={canEnroll}
+                role={role}
+                copiedBatchId={copiedBatchId}
+                onOpenEditModal={handleOpenEditModal}
+                onDeleteBatch={handleDeleteBatch}
+                onCopyMarketingBlurb={handleCopyMarketingBlurb}
+                onSetEnrollingBatch={setEnrollingBatch}
+              />
             );
           })}
         </div>

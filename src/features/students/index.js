@@ -2,6 +2,10 @@
 export { default as StudentApplications } from "./StudentApplications";
 export { default as StudentProgressForm } from "./StudentProgressForm";
 export { default as StudentRoster } from "./StudentRoster";
+export { default as StudentRosterFilters } from "./StudentRosterFilters";
+export { default as StudentRosterMobileList } from "./StudentRosterMobileList";
+export { default as StudentRosterTable } from "./StudentRosterTable";
+export * from "./studentRosterBadges";
 export { default as UserForm } from "./UserForm";
 export { default as BadgeModal } from "./BadgeModal";
 export { default as StudentPhotoCapture } from "./StudentPhotoCapture";
