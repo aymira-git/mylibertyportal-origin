@@ -75,6 +75,10 @@ export default function StaffSignup() {
         const foundInvite = await fetchInviteByToken(inviteToken);
         if (!foundInvite || foundInvite.used) {
           setInviteError("This invitation link is invalid or has already been used.");
+        } else if (foundInvite.expiresAt && Date.now() > Number(foundInvite.expiresAt)) {
+          setInviteError(
+            "This invitation link has expired. Please contact the administration at MYLIBERTY International English School to request a new invitation."
+          );
         } else {
           setInvite(foundInvite);
         }
@@ -88,9 +92,23 @@ export default function StaffSignup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
     setSubmitError("");
 
+    const firstName = formData.firstName.trim();
+    const lastName = formData.lastName.trim();
+    const nickname = (formData.nickname || firstName).trim();
+    const phone = formData.phone.trim();
+
+    if (!firstName || !lastName) {
+      setSubmitError("Please provide both first and last name.");
+      return;
+    }
+    if (!phone) {
+      setSubmitError("Please provide a valid phone number.");
+      return;
+    }
+
+    setSubmitting(true);
     let uid = null; // set once the Auth account exists — see the catch below
 
     try {
@@ -107,14 +125,16 @@ export default function StaffSignup() {
       // 2. Create the Firestore profile and clear the used invite together,
       // atomically — see completeStaffSignup for why.
       const userProfile = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        nickname: formData.nickname,
+        firstName,
+        lastName,
+        nickname,
         gender: formData.gender,
-        displayName: `${formData.firstName} ${formData.lastName}`.trim(),
-        email: invite.email,
+        displayName: `${firstName} ${lastName}`.trim(),
+        email: invite.email.toLowerCase().trim(),
         role: invite.role,
-        phone: formData.phone,
+        branch: invite.branch || "Cabang Utama",
+        status: "active",
+        phone,
         dob: formData.dob,
         educationLevel: formData.educationLevel,
         inviteId: invite.id,

@@ -264,18 +264,28 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
     } catch (err) { toast("Error deleting task: " + err.message, "error"); }
   };
 
-  const handleCreateInvite = async (email, role) => {
+  const handleCreateInvite = async (email, role, branch = "Cabang Utama") => {
     try {
-      await createInvite(email, role);
-      toast("Invitation generated!");
-    } catch (err) { toast(err.message, "error"); }
+      await createInvite(email, role, branch);
+      toast("Invitation link generated successfully!", "success");
+      return true;
+    } catch (err) {
+      toast("Failed to generate invitation: " + err.message, "error");
+      return false;
+    }
   };
 
-  const handleDeleteInvite = async (id) => {
-    if (!(await confirm("Cancel this invitation?"))) return;
+  const handleDeleteInvite = async (id, email = "") => {
+    const message = email
+      ? `Cancel and revoke invitation for ${email}?`
+      : "Cancel and revoke this invitation?";
+    if (!(await confirm(message))) return;
     try {
       await deleteInvite(id);
-    } catch (err) { toast(err.message, "error"); }
+      toast("Invitation revoked.", "info");
+    } catch (err) {
+      toast("Error revoking invitation: " + err.message, "error");
+    }
   };
 
   const getStudentClasses = (studentId) => {

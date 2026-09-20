@@ -191,7 +191,12 @@ export default function AdminDashboard() {
       id: "invites",
       label: "Invites",
       component: (
-        <InvitesPanel invites={invites} onCreateInvite={handleCreateInvite} onDeleteInvite={handleDeleteInvite} />
+        <InvitesPanel
+          invites={invites}
+          users={users}
+          onCreateInvite={handleCreateInvite}
+          onDeleteInvite={handleDeleteInvite}
+        />
       ),
     },
     { id: "reports", label: "Reports", component: <ReportsDashboard isAdminView={true} isFrontOffice={false} /> },

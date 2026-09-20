@@ -40,6 +40,13 @@ service cloud.firestore {
       return r in ['instructor', 'frontoffice', 'marketing', 'officeboy', 'admin'];
     }
 
+    function isInviteValid(inviteId) {
+      let inv = get(/databases/$(database)/documents/invites/$(inviteId)).data;
+      return inv.email == request.auth.token.email.lower()
+          && inv.role == request.resource.data.role
+          && (!('expiresAt' in inv) || inv.expiresAt > request.time.toMillis());
+    }
+
     match /users/{userId} {
       allow read: if isAdmin()
         || isManager()
@@ -50,10 +57,7 @@ service cloud.firestore {
         || (signedIn()
             && userId == request.auth.uid
             && request.resource.data.inviteId is string
-            && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteId)).data.email
-                 == request.auth.token.email.lower()
-            && get(/databases/$(database)/documents/invites/$(request.resource.data.inviteId)).data.role
-                 == request.resource.data.role);
+            && isInviteValid(request.resource.data.inviteId));
       allow delete: if isAdmin() || (isFrontOffice() && resource.data.role == 'student');
       allow update: if isAdmin()
         || (isFrontOffice() && resource.data.role == 'student' && request.resource.data.role == 'student')
