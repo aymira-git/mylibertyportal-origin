@@ -20,7 +20,9 @@ import {
   fetchPendingPromotions,
   promoteStudentLevel,
 } from "./progressReportsRepository";
-import { updateStudentStatus } from "../dashboard/usersRepository";
+import { updateStudentStatus, checkStudentHasHistory } from "../dashboard/usersRepository";
+import { removeStudentFromClass } from "../classes/classesRepository";
+import { isActiveStudent, STUDENT_STATUS_MAP, STUDENT_STATUS_OPTIONS } from "./studentRecord";
 import {
   Users,
   Search,
@@ -83,17 +85,7 @@ function getHealthBadgeReadOnlyClasses(tone) {
 
 function getStatusBadge(status) {
   const eff = status || "active";
-  switch (eff) {
-    case "on_leave":
-      return { label: "On Leave", tone: "bg-amber-50 text-amber-700 border-amber-200" };
-    case "graduated":
-      return { label: "Graduated", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" };
-    case "inactive":
-      return { label: "Inactive", tone: "bg-slate-100 text-slate-600 border-slate-200" };
-    case "active":
-    default:
-      return { label: "Active", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-  }
+  return STUDENT_STATUS_MAP[eff] || STUDENT_STATUS_MAP.active;
 }
 
 function openWhatsAppParentChat(parentPhone, parentName, studentName) {
@@ -129,16 +121,90 @@ export default function StudentRoster({
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
 
   const handleStatusChange = async (student, newStatus) => {
-    if ((student.status || "active") === newStatus) return;
+    const currentStatus = student.status || "active";
+    if (currentStatus === newStatus) return;
+
+    if (newStatus === "graduated" || newStatus === "inactive") {
+      const targetLabel = STUDENT_STATUS_MAP[newStatus]?.label || newStatus;
+      const ok = await confirm(
+        `Are you sure you want to mark ${student.displayName || "this student"} as ${targetLabel}?`
+      );
+      if (!ok) return;
+
+      const enrolledClasses = classes.filter((c) => (c.studentIds || []).includes(student.id));
+      if (enrolledClasses.length > 0) {
+        const classNames = enrolledClasses.map((c) => c.className).join(", ");
+        const shouldRemove = await confirm(
+          `${student.displayName || "This student"} is currently enrolled in ${enrolledClasses.length} cohort(s): ${classNames}.\n\n` +
+          `Would you like to remove them from these cohorts now to immediately free up seats?`
+        );
+        if (shouldRemove) {
+          try {
+            await Promise.all(enrolledClasses.map((cls) => removeStudentFromClass(cls, student.id)));
+            toast(`Removed ${student.displayName || "Student"} from ${enrolledClasses.length} cohort(s).`, "info");
+          } catch (err) {
+            toast(`Could not remove from cohorts: ${err.message}`, "error");
+          }
+        }
+      }
+    }
+
     setUpdatingStatusId(student.id);
     try {
       await updateStudentStatus(student.id, newStatus);
-      toast(`Updated ${student.displayName || "Student"}'s status to ${newStatus}.`);
+      const label = STUDENT_STATUS_MAP[newStatus]?.label || newStatus;
+      toast(`Updated ${student.displayName || "Student"}'s status to ${label}.`);
     } catch (err) {
       toast("Error updating student status: " + err.message, "error");
     } finally {
       setUpdatingStatusId(null);
     }
+  };
+
+  const handleDeleteStudent = async (student) => {
+    const enrolledClasses = classes.filter((c) => (c.studentIds || []).includes(student.id));
+    if (enrolledClasses.length > 0) {
+      const classNames = enrolledClasses.map((c) => c.className).join(", ");
+      toast(
+        `Cannot delete ${student.displayName}: Student is actively enrolled in ${enrolledClasses.length} cohort(s) (${classNames}). ` +
+        `Please remove them from cohorts or mark their status as "Inactive" or "Graduated" instead.`,
+        "error"
+      );
+      return;
+    }
+
+    try {
+      const { hasPayments, hasAttendance, hasReports, error } = await checkStudentHasHistory(student.id);
+      if (error) {
+        toast(
+          `Could not verify student history (${error}). Deletion cancelled for data safety.`,
+          "error"
+        );
+        return;
+      }
+      if (hasPayments || hasAttendance || hasReports) {
+        const reasons = [];
+        if (hasPayments) reasons.push("tuition payments");
+        if (hasAttendance) reasons.push("session attendance");
+        if (hasReports) reasons.push("academic evaluations");
+        toast(
+          `Cannot delete: ${student.displayName} has recorded history (${reasons.join(", ")}). ` +
+          `Deleting this profile would corrupt historical records. Please mark their status as "Inactive" or "Graduated" instead.`,
+          "error"
+        );
+        return;
+      }
+    } catch (err) {
+      toast(`Failed to verify student history: ${err.message}. Deletion cancelled for safety.`, "error");
+      return;
+    }
+
+    const ok = await confirm(
+      `Delete ${student.displayName}'s student profile? This will permanently remove the record.`
+    );
+    if (!ok) return;
+
+    await handleDelete(student.id, { skipConfirm: true });
   };
 
   const loadPendingPromotions = () => {
@@ -204,7 +270,7 @@ export default function StudentRoster({
       const st = s.status || "active";
       if (st === "active") active++;
       else if (st === "on_leave") onLeave++;
-      else inactiveGrad++;
+      else if (st === "inactive" || st === "graduated") inactiveGrad++;
     });
     return { active, onLeave, inactiveGrad, total: students.length };
   }, [students]);
@@ -212,7 +278,7 @@ export default function StudentRoster({
   const actionCounts = useMemo(() => {
     let unassigned = 0;
     let dueOrExpired = 0;
-    students.forEach((s) => {
+    students.filter(isActiveStudent).forEach((s) => {
       const cls = getStudentClasses(s.id);
       if (!cls || cls.length === 0) unassigned++;
       const health = s.paymentStatus === "pending"
@@ -493,7 +559,7 @@ export default function StudentRoster({
             ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
             : getPaymentHealthStatus(s.paidUntil);
           const planLabel = getStudentPlanLabel(s);
-          const canRemind = !readOnly && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
+          const canRemind = !readOnly && isActiveStudent(s) && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
           const pendingPromotion = pendingPromotionsMap[s.id];
           const nextLevel = pendingPromotion ? getNextLevel(s.currentLevel || "warrior") : null;
 
@@ -529,10 +595,11 @@ export default function StudentRoster({
                           className={`px-2 py-0.5 rounded-full text-[10px] font-bold border outline-none cursor-pointer ${statusBadge.tone}`}
                           title="Change student lifecycle status"
                         >
-                          <option value="active">Active</option>
-                          <option value="on_leave">On Leave</option>
-                          <option value="graduated">Graduated</option>
-                          <option value="inactive">Inactive</option>
+                          {STUDENT_STATUS_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
                         </select>
                       ) : (
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
@@ -708,7 +775,7 @@ export default function StudentRoster({
                         <span>Edit</span>
                       </button>
                       <button
-                        onClick={() => handleDelete(s.id)}
+                        onClick={() => handleDeleteStudent(s)}
                         className="inline-flex items-center justify-center p-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition"
                         title="Delete student"
                       >
@@ -799,7 +866,7 @@ export default function StudentRoster({
                 ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
                 : getPaymentHealthStatus(s.paidUntil);
               const planLabel = getStudentPlanLabel(s);
-              const canRemind = !readOnly && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
+              const canRemind = !readOnly && isActiveStudent(s) && (health.status === "due_soon" || health.status === "expired") && (s.parentPhone || s.phone);
               const pendingPromotion = pendingPromotionsMap[s.id];
               const nextLevel = pendingPromotion ? getNextLevel(s.currentLevel || "warrior") : null;
 
@@ -841,10 +908,11 @@ export default function StudentRoster({
                         className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border outline-none cursor-pointer ${statusBadge.tone}`}
                         title="Change student lifecycle status"
                       >
-                        <option value="active">Active</option>
-                        <option value="on_leave">On Leave</option>
-                        <option value="graduated">Graduated</option>
-                        <option value="inactive">Inactive</option>
+                        {STUDENT_STATUS_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
                       </select>
                     ) : (
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
@@ -1014,7 +1082,7 @@ export default function StudentRoster({
                               <span>Edit</span>
                             </button>
                             <button
-                              onClick={() => handleDelete(s.id)}
+                              onClick={() => handleDeleteStudent(s)}
                               className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition"
                               title="Delete record"
                             >

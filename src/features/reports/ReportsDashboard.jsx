@@ -217,7 +217,7 @@ export default function ReportsDashboard({ isAdminView = false, isFrontOffice = 
       const totalCheckIns = students.reduce((sum, s) => sum + s.attendanceCount, 0);
       const totalAssessments = students.reduce((sum, s) => sum + s.assessments.length, 0);
       return {
-        metric1: { label: "Tracked Learners", value: students.length, sub: "Enrolled in cohort" },
+        metric1: { label: "Tracked Learners", value: students.length, sub: "All statuses / records" },
         metric2: { label: "Session Check-Ins", value: totalCheckIns, sub: "Cumulative attendances" },
         metric3: { label: "Official Reports", value: totalAssessments, sub: "Graded evaluations" },
       };

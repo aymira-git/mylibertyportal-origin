@@ -55,3 +55,20 @@ export function buildStudentRecord(fields = {}) {
     role: "student",
   };
 }
+
+export const STUDENT_STATUS_MAP = {
+  active: { label: "Active", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  on_leave: { label: "On Leave", tone: "bg-amber-50 text-amber-700 border-amber-200" },
+  graduated: { label: "Graduated", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  inactive: { label: "Inactive", tone: "bg-slate-100 text-slate-600 border-slate-200" },
+};
+
+export const STUDENT_STATUS_OPTIONS = Object.entries(STUDENT_STATUS_MAP).map(([value, conf]) => ({
+  value,
+  label: conf.label,
+}));
+
+export function isActiveStudent(student) {
+  if (!student) return false;
+  return (student.status || "active") === "active";
+}

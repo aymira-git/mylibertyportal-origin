@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { auth, db } from "./firebase";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { ProfilePanel, LoginPage } from "./features/auth";
 import { useToast, ErrorBoundary, ConnectivityBanner } from "./features/shared";
 import { InstallButton } from "./features/pwa";
@@ -123,6 +123,32 @@ function App() {
     });
     return () => unsubscribe();
   }, [refreshProfile]);
+
+  // Live Active Session Termination Guard (R20)
+  useEffect(() => {
+    if (!user) return;
+    const unsubDoc = onSnapshot(
+      doc(db, "users", user.uid),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const status = data.status || "active";
+          if (status === "resigned" || status === "terminated") {
+            signOut(auth).then(() => {
+              toast("Your account has been deactivated. You have been signed out.", "error");
+              setUser(null);
+              setRole("");
+              setNickname("");
+            });
+          }
+        }
+      },
+      (err) => {
+        console.warn("Active session monitor warning:", err);
+      }
+    );
+    return () => unsubDoc();
+  }, [user, toast]);
 
   // Public route — no login required.
   if (window.location.pathname === "/register") {

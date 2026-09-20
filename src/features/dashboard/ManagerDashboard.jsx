@@ -305,6 +305,11 @@ function ManagerOverview({
                               Missing Instructor
                             </span>
                           )}
+                          {cls.instructorInactive && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                              Instructor Inactive
+                            </span>
+                          )}
                           {cls.needsRoom && (
                             <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
                               Room Needed
@@ -992,25 +997,33 @@ export default function ManagerDashboard() {
 
   // Derived datasets
   const students = useMemo(() => users.filter((u) => u.role === "student"), [users]);
+  const activeStudents = useMemo(() => students.filter((s) => (s.status || "active") === "active"), [students]);
   const staff = useMemo(() => users.filter((u) => u.role !== "student" && u.role !== "admin"), [users]);
+  const activeStaff = useMemo(() => staff.filter((u) => (u.status || "active") === "active"), [staff]);
   const pendingApplications = useMemo(
     () => applications.filter((a) => (a.status || "pending") === "pending"),
     [applications]
   );
 
   const unenrolledStudents = useMemo(() => {
-    return students.filter((s) => !classes.some((c) => (c.studentIds || []).includes(s.id)));
-  }, [students, classes]);
+    return activeStudents.filter((s) => !classes.some((c) => (c.studentIds || []).includes(s.id)));
+  }, [activeStudents, classes]);
 
   const classesWithIssues = useMemo(() => {
-    const instructorIds = new Set(users.filter((u) => u.role === "instructor" || u.role === "admin").map((u) => u.id));
+    const activeInstructorIds = new Set(
+      users
+        .filter((u) => (u.role === "instructor" || u.role === "admin") && (u.status || "active") === "active")
+        .map((u) => u.id)
+    );
     return classes
       .map((c) => {
-        const needsInstructor = !c.instructorId || !instructorIds.has(c.instructorId);
+        const assignedUser = c.instructorId ? users.find((u) => u.id === c.instructorId) : null;
+        const needsInstructor = !c.instructorId || !assignedUser;
+        const instructorInactive = !!c.instructorId && assignedUser && !activeInstructorIds.has(c.instructorId);
         const needsRoom = !c.classRoom || c.classRoom === "N/A" || c.classRoom.trim() === "";
-        return { ...c, needsInstructor, needsRoom };
+        return { ...c, needsInstructor, instructorInactive, needsRoom };
       })
-      .filter((c) => c.needsInstructor || c.needsRoom);
+      .filter((c) => c.needsInstructor || c.instructorInactive || c.needsRoom);
   }, [classes, users]);
 
   const activeShifts = useMemo(() => {
@@ -1018,9 +1031,9 @@ export default function ManagerDashboard() {
   }, [shifts]);
 
   const stats = {
-    students: students.length,
+    students: activeStudents.length,
     classes: classes.length,
-    staff: staff.length,
+    staff: activeStaff.length,
   };
 
   const tabs = [

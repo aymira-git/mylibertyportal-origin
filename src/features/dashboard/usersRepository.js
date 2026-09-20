@@ -1,4 +1,4 @@
-import { db, getSecondaryAuth } from "../../firebase";
+import { auth, db, getSecondaryAuth } from "../../firebase";
 import { collection, doc, setDoc, addDoc, deleteDoc, query, where, limit, getDocs } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
@@ -19,20 +19,37 @@ export function updateStaffRecord(uid, staffData) {
   return setDoc(doc(db, "users", uid), staffData, { merge: true });
 }
 
-export function updateStaffStatus(uid, status) {
-  return setDoc(doc(db, "users", uid), { status }, { merge: true });
+export function updateStaffStatus(uid, status, updatedBy = auth.currentUser?.uid || null) {
+  return setDoc(
+    doc(db, "users", uid),
+    {
+      status,
+      statusUpdatedAt: new Date().toISOString(),
+      statusUpdatedBy: updatedBy,
+    },
+    { merge: true }
+  );
 }
 
-export function updateStudentStatus(uid, status) {
-  return setDoc(doc(db, "users", uid), { status }, { merge: true });
+export function updateStudentStatus(uid, status, updatedBy = auth.currentUser?.uid || null) {
+  return setDoc(
+    doc(db, "users", uid),
+    {
+      status,
+      statusUpdatedAt: new Date().toISOString(),
+      statusUpdatedBy: updatedBy,
+    },
+    { merge: true }
+  );
 }
 
 /**
  * Checks whether a staff member has recorded attendance shift or leave documents.
  * Used as an async guardrail before hard-deleting a profile to prevent orphaned history.
+ * Fails closed on query errors to prevent accidental data loss.
  */
 export async function checkStaffHasAttendanceHistory(uid) {
-  if (!uid) return { hasShifts: false, hasLeave: false };
+  if (!uid) return { hasShifts: false, hasLeave: false, error: null };
   try {
     const shiftsQuery = query(collection(db, "shifts"), where("userId", "==", uid), limit(1));
     const leaveQuery = query(collection(db, "staffLeave"), where("userId", "==", uid), limit(1));
@@ -43,10 +60,39 @@ export async function checkStaffHasAttendanceHistory(uid) {
     return {
       hasShifts: !shiftsSnap.empty,
       hasLeave: !leaveSnap.empty,
+      error: null,
     };
   } catch (err) {
     console.warn("Failed checking staff attendance history:", err);
-    return { hasShifts: false, hasLeave: false };
+    return { hasShifts: false, hasLeave: false, error: err.message };
+  }
+}
+
+/**
+ * Checks whether a student has historical payment, attendance, or academic report records.
+ * Used as an async guardrail before hard-deleting a student profile.
+ * Fails closed on query errors to prevent accidental data loss.
+ */
+export async function checkStudentHasHistory(uid) {
+  if (!uid) return { hasPayments: false, hasAttendance: false, hasReports: false, error: null };
+  try {
+    const paymentsQuery = query(collection(db, "payments"), where("studentId", "==", uid), limit(1));
+    const attendanceQuery = query(collection(db, "attendance"), where("userId", "==", uid), limit(1));
+    const reportsQuery = query(collection(db, "progressReports"), where("studentId", "==", uid), limit(1));
+    const [paymentsSnap, attendanceSnap, reportsSnap] = await Promise.all([
+      getDocs(paymentsQuery),
+      getDocs(attendanceQuery),
+      getDocs(reportsQuery),
+    ]);
+    return {
+      hasPayments: !paymentsSnap.empty,
+      hasAttendance: !attendanceSnap.empty,
+      hasReports: !reportsSnap.empty,
+      error: null,
+    };
+  } catch (err) {
+    console.warn("Failed checking student history:", err);
+    return { hasPayments: false, hasAttendance: false, hasReports: false, error: err.message };
   }
 }
 

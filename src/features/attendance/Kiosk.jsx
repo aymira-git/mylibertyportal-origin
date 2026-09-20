@@ -76,13 +76,14 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
         punctuality,
       });
 
+      const isLeave = (pendingClockIn.userData.status || "active") === "on_leave";
       const name = pendingClockIn.userData.displayName;
       setPendingClockIn(null);
       setSelectedClassId("");
       showStatus(
-        `Shift Confirmed`,
+        isLeave ? `Shift Confirmed (On Leave)` : `Shift Confirmed`,
         "success",
-        `Clocked in for ${selectedClass.className} (${punctuality.status})`,
+        `Clocked in for ${selectedClass.className} (${punctuality.status})${isLeave ? " - Note: Marked on Leave" : ""}`,
         name
       );
       setLastScanned({ name, role: pendingClockIn.userData.role, time: new Date(), type: "Clock In" });
@@ -173,12 +174,36 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
             );
           }
 
+          if (userData.role === "manager") {
+            return showStatus(
+              "Manager Pass",
+              "info",
+              "Managers do not record shift attendance at this kiosk.",
+              userData.displayName
+            );
+          }
+
           if (userData.role === "student") {
+            const studentStatus = userData.status || "active";
+            if (studentStatus === "inactive" || studentStatus === "graduated") {
+              return showStatus(
+                "Pass Inactive",
+                "error",
+                studentStatus === "graduated"
+                  ? "This student has graduated. Please contact the administration."
+                  : "This student pass is inactive. Please contact the front office.",
+                userData.displayName
+              );
+            }
+
             await recordStudentAttendance({ uid, displayName: userData.displayName });
+            const isLeave = studentStatus === "on_leave";
             showStatus(
-              "Attendance Recorded",
+              isLeave ? "Attendance Recorded (On Leave)" : "Attendance Recorded",
               "success",
-              "Welcome to My Liberty! Have a great learning session.",
+              isLeave
+                ? "Welcome back! Note: Your profile is currently marked on leave."
+                : "Welcome to My Liberty! Have a great learning session.",
               userData.displayName
             );
             setLastScanned({
@@ -188,6 +213,16 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
               type: "Check-in"
             });
           } else {
+            const staffStatus = userData.status || "active";
+            if (staffStatus === "resigned" || staffStatus === "terminated") {
+              return showStatus(
+                "Badge Deactivated",
+                "error",
+                "This staff badge is no longer active. Please contact academy administration.",
+                userData.displayName
+              );
+            }
+
             let openShift = await fetchOpenShiftFor(uid);
             if (openShift && isShiftStale(openShift)) {
               await autoCloseShift(openShift);
@@ -215,10 +250,13 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
                     minutesEarlyOrLate: 0,
                   },
                 });
+                const isLeave = staffStatus === "on_leave";
                 showStatus(
-                  "Duty Started",
+                  isLeave ? "Duty Started (On Leave)" : "Duty Started",
                   "success",
-                  "Clocked in on General Administrative Duty.",
+                  isLeave
+                    ? "Clocked in on General Administrative Duty (Note: Marked on Leave)."
+                    : "Clocked in on General Administrative Duty.",
                   userData.displayName
                 );
                 setLastScanned({

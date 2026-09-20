@@ -30,7 +30,7 @@ export default function EnrollModal({ batch, students = [], allClasses = [], onC
   const batchId = batch?.id;
   const enrolledSet = useMemo(() => new Set(studentIds || []), [studentIds]);
   const eligibleStudents = useMemo(() => {
-    return students.filter((s) => !enrolledSet.has(s.id));
+    return students.filter((s) => (s.status || "active") === "active" && !enrolledSet.has(s.id));
   }, [students, enrolledSet]);
 
   // Students currently enrolled in other cohorts available for lateral transfer
@@ -40,7 +40,7 @@ export default function EnrollModal({ batch, students = [], allClasses = [], onC
       if (cls.id === batchId) return;
       (cls.studentIds || []).forEach((sId) => {
         if (enrolledSet.has(sId)) return;
-        const student = students.find((s) => s.id === sId);
+        const student = students.find((s) => s.id === sId && (s.status || "active") === "active");
         if (student) {
           list.push({
             key: `${student.id}___${cls.id}`,

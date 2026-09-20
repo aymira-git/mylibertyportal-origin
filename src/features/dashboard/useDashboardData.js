@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { db } from "../../firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useToast, useConfirm } from "../shared";
-import { buildStudentRecord } from "../students";
+import { buildStudentRecord, isActiveStudent } from "../students";
 import { createInvite, deleteInvite, createTodo, deleteTodo } from "../staff";
 import { saveStudentRecord, updateStaffRecord, createStaffAccount, deleteUserProfile } from "./usersRepository";
 
@@ -292,7 +292,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
   const activeInstructors = users.filter(u => u.role === "instructor" && (u.status || "active") === "active");
   const students = users.filter(u => u.role === "student");
   const enrolledStudentIds = classes.flatMap(cls => cls.studentIds || []);
-  const unenrolledStudents = students.filter(s => !enrolledStudentIds.includes(s.id));
+  const unenrolledStudents = students.filter(s => isActiveStudent(s) && !enrolledStudentIds.includes(s.id));
   const pendingApplications = applications.filter(application => (application.status || "pending") === "pending").length;
 
   return {

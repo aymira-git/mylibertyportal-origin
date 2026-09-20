@@ -164,9 +164,16 @@ export default function StaffDirectory({
       return;
     }
 
-    // 2. Asynchronous shift & leave history guard
+    // 2. Asynchronous shift & leave history guard (fail-closed)
     try {
-      const { hasShifts, hasLeave } = await checkStaffHasAttendanceHistory(user.id);
+      const { hasShifts, hasLeave, error } = await checkStaffHasAttendanceHistory(user.id);
+      if (error) {
+        toast(
+          `Could not verify attendance history (${error}). Deletion cancelled for data safety.`,
+          "error"
+        );
+        return;
+      }
       if (hasShifts) {
         toast(
           `Cannot delete: ${user.displayName} has recorded attendance shift history. Deleting this account would corrupt shift records. Please mark their status as "Resigned" or "Terminated" instead.`,
@@ -182,7 +189,11 @@ export default function StaffDirectory({
         return;
       }
     } catch (err) {
-      console.warn("Could not check attendance history before delete:", err);
+      toast(
+        `Failed to verify account history: ${err.message}. Deletion cancelled for safety.`,
+        "error"
+      );
+      return;
     }
 
     // 3. Single explicit confirmation modal (R2)

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDashboardData } from "./useDashboardData";
 import { AIAssistant, DashboardShell, WelcomeBanner, useToast } from "../shared";
 import { ReportsDashboard } from "../reports";
-import { StudentApplications, StudentRoster, UserForm, BadgeModal } from "../students";
+import { StudentApplications, StudentRoster, UserForm, BadgeModal, isActiveStudent } from "../students";
 import { Kiosk } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { TasksPanel } from "../staff";
@@ -100,7 +100,7 @@ export default function FrontOfficeDashboard() {
           },
           {
             label: "Active Students",
-            value: students.length,
+            value: students.filter(isActiveStudent).length,
             icon: GraduationCap,
             onClick: () => setActiveTab("students"),
           },
