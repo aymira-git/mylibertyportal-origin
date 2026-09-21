@@ -60,7 +60,7 @@ describe("openWhatsAppParentChat", () => {
 
   it("opens WhatsApp with a normalised number and an encoded message", () => {
     openWhatsAppParentChat("0812-3456-7890", "Budi", { className: "Warrior A" }, vi.fn());
-    const [url, target] = window.open.mock.calls[0];
+    const [url, target] = /** @type {any} */ (window.open).mock.calls[0];
     expect(target).toBe("_blank");
     expect(url.startsWith("https://wa.me/6281234567890?text=")).toBe(true);
     expect(decodeURIComponent(url)).toContain("Budi");
@@ -69,7 +69,9 @@ describe("openWhatsAppParentChat", () => {
 
   it("falls back to 'siswa' when the student has no name", () => {
     openWhatsAppParentChat("081234567890", "", { className: "A" }, vi.fn());
-    expect(decodeURIComponent(window.open.mock.calls[0][0])).toContain("siswa");
+    expect(decodeURIComponent(/** @type {any} */ (window.open).mock.calls[0][0])).toContain(
+      "siswa"
+    );
   });
 
   it("shows an error toast and does not open anything when the phone is empty", () => {

@@ -6,13 +6,13 @@ export function usePwaInstall() {
     if (typeof window === "undefined") return false;
     return (
       window.matchMedia("(display-mode: standalone)").matches ||
-      window.navigator.standalone === true
+      Boolean(window.navigator["standalone"])
     );
   });
   const [isIOS] = useState(() => {
     if (typeof window === "undefined") return false;
     const userAgent = window.navigator.userAgent.toLowerCase();
-    return /iphone|ipad|ipod/.test(userAgent) && !window.MSStream;
+    return /iphone|ipad|ipod/.test(userAgent) && !("MSStream" in window);
   });
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 

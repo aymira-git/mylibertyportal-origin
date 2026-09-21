@@ -65,6 +65,9 @@ export async function fetchStaffShifts(isAdminView, since = null) {
   return { shifts: raw, staffMembers, leaves };
 }
 
+/**
+ * @returns {Promise<{ scans: any[], classes: any[], students: any[] }>}
+ */
 export async function fetchTodayScansData(sinceWitaIso, isAdminView, isFrontOffice) {
   const attendanceQuery = query(
     collection(db, "attendance"),
@@ -93,11 +96,14 @@ export async function fetchTodayScansData(sinceWitaIso, isAdminView, isFrontOffi
     scans: attendanceSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
     classes: classesSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
     students: usersSnap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
+      .map((d) => /** @type {any} */ ({ id: d.id, ...d.data() }))
       .filter((u) => u.role === "student"),
   };
 }
 
+/**
+ * @returns {Promise<{ users: any[], classes: any[], attendance: any[], progress: any[] }>}
+ */
 export async function fetchStudentProgressData(isAdminView, isFrontOffice, since = null) {
   const classesQuery =
     isAdminView || isFrontOffice

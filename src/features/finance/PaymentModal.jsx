@@ -22,7 +22,7 @@ function getDefaultPeriod() {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
+export default function PaymentModal({ student, onClose, onPaymentUpdated = null }) {
   const toast = useToast();
   const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("record"); // "record" | "history" | "receipt"

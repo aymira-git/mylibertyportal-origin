@@ -79,11 +79,11 @@ export function buildWhatsAppReceiptMessage(rcp) {
  * Builds the text for the tuition renewal reminder message.
  */
 export function buildWhatsAppRenewalReminderMessage({
-  student,
-  paidUntil,
-  planLabel,
-  remainingDays,
-}) {
+  student = null,
+  paidUntil = null,
+  planLabel = null,
+  remainingDays = null,
+} = {}) {
   const studentName = student?.displayName || "Student";
   const validUntilStr = formatReceiptDate(paidUntil, "recently");
 

@@ -23,7 +23,7 @@ import {
 } from "../shared";
 import { createClass, updateClass } from "./classesRepository";
 
-function BatchForm({ batch, instructors, existingClasses = [], onClose, onSuccess }) {
+function BatchForm({ batch, instructors, existingClasses = [], onClose, onSuccess = null }) {
   const toast = useToast();
   const isEditing = Boolean(batch?.id);
 
@@ -489,7 +489,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
             <span>Batch Details / Promotional Notes</span>
           </label>
           <textarea
-            rows="2"
+            rows={2}
             placeholder="e.g. Focus on conversational fluency, Cambridge test prep, age 12-16..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -553,7 +553,7 @@ export default function BatchModal({
   batch = null,
   instructors = [],
   existingClasses = [],
-  onSuccess,
+  onSuccess = null,
 }) {
   if (!isOpen) return null;
 

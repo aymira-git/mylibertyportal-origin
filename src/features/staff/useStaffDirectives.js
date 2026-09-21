@@ -61,19 +61,21 @@ export function useStaffDirectives(role) {
         if (a.dueDate && !b.dueDate) return -1;
         if (!a.dueDate && b.dueDate) return 1;
         if (a.dueDate && b.dueDate) {
-          const diff = new Date(a.dueDate) - new Date(b.dueDate);
+          const diff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
           if (diff !== 0) return diff;
         }
 
         // Newest createdAt
-        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
       });
   }, [directives]);
 
   const completedDirectives = useMemo(() => {
     return directives
       .filter((d) => d.completed)
-      .sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0));
+      .sort(
+        (a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime()
+      );
   }, [directives]);
 
   const handleToggle = async (todoId, completed) => {

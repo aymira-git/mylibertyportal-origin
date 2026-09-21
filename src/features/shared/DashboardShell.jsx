@@ -15,11 +15,11 @@ import { getCleanLabel, getTabIcon, groupTabsByCategory } from "./tabUtils";
  */
 export default function DashboardShell({
   tabs,
-  defaultTab,
-  activeTab: controlledActiveTab,
-  onTabChange,
-  title,
-  extraSidebarContent,
+  defaultTab = null,
+  activeTab: controlledActiveTab = undefined,
+  onTabChange = null,
+  title = null,
+  extraSidebarContent = null,
 }) {
   const [internalActiveTab, setInternalActiveTab] = useState(defaultTab || tabs[0]?.id);
   const isControlled = controlledActiveTab !== undefined;

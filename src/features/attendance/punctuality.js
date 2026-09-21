@@ -99,7 +99,7 @@ export function getInstantPunctuality(classRecord, clockInDate) {
     WITA_OFFSET_MS;
   const scheduledStart = new Date(scheduledStartUtcMs);
   const requiredArrival = new Date(scheduledStart.getTime() - EARLY_CUTOFF_MINUTES * 60000);
-  const minutesEarlyOrLate = Math.round((scheduledStart - clockInDate) / 60000);
+  const minutesEarlyOrLate = Math.round((scheduledStart.getTime() - clockInDate.getTime()) / 60000);
   return {
     status: clockInDate <= requiredArrival ? "On time" : "Late",
     scheduledStart: scheduledStart.toISOString(),
@@ -155,8 +155,8 @@ function findClosestShift(
   if (candidates.length === 0) return null;
 
   const closest = candidates.reduce((closestShift, s) =>
-    Math.abs(new Date(s.clockIn) - scheduledStart) <
-    Math.abs(new Date(closestShift.clockIn) - scheduledStart)
+    Math.abs(new Date(s.clockIn).getTime() - scheduledStart.getTime()) <
+    Math.abs(new Date(closestShift.clockIn).getTime() - scheduledStart.getTime())
       ? s
       : closestShift
   );
@@ -221,7 +221,7 @@ export function computeMonthlyPunctuality(classes, shifts, instructorsById, year
     );
     const earliestKnownShift = [...taggedShifts, ...legacyShiftsOnPattern]
       .map((shift) => new Date(shift.clockIn))
-      .sort((a, b) => a - b)[0];
+      .sort((a, b) => a.getTime() - b.getTime())[0];
 
     const classStart = cls.classStartDate
       ? new Date(`${cls.classStartDate}T00:00:00`)
@@ -264,7 +264,7 @@ export function computeMonthlyPunctuality(classes, shifts, instructorsById, year
       stats.sessionsAttended += 1;
       if (!matchedShift.classId) stats.limitedAccuracy = true;
       const cutoff = new Date(scheduledStart.getTime() - EARLY_CUTOFF_MINUTES * 60000);
-      const minutesLate = (new Date(matchedShift.clockIn) - cutoff) / 60000;
+      const minutesLate = (new Date(matchedShift.clockIn).getTime() - cutoff.getTime()) / 60000;
 
       if (minutesLate <= 0) {
         stats.onTime += 1;

@@ -12,7 +12,7 @@ export default function EnrollModal({
   students = [],
   allClasses = [],
   onClose,
-  onEnrolled,
+  onEnrolled = null,
 }) {
   const toast = useToast();
   const [enrollMode, setEnrollMode] = useState("direct"); // "direct" | "transfer"

@@ -84,7 +84,7 @@ export async function transferStudentBetweenClasses({
   targetClass,
   studentId,
   dateTransferred = todayWita(),
-  newLevel,
+  newLevel = null,
   transferReason = "",
 }) {
   if (sourceClass && sourceClass.id === targetClassId) {

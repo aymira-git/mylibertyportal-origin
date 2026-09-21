@@ -21,6 +21,9 @@ export function updateProfileDetails(uid, { displayName, phone, dob }) {
   return updateDoc(doc(db, "users", uid), { displayName, phone, dob });
 }
 
+/**
+ * @returns {Promise<any>}
+ */
 export async function fetchInviteByToken(token) {
   const snap = await getDoc(doc(db, "invites", token));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;

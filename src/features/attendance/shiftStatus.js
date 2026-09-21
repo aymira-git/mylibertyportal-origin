@@ -29,7 +29,7 @@ export const EXPECTED_MINUTES = {
  */
 export function isShiftStale(shift) {
   if (!shift || shift.clockOut || !shift.clockIn) return false;
-  const hoursOpen = (new Date() - new Date(shift.clockIn)) / (1000 * 60 * 60);
+  const hoursOpen = (Date.now() - new Date(shift.clockIn).getTime()) / (1000 * 60 * 60);
   const grace = GRACE_HOURS[shift.role] ?? GRACE_HOURS.default;
   return hoursOpen > grace;
 }

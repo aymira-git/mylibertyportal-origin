@@ -73,6 +73,8 @@ export const DEFAULT_BASE_MONTHLY_RATE = 350000; // IDR 350,000 / month
 
 /**
  * Calculates pricing, bundle discounts, and net total for a given plan.
+ * @param {string} planId
+ * @param {any} [baseMonthlyRate]
  */
 export function calculatePlanPricing(planId, baseMonthlyRate = DEFAULT_BASE_MONTHLY_RATE) {
   const plan = PAYMENT_PLANS[planId];

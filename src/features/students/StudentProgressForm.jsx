@@ -241,7 +241,7 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
                 ))}
               </select>
               <div className="shrink-0">
-                <LevelBadge level={level} size="md" />
+                <LevelBadge level={level} />
               </div>
             </div>
           </div>

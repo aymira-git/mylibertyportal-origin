@@ -374,7 +374,7 @@ export default function StaffSignup() {
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-medium focus:border-[#1a3a8f] focus:ring-1 focus:ring-[#1a3a8f] outline-none"
-            minLength="6"
+            minLength={6}
             required
           />
         </div>

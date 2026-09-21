@@ -70,8 +70,8 @@ describe("checkStaffHasAttendanceHistory", () => {
   // The flags are false on failure; safety depends on callers checking `error`.
   // StaffDirectory does today — this test keeps that contract visible.
   it("returns the error message on a failed lookup", async () => {
-    const { getDocs } = await import("firebase/firestore");
-    getDocs.mockRejectedValueOnce(new Error("unavailable"));
+    const firestore = /** @type {any} */ (await import("firebase/firestore"));
+    firestore.getDocs.mockRejectedValueOnce(new Error("unavailable"));
     const result = await checkStaffHasAttendanceHistory("u1");
     expect(result.error).toBe("unavailable");
   });
@@ -91,8 +91,8 @@ describe("checkStudentHasHistory", () => {
   });
 
   it("returns the error message on a failed lookup", async () => {
-    const { getDocs } = await import("firebase/firestore");
-    getDocs.mockRejectedValueOnce(new Error("unavailable"));
+    const firestore = /** @type {any} */ (await import("firebase/firestore"));
+    firestore.getDocs.mockRejectedValueOnce(new Error("unavailable"));
     expect((await checkStudentHasHistory("s1")).error).toBe("unavailable");
   });
 });

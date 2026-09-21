@@ -10,7 +10,7 @@ class SoundEffects {
 
   getAudioContext() {
     if (!this.ctx) {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const AudioContextClass = window.AudioContext || window["webkitAudioContext"];
       if (AudioContextClass) {
         this.ctx = new AudioContextClass();
       }

@@ -66,7 +66,7 @@ const emptyFormData = {
  * handleEdit/handleSave need to jump the *caller's* tab state to the right
  * screen after an edit/save, and each dashboard has its own tab list.
  */
-export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) {
+export function useDashboardData({ restrictedRead = false, setActiveTab = null } = {}) {
   const toast = useToast();
   const confirm = useConfirm(); // 👈 shadows native window.confirm on purpose — same call shape, styled modal, just needs "await"
 

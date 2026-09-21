@@ -80,7 +80,7 @@ export function parseWitaInputToUtcIso(inputStr) {
 /**
  * Validates whether a time string strictly matches the "HH:mm" 24-hour format.
  * Prevents malformed class schedule data from crashing time-calculation helpers.
- * @param {string|null|undefined} timeStr
+ * @param {any} [timeStr]
  * @returns {boolean}
  */
 export function validateHHmm(timeStr) {

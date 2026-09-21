@@ -23,7 +23,7 @@ export default function TransferModal({
   sourceClass = null,
   classes = [],
   users = [],
-  onTransferred,
+  onTransferred = null,
 }) {
   const toast = useToast();
 

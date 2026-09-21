@@ -167,7 +167,7 @@ export default function ShiftAdjustmentModal({ shift, actor, onClose, onSuccess 
               Audit Note / Explanation *
             </label>
             <textarea
-              rows="2"
+              rows={2}
               placeholder="e.g. Verified with front desk log that teacher departed at 17:30..."
               value={note}
               onChange={(e) => setNote(e.target.value)}

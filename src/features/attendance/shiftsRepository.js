@@ -13,11 +13,17 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
+/**
+ * @returns {Promise<any>}
+ */
 export async function fetchUserById(uid) {
   const snap = await getDoc(doc(db, "users", uid));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
+/**
+ * @returns {Promise<any>}
+ */
 export async function fetchOpenShiftFor(uid) {
   const snap = await getDocs(
     query(collection(db, "shifts"), where("userId", "==", uid), where("clockOut", "==", null))
@@ -25,6 +31,9 @@ export async function fetchOpenShiftFor(uid) {
   return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
 }
 
+/**
+ * @returns {Promise<any[]>}
+ */
 export async function fetchInstructorClasses(uid) {
   const [primarySnap, subSnap] = await Promise.all([
     getDocs(query(collection(db, "classes"), where("instructorId", "==", uid))),
@@ -47,12 +56,12 @@ export function setClassSubstitute(classId, { substituteId = null, substituteNam
 
 export function clockIn({
   uid,
-  displayName,
+  displayName = "",
   role,
-  classId,
-  className,
+  classId = "general",
+  className = "",
   clockInAt,
-  punctuality,
+  punctuality = null,
   stationId = "reception-01",
   docId = null,
 }) {
@@ -97,13 +106,13 @@ export function markShiftReviewed(shiftId) {
 export function switchClassAtomic({
   previousShiftId,
   clockOutAt = new Date(),
-  newShiftDocId,
+  newShiftDocId = null,
   uid,
-  displayName,
+  displayName = "",
   role,
-  classId,
-  className,
-  punctuality,
+  classId = "general",
+  className = "",
+  punctuality = null,
   stationId = "reception-01",
 }) {
   const batch = writeBatch(db);
@@ -150,9 +159,9 @@ export async function adjustShiftWithAudit({
   beforeShift,
   afterData,
   reasonCode,
-  note,
+  note = "",
   actorId,
-  actorName,
+  actorName = "Administrator",
 }) {
   const batch = writeBatch(db);
   const shiftRef = doc(db, "shifts", shiftId);
@@ -179,7 +188,7 @@ export async function adjustShiftWithAudit({
     reasonCode,
     note: note || "",
     actorId,
-    actorNameSnapshot: actorName || "Administrator",
+    actorNameSnapshot: actorName,
     createdAt: serverTimestamp(),
   });
 
@@ -191,10 +200,10 @@ export async function adjustShiftWithAudit({
  */
 export async function logStaffLeave({
   userId,
-  displayNameSnapshot,
+  displayNameSnapshot = "",
   type,
   startDate,
-  endDate,
+  endDate = null,
   dayPortion = "full",
   note = "",
   createdBy,
@@ -214,10 +223,9 @@ export async function logStaffLeave({
 }
 
 export async function fetchStaffLeaves(sinceDate = null) {
-  let q = collection(db, "staffLeave");
-  if (sinceDate) {
-    q = query(q, where("endDate", ">=", sinceDate));
-  }
+  const q = sinceDate
+    ? query(collection(db, "staffLeave"), where("endDate", ">=", sinceDate))
+    : collection(db, "staffLeave");
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }

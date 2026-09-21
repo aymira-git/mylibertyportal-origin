@@ -19,7 +19,7 @@ function formatDueDate(dueDate) {
   const due = new Date(dueDate);
   due.setHours(0, 0, 0, 0);
 
-  const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
   if (diffDays < 0) {
     return { label: "Overdue", badgeColor: "bg-rose-100 text-rose-800 border-rose-200" };

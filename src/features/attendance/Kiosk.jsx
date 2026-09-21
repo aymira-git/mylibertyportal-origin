@@ -162,11 +162,15 @@ export default function Kiosk({
 
   useEffect(() => {
     if (!kioskScanning) return;
-    const scanner = new Html5QrcodeScanner("kiosk-reader", {
-      fps: 10,
-      qrbox: { width: 260, height: 260 },
-      aspectRatio: 1.0,
-    });
+    const scanner = new Html5QrcodeScanner(
+      "kiosk-reader",
+      {
+        fps: 10,
+        qrbox: { width: 260, height: 260 },
+        aspectRatio: 1.0,
+      },
+      /* verbose= */ false
+    );
 
     scanner.render(
       async (uid) => {

@@ -12,7 +12,7 @@ export default function WelcomeBanner({
   portalLabel = "Campus Portal",
   roleLabel = "Active Staff",
   roleBadgeColor = "text-emerald-300 bg-emerald-950/40 border-emerald-500/30",
-  userName: propUserName,
+  userName: propUserName = null,
   fallbackName = "Staff",
   subtitle = "Manage your academy operations, review daily schedules, and coordinate activities.",
   stats = [],

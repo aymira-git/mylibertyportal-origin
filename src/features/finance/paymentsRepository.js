@@ -21,8 +21,8 @@ import { todayWita } from "../../utils/dateWita.js";
 export async function fetchPaymentHistory(studentId) {
   const q = query(collection(db, "payments"), where("studentId", "==", studentId));
   const snap = await getDocs(q);
-  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  list.sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
+  const list = snap.docs.map((d) => /** @type {any} */ ({ id: d.id, ...d.data() }));
+  list.sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime());
   return list;
 }
 
