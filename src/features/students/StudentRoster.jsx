@@ -220,7 +220,7 @@ export default function StudentRoster({
       const health = s.paymentStatus === "pending"
         ? { status: "pending" }
         : getPaymentHealthStatus(s.paidUntil);
-      if (health.status === "due_soon" || health.status === "expired") {
+      if (health.status === "due_soon" || health.status === "expired" || health.status === "invalid_date") {
         dueOrExpired++;
       }
     });
@@ -284,7 +284,12 @@ export default function StudentRoster({
 
         // 2. Action Filter
         if (actionFilter === "unassigned" && s.studentClasses.length > 0) return false;
-        if (actionFilter === "due_or_expired" && s.paymentHealth.status !== "due_soon" && s.paymentHealth.status !== "expired") return false;
+        if (
+          actionFilter === "due_or_expired" &&
+          s.paymentHealth.status !== "due_soon" &&
+          s.paymentHealth.status !== "expired" &&
+          s.paymentHealth.status !== "invalid_date"
+        ) return false;
         if (actionFilter === "beginner" && s.tier !== "beginner") return false;
         if (actionFilter === "intermediate" && s.tier !== "intermediate") return false;
         if (actionFilter === "fluent" && s.tier !== "fluent") return false;

@@ -9,7 +9,7 @@
  * in the Payment Modal and stored as paymentPlan = "custom".
  */
 
-import { addMonths, format, parseISO, startOfDay, differenceInCalendarDays } from "date-fns";
+import { addMonths, format, parseISO, startOfDay, differenceInCalendarDays, isValid } from "date-fns";
 
 export const PAYMENT_PLANS = {
   monthly: {
@@ -105,7 +105,9 @@ export function calculatePlanPricing(planId, baseMonthlyRate = DEFAULT_BASE_MONT
 export function calculateExpiryDate(startDate, months) {
   if (!months || months <= 0) return null;
   const start = typeof startDate === "string" ? parseISO(startDate) : (startDate || new Date());
+  if (!isValid(start)) return null;
   const end = addMonths(start, months);
+  if (!isValid(end)) return null;
   return format(end, "yyyy-MM-dd");
 }
 
@@ -115,25 +117,28 @@ export function calculateExpiryDate(startDate, months) {
  */
 export function calculateCoveragePeriod(startDate, months) {
   const start = typeof startDate === "string" ? parseISO(startDate) : (startDate || new Date());
+  if (!isValid(start)) return "—";
   if (!months || months === 1) {
     return format(start, "MMMM yyyy");
   }
   // Coverage spans from start month to (start + months - 1 day or inclusive month)
   // E.g. 3 months starting in October = Oct, Nov, Dec -> October 2026 – December 2026
   const endInclusive = addMonths(start, months - 1);
+  if (!isValid(endInclusive)) return "—";
   return `${format(start, "MMMM yyyy")} – ${format(endInclusive, "MMMM yyyy")} (${months} Mo)`;
 }
 
 /**
  * Evaluates the payment health status of a student based on their paidUntil date.
  * Returns:
- * - "legacy": if paidUntil is absent (renders as "No Plan Set", gray)
- * - "active": remainingDays > 14 (green)
+ * - "legacy": if paidUntil is absent (renders as "No Plan Set", slate)
+ * - "invalid_date": if paidUntil cannot be parsed (renders as "Check date", rose)
+ * - "active": remainingDays > 14 (emerald)
  * - "due_soon": 0 <= remainingDays <= 14 (amber)
- * - "expired": remainingDays < 0 (red)
+ * - "expired": remainingDays < 0 (rose)
  */
 export function getPaymentHealthStatus(paidUntil) {
-  if (!paidUntil) {
+  if (!paidUntil || typeof paidUntil !== "string" || !paidUntil.trim()) {
     return {
       status: "legacy",
       label: "No Plan Set",
@@ -144,6 +149,15 @@ export function getPaymentHealthStatus(paidUntil) {
 
   try {
     const target = parseISO(paidUntil);
+    if (!isValid(target)) {
+      return {
+        status: "invalid_date",
+        label: "Check date",
+        tone: "rose",
+        remainingDays: null,
+      };
+    }
+
     const today = startOfDay(new Date());
     const remainingDays = differenceInCalendarDays(target, today);
 
@@ -173,9 +187,9 @@ export function getPaymentHealthStatus(paidUntil) {
     };
   } catch {
     return {
-      status: "legacy",
-      label: "No Plan Set",
-      tone: "slate",
+      status: "invalid_date",
+      label: "Check date",
+      tone: "rose",
       remainingDays: null,
     };
   }

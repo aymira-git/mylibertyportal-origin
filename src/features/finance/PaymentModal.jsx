@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, format, parseISO, isValid } from "date-fns";
 import { auth } from "../../firebase";
 import {
   PAYMENT_PLANS,
@@ -33,8 +33,10 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const existingHealth = getPaymentHealthStatus(student.paidUntil);
   const hasFutureCoverage = existingHealth.status === "active" || existingHealth.status === "due_soon";
-  const nextDayAfterExpiry = student.paidUntil
-    ? format(addDays(parseISO(student.paidUntil), 1), "yyyy-MM-dd")
+  const parsedPaidUntil = student.paidUntil ? parseISO(student.paidUntil) : null;
+  const isValidPaidUntil = parsedPaidUntil && isValid(parsedPaidUntil);
+  const nextDayAfterExpiry = isValidPaidUntil
+    ? format(addDays(parsedPaidUntil, 1), "yyyy-MM-dd")
     : todayStr;
 
   const [selectedPlan, setSelectedPlan] = useState(() => {

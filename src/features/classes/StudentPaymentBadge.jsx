@@ -12,7 +12,7 @@ export default function StudentPaymentBadge({ student }) {
     badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
   } else if (health.status === "due_soon") {
     badgeClass = "bg-amber-50 text-amber-700 border-amber-200";
-  } else if (health.status === "expired") {
+  } else if (health.status === "expired" || health.status === "invalid_date") {
     badgeClass = "bg-rose-50 text-rose-700 border-rose-200";
   } else if (health.status === "pending") {
     badgeClass = "bg-yellow-50 text-yellow-800 border-yellow-200";
@@ -29,7 +29,7 @@ export default function StudentPaymentBadge({ student }) {
             ? "bg-emerald-500"
             : health.status === "due_soon"
             ? "bg-amber-500"
-            : health.status === "expired"
+            : health.status === "expired" || health.status === "invalid_date"
             ? "bg-rose-500"
             : "bg-slate-400"
         }`}
