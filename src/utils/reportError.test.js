@@ -55,6 +55,19 @@ describe("reportError", () => {
     expect(ops[ops.length - 1].data.message).toContain("customCode");
   });
 
+  it("redacts sensitive tokens, API keys, and passwords from error messages", async () => {
+    await reportError(
+      "Failed request with Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9 and password: MySecretPassword123",
+      "auth_context"
+    );
+    const ops = fake.opsOf("add");
+    const lastOp = ops[ops.length - 1];
+    expect(lastOp.data.message).toContain("Bearer [REDACTED]");
+    expect(lastOp.data.message).toContain("password: [REDACTED]");
+    expect(lastOp.data.message).not.toContain("MySecretPassword123");
+    expect(lastOp.data.message).not.toContain("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
+  });
+
   it("deduplicates identical errors occurring within cooldown window", async () => {
     const error = new Error("Rapid loop error");
     await reportError(error, "loop_context");

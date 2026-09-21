@@ -6,22 +6,31 @@ const recentErrors = new Map();
 const COOLDOWN_MS = 10000; // 10 seconds per unique error key
 
 /**
- * Strips or safely stringifies error message
+ * Strips, stringifies, and sanitizes error message to prevent accidental PII or secret leaks
  * @param {any} error
  * @returns {string}
  */
 function cleanErrorMessage(error) {
+  let raw;
   if (error instanceof Error) {
-    return error.message || "Unknown Error";
+    raw = error.message || "Unknown Error";
+  } else if (typeof error === "string") {
+    raw = error;
+  } else {
+    try {
+      raw = JSON.stringify(error);
+    } catch {
+      raw = String(error);
+    }
   }
-  if (typeof error === "string") {
-    return error;
-  }
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
+
+  // Sanitize potential sensitive tokens, authorization headers, passwords, and API keys
+  return raw
+    .replace(/Bearer\s+[a-zA-Z0-9_.-]+/gi, "Bearer [REDACTED]")
+    .replace(
+      /(password|secret|token|apiKey|api_key|auth_token)\s*[:=]\s*["']?[^"',\s]+["']?/gi,
+      "$1: [REDACTED]"
+    );
 }
 
 /**
