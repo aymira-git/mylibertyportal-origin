@@ -88,7 +88,7 @@ describe("buildWhatsAppReceiptMessage", () => {
 
     // Open to debate: "2026-12-21" is read as midnight UTC and then shown in the
     // device's timezone, so a device west of UTC prints the day before.
-    it.fails("still prints 'Dec 21, 2026' for a date-only coverage end", () => {
+    it("still prints 'Dec 21, 2026' for a date-only coverage end", () => {
       process.env.TZ = "America/Los_Angeles";
       expect(buildWhatsAppReceiptMessage(rcp)).toContain("Dec 21, 2026");
     });

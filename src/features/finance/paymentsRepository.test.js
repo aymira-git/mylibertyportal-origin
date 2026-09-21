@@ -55,7 +55,7 @@ describe("recordPayment", () => {
 
   // Open to debate: lastPaymentDate uses the UTC date from the timestamp. A payment
   // recorded between 00:00 and 08:00 WITA is stamped with the previous day.
-  it.fails("stamps lastPaymentDate with the WITA calendar day", async () => {
+  it("stamps lastPaymentDate with the WITA calendar day", async () => {
     await recordPayment("s1", { ...record, recordedAt: "2026-09-21T20:00:00.000Z" }); // 04:00 on 22 Sep WITA
     expect(fake.find("users/s1").data.lastPaymentDate).toBe("2026-09-22");
   });

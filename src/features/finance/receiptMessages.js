@@ -26,25 +26,34 @@ export function normalizeWhatsAppNumber(phone) {
   return cleaned;
 }
 
+function formatReceiptDate(val, fallback = null) {
+  if (!val) return fallback;
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+    const [y, m, d] = val.trim().split("-").map(Number);
+    const dateObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    return dateObj.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+  }
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return fallback;
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "Asia/Makassar",
+  });
+}
+
 /**
  * Builds the text for the official electronic payment receipt.
  */
 export function buildWhatsAppReceiptMessage(rcp) {
-  const dateStr = rcp.recordedAt
-    ? new Date(rcp.recordedAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
-    : "N/A";
-
-  const validThroughStr = rcp.coverageEnd || rcp.paidUntil
-    ? new Date(rcp.coverageEnd || rcp.paidUntil).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
-    : null;
+  const dateStr = formatReceiptDate(rcp.recordedAt, "N/A");
+  const validThroughStr = formatReceiptDate(rcp.coverageEnd || rcp.paidUntil, null);
 
   const lines = [
     `*MY LIBERTY INTERNATIONAL ENGLISH SCHOOL*`,
@@ -76,13 +85,7 @@ export function buildWhatsAppRenewalReminderMessage({
   remainingDays,
 }) {
   const studentName = student?.displayName || "Student";
-  const validUntilStr = paidUntil
-    ? new Date(paidUntil).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
-    : "recently";
+  const validUntilStr = formatReceiptDate(paidUntil, "recently");
 
   const planText = planLabel ? `*${planLabel}* plan` : "tuition plan";
 

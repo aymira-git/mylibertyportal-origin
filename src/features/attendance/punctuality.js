@@ -1,4 +1,4 @@
-import { getTodayWitaWeekday, validateHHmm } from "../../utils/dateWita.js";
+import { getTodayWitaWeekday, validateHHmm, WITA_OFFSET_MS } from "../../utils/dateWita.js";
 
 // Company policy: an instructor must clock in at least this many minutes
 // BEFORE the scheduled start time to count as "on time." Arriving after
@@ -79,8 +79,10 @@ export function getInstantPunctuality(classRecord, clockInDate) {
     return { status: "Unscheduled", scheduledStart: null, requiredArrival: null, minutesEarlyOrLate: null };
   }
   const [hours, minutes] = classRecord.startTime.split(":").map(Number);
-  const scheduledStart = new Date(clockInDate);
-  scheduledStart.setHours(hours, minutes, 0, 0);
+  const w = new Date(clockInDate.getTime() + WITA_OFFSET_MS);
+  const scheduledStartUtcMs =
+    Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate(), hours, minutes, 0, 0) - WITA_OFFSET_MS;
+  const scheduledStart = new Date(scheduledStartUtcMs);
   const requiredArrival = new Date(scheduledStart.getTime() - EARLY_CUTOFF_MINUTES * 60000);
   const minutesEarlyOrLate = Math.round((scheduledStart - clockInDate) / 60000);
   return {

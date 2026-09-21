@@ -1,5 +1,6 @@
 import { db } from "../../firebase";
 import { collection, getDocs, query, where, doc, setDoc, writeBatch, deleteField } from "firebase/firestore";
+import { todayWita } from "../../utils/dateWita.js";
 
 /**
  * All direct Firestore reads/writes for payments live here instead of
@@ -24,10 +25,15 @@ export async function recordPayment(studentId, paymentRecord) {
   const paymentRef = doc(collection(db, "payments"));
   const batch = writeBatch(db);
 
+  const recordedDate = paymentRecord.recordedAt ? new Date(paymentRecord.recordedAt) : new Date();
+  const lastPaymentDate = !isNaN(recordedDate.getTime())
+    ? todayWita(recordedDate)
+    : (paymentRecord.recordedAt || "").slice(0, 10);
+
   const studentUpdate = {
     paymentStatus: "paid",
     lastPaymentPeriod: paymentRecord.period,
-    lastPaymentDate: paymentRecord.recordedAt.slice(0, 10),
+    lastPaymentDate,
     lastPaymentAmount: paymentRecord.amount,
     lastPaymentMethod: paymentRecord.method,
     paymentPlan: paymentRecord.planId || "monthly",

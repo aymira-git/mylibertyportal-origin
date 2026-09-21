@@ -1,7 +1,7 @@
 /**
  * Centralized Date & Timezone Utilities for WITA (UTC+8 / Asia/Makassar).
  *
- * MY LIBERTY operates exclusively in Manado, North Sulawesi (WITA).
+ * MY LIBERTY operates in Gorontalo (WITA).
  * WITA has a permanent UTC+8 offset with NO daylight savings time.
  *
  * Using UTC arithmetic with a fixed 8-hour offset ensures these functions

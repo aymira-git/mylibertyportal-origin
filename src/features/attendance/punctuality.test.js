@@ -69,7 +69,7 @@ describe("getInstantPunctuality", () => {
       process.env.TZ = originalTz;
     });
 
-    it.fails("judges 10:10 WITA as late even when the device clock is UTC", () => {
+    it("judges 10:10 WITA as late even when the device clock is UTC", () => {
       const r = getInstantPunctuality(cls, wita("2026-09-21", "10:10"));
       expect(r.status).toBe("Late");
     });

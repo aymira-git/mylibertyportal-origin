@@ -86,7 +86,7 @@ describe("approveApplication", () => {
 
   // Open to debate: joinedDate uses the UTC date, so approving between 00:00 and
   // 08:00 WITA records the previous day.
-  it.fails("records joinedDate as the WITA calendar day", async () => {
+  it("records joinedDate as the WITA calendar day", async () => {
     vi.setSystemTime(new Date("2026-09-21T20:00:00.000Z")); // 04:00 on 22 Sep WITA
     const student = await approveApplication({ app });
     expect(student.joinedDate).toBe("2026-09-22");

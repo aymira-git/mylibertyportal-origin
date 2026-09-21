@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { buildStudentRecord } from "./studentRecord";
 import { getBatchAvailability } from "../classes/batchAvailability";
+import { todayWita } from "../../utils/dateWita.js";
 
 /**
  * Atomically approves an application, creates the canonical student record,
@@ -58,7 +59,7 @@ export async function approveApplication({
 
     // 3. Determine final academic level (batch level wins if class chosen)
     const finalLevel = classId && classData?.classLevel ? classData.classLevel : (level || "warrior");
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayWita();
     const now = new Date().toISOString();
 
     // 4. Build canonical student record
