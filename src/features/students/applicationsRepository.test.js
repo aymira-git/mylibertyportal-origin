@@ -124,6 +124,11 @@ describe("approveApplication", () => {
     const student = await approveApplication({ app });
     expect(student.joinedDate).toBe("2026-09-22");
   });
+
+  it("throws validation error when approving an application with empty student name", async () => {
+    await expect(approveApplication({ app: { ...app, displayName: "   " } })).rejects.toThrow();
+    expect(fake.ops).toHaveLength(0);
+  });
 });
 
 describe("archiveApplication", () => {

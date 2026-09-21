@@ -7,17 +7,20 @@ import { doc, deleteDoc, setDoc } from "firebase/firestore";
  * paymentsRepository.js, and applicationsRepository.js.
  */
 
+import { inviteSchema } from "../../schemas";
+
 export const INVITE_EXPIRATION_DAYS = 7;
 
 export function createInvite(email, role, branch = "Cabang Utama") {
+  const validated = inviteSchema.parse({ email, role, branch });
   const token = crypto.randomUUID();
   const now = Date.now();
   const expiresAt = now + INVITE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
 
   return setDoc(doc(db, "invites", token), {
-    email: email.toLowerCase().trim(),
-    role,
-    branch: branch || "Cabang Utama",
+    email: validated.email,
+    role: validated.role,
+    branch: validated.branch,
     createdAt: new Date(now).toISOString(),
     expiresAt,
     used: false,

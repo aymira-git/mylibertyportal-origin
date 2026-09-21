@@ -10,6 +10,7 @@ import {
   deleteField,
 } from "firebase/firestore";
 import { todayWita } from "../../utils/dateWita.js";
+import { studentIdSchema, paymentRecordSchema } from "../../schemas";
 
 /**
  * All direct Firestore reads/writes for payments live here instead of
@@ -19,7 +20,8 @@ import { todayWita } from "../../utils/dateWita.js";
  */
 
 export async function fetchPaymentHistory(studentId) {
-  const q = query(collection(db, "payments"), where("studentId", "==", studentId));
+  const validStudentId = studentIdSchema.parse(studentId);
+  const q = query(collection(db, "payments"), where("studentId", "==", validStudentId));
   const snap = await getDocs(q);
   const list = snap.docs.map((d) => /** @type {any} */ ({ id: d.id, ...d.data() }));
   list.sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime());
@@ -31,6 +33,8 @@ export async function fetchPaymentHistory(studentId) {
  * together, atomically — either both land or neither does.
  */
 export async function recordPayment(studentId, paymentRecord) {
+  const validStudentId = studentIdSchema.parse(studentId);
+  const validatedRecord = paymentRecordSchema.parse(paymentRecord);
   const paymentRef = doc(collection(db, "payments"));
   const batch = writeBatch(db);
 
@@ -41,11 +45,11 @@ export async function recordPayment(studentId, paymentRecord) {
 
   const studentUpdate = {
     paymentStatus: "paid",
-    lastPaymentPeriod: paymentRecord.period,
+    lastPaymentPeriod: validatedRecord.period,
     lastPaymentDate,
-    lastPaymentAmount: paymentRecord.amount,
-    lastPaymentMethod: paymentRecord.method,
-    paymentPlan: paymentRecord.planId || "monthly",
+    lastPaymentAmount: validatedRecord.amount,
+    lastPaymentMethod: validatedRecord.method,
+    paymentPlan: validatedRecord.planId || "monthly",
   };
 
   if (paymentRecord.coverageEnd) {
@@ -53,7 +57,7 @@ export async function recordPayment(studentId, paymentRecord) {
   }
 
   batch.set(paymentRef, paymentRecord);
-  batch.set(doc(db, "users", studentId), studentUpdate, { merge: true });
+  batch.set(doc(db, "users", validStudentId), studentUpdate, { merge: true });
 
   await batch.commit();
   return { id: paymentRef.id, ...paymentRecord };

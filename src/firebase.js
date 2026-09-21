@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCut-lqqGwpwZ9FjaifrBObi8Kr76tawIU",
@@ -30,6 +31,45 @@ validateFirebaseConfig(firebaseConfig);
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+/**
+ * Initializes Firebase App Check with reCAPTCHA v3 in production and
+ * debug tokens in development/localhost. If reCAPTCHA key is not configured,
+ * fails gracefully without blocking the application.
+ */
+function initAppCheck(targetApp) {
+  if (typeof window === "undefined") return null;
+
+  const isDev = Boolean(import.meta.env.DEV || window.location?.hostname === "localhost");
+  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
+  if (isDev) {
+    // In local development or testing, use the Firebase debug token provider
+    // @ts-ignore
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
+  }
+
+  if (recaptchaSiteKey) {
+    try {
+      return initializeAppCheck(targetApp, {
+        provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    } catch (err) {
+      console.warn("[AppCheck] Failed to initialize reCAPTCHA provider:", err);
+      return null;
+    }
+  }
+
+  if (isDev) {
+    console.info(
+      "[AppCheck] Running in development mode with debug token support. Provide VITE_RECAPTCHA_SITE_KEY to activate production verification."
+    );
+  }
+  return null;
+}
+
+export const appCheck = initAppCheck(app);
 
 /**
  * A second, independent Firebase App instance sharing the same project

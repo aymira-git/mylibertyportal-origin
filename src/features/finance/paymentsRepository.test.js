@@ -56,6 +56,12 @@ describe("recordPayment", () => {
     expect(fake.ops).toHaveLength(0);
   });
 
+  it("throws validation error on invalid payment record or studentId", async () => {
+    await expect(recordPayment("", record)).rejects.toThrow();
+    await expect(recordPayment("s1", { ...record, amount: -100 })).rejects.toThrow();
+    await expect(recordPayment("s1", { ...record, period: "" })).rejects.toThrow();
+  });
+
   // Open to debate: lastPaymentDate uses the UTC date from the timestamp. A payment
   // recorded between 00:00 and 08:00 WITA is stamped with the previous day.
   it("stamps lastPaymentDate with the WITA calendar day", async () => {

@@ -20,6 +20,7 @@ import {
 import { buildStudentRecord } from "./studentRecord";
 import { getBatchAvailability } from "../classes/batchAvailability";
 import { todayWita } from "../../utils/dateWita.js";
+import { applicationSchema } from "../../schemas";
 
 /**
  * Atomically approves an application, creates the canonical student record,
@@ -92,8 +93,9 @@ export async function approveApplication({
       status: "active",
     });
 
-    // 5. Atomic writes
-    transaction.set(studentRef, studentData);
+    // 5. Validate schema and perform atomic writes
+    const validatedStudent = applicationSchema.parse(studentData);
+    transaction.set(studentRef, validatedStudent);
 
     transaction.update(appRef, {
       status: "approved",

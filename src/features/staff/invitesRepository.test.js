@@ -46,6 +46,11 @@ describe("createInvite", () => {
     await createInvite("a@b.id", "manager", "");
     expect(fake.find(`invites/${MOCK_TOKEN}`).data.branch).toBe("Cabang Utama");
   });
+
+  it("throws validation error for invalid email or role", () => {
+    expect(() => createInvite("not-an-email", "instructor")).toThrow();
+    expect(() => createInvite("valid@school.id", "invalid_role")).toThrow();
+  });
 });
 
 describe("deleteInvite", () => {

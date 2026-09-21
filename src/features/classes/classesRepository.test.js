@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fake } from "../../test/firestoreFake.js";
 import {
   addStudentToClass,
+  createClass,
   removeStudentFromClass,
   setClassGroupLevel,
   syncStudentsCurrentLevel,
@@ -215,5 +216,37 @@ describe("syncStudentsCurrentLevel", () => {
         .map((o) => o.path)
         .sort()
     ).toEqual(["users/s1", "users/s3"]);
+  });
+});
+
+describe("createClass", () => {
+  it("validates and saves a valid class batch to classes collection", async () => {
+    await createClass({
+      className: "Master Morning Cohort",
+      classLevel: "master",
+      instructorId: "inst1",
+      maxCapacity: 12,
+    });
+
+    const ops = fake.opsOf("add");
+    expect(ops.length).toBe(1);
+    expect(ops[0].path).toMatch(/^classes\//);
+    expect(ops[0].data).toMatchObject({
+      className: "Master Morning Cohort",
+      classLevel: "master",
+      instructorId: "inst1",
+      maxCapacity: 12,
+      minQuorum: 4,
+      status: "open",
+    });
+  });
+
+  it("throws validation error for invalid batch payload", async () => {
+    await expect(
+      createClass({
+        className: "",
+        classLevel: "master",
+      })
+    ).rejects.toThrow();
   });
 });

@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { getBatchAvailability } from "./batchAvailability";
 import { todayWita } from "../../utils/dateWita.js";
+import { batchSchema } from "../../schemas";
 
 /**
  * All direct Firestore writes for the `classes` collection — and the
@@ -34,8 +35,9 @@ export function syncStudentsCurrentLevel(studentIds, level) {
   );
 }
 
-export function createClass(classData) {
-  return addDoc(collection(db, "classes"), classData);
+export async function createClass(classData) {
+  const validated = batchSchema.parse(classData);
+  return addDoc(collection(db, "classes"), validated);
 }
 
 export function updateClass(classId, updateData) {
