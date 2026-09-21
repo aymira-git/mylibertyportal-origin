@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useToast } from "./useToast";
 import { auth } from "../../firebase";
+import { copyText } from "../../utils/copyText";
 
 // This is just a URL (like a web address) — not a secret. It's safe for it
 // to be public. The actual Gemini API key lives only on the Cloudflare
@@ -68,9 +69,13 @@ export default function AIAssistant() {
     }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(output);
-    toast("Copied to clipboard!");
+  const handleCopy = async () => {
+    const res = await copyText(output);
+    if (res.ok) {
+      toast("Copied to clipboard!", "success");
+    } else {
+      toast("Failed to copy to clipboard", "error");
+    }
   };
 
   return (

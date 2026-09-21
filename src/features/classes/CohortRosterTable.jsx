@@ -89,7 +89,7 @@ export default function CohortRosterTable({
     return classGroups.filter((group) => {
       const matchesSearch =
         !searchQuery ||
-        group.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (group.className || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (group.schedule || "").toLowerCase().includes(searchQuery.toLowerCase());
       const matchesLevel = filterLevel === "all" || group.classLevel === filterLevel;
 

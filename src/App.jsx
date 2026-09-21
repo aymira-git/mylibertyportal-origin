@@ -46,7 +46,28 @@ function App() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [idleWarning, setIdleWarning] = useState(false); // 👈 Added state for idle warning
+  const [idleWarning, setIdleWarning] = useState(false);
+  const [profileError, setProfileError] = useState("");
+
+  const resetUserState = useCallback(() => {
+    setUser(null);
+    setRole("");
+    setDisplayName("");
+    setNickname("");
+    setPhotoURL("");
+    setIdleWarning(false);
+    setProfileOpen(false);
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.warn("SignOut rejection caught:", err);
+    } finally {
+      resetUserState();
+    }
+  }, [resetUserState]);
 
   useEffect(() => {
     if (!user) return;
@@ -61,10 +82,7 @@ function App() {
       
       warningTimer = setTimeout(() => setIdleWarning(true), IDLE_TIMEOUT - WARNING_TIME);
       logoutTimer = setTimeout(() => {
-        signOut(auth).then(() => {
-          setUser(null);
-          setIdleWarning(false);
-        });
+        handleLogout();
       }, IDLE_TIMEOUT);
     };
 
@@ -79,7 +97,7 @@ function App() {
       clearTimeout(warningTimer);
       clearTimeout(logoutTimer);
     };
-  }, [user]);
+  }, [user, handleLogout]);
 
   const refreshProfile = useCallback(async (uid) => {
     const userDoc = await getDoc(doc(db, "users", uid));
@@ -87,11 +105,8 @@ function App() {
       const data = userDoc.data();
       const status = data.status || "active";
       if (status === "resigned" || status === "terminated") {
-        await signOut(auth);
+        await handleLogout();
         toast("Your account has been deactivated. Please contact academy administration.", "error");
-        setUser(null);
-        setRole("");
-        setNickname("");
         return false;
       }
       setRole(data.role || "student");
@@ -101,10 +116,11 @@ function App() {
       return true;
     }
     return true;
-  }, [toast]);
+  }, [toast, handleLogout]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setProfileError("");
       if (currentUser) {
         try {
           const ok = await refreshProfile(currentUser.uid);
@@ -112,17 +128,17 @@ function App() {
             setUser(currentUser);
           }
         } catch (err) {
-          console.error(err);
+          console.error("Failed to load user profile:", err);
+          setProfileError(err.message || "Failed to load user profile. Please check your network connection.");
+          setUser(currentUser);
         }
       } else {
-        setUser(null);
-        setRole("");
-        setNickname("");
+        resetUserState();
       }
       setCheckingAuth(false);
     });
     return () => unsubscribe();
-  }, [refreshProfile]);
+  }, [refreshProfile, resetUserState]);
 
   // Live Active Session Termination Guard (R20)
   useEffect(() => {
@@ -134,12 +150,8 @@ function App() {
           const data = docSnap.data();
           const status = data.status || "active";
           if (status === "resigned" || status === "terminated") {
-            signOut(auth).then(() => {
-              toast("Your account has been deactivated. You have been signed out.", "error");
-              setUser(null);
-              setRole("");
-              setNickname("");
-            });
+            toast("Your account has been deactivated. You have been signed out.", "error");
+            handleLogout();
           }
         }
       },
@@ -148,7 +160,7 @@ function App() {
       }
     );
     return () => unsubDoc();
-  }, [user, toast]);
+  }, [user, toast, handleLogout]);
 
   // Public route — no login required.
   if (window.location.pathname === "/register") {
@@ -186,6 +198,47 @@ function App() {
 
   if (checkingAuth) {
     return <LoadingFallback />;
+  }
+
+  if (profileError && user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200 max-w-sm w-full text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl font-bold">
+            ⚠️
+          </div>
+          <div>
+            <h2 className="font-extrabold text-slate-800 text-base">Unable to Load Profile</h2>
+            <p className="text-xs text-slate-500 mt-1">{profileError}</p>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={handleLogout}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer transition"
+            >
+              Sign Out
+            </button>
+            <button
+              onClick={async () => {
+                setCheckingAuth(true);
+                setProfileError("");
+                try {
+                  const ok = await refreshProfile(user.uid);
+                  if (ok) setUser(user);
+                } catch (err) {
+                  setProfileError(err.message || "Retry failed. Please check network connection.");
+                } finally {
+                  setCheckingAuth(false);
+                }
+              }}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-bold text-xs shadow-xs cursor-pointer transition"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // 👈 4. Render your beautiful, dedicated LoginPage
@@ -239,7 +292,7 @@ function App() {
                 </div>
               </button>
               <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-              <button onClick={() => signOut(auth).then(() => setUser(null))} className="text-xs text-[#1a3a8f] hover:underline font-bold shrink-0">Logout</button>
+              <button onClick={handleLogout} className="text-xs text-[#1a3a8f] hover:underline font-bold shrink-0 cursor-pointer">Logout</button>
             </div>
           </div>
         </div>
@@ -339,7 +392,7 @@ function App() {
           <ProfilePanel
             onClose={() => setProfileOpen(false)}
             onUpdated={() => refreshProfile(user.uid)}
-            onLogout={() => signOut(auth).then(() => setUser(null))}
+            onLogout={handleLogout}
           />
         </ErrorBoundary>
       )}

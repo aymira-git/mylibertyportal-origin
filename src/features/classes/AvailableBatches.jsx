@@ -18,6 +18,7 @@ import EnrollModal from "./EnrollModal";
 import BatchesOverviewWidget from "./BatchesOverviewWidget";
 import AvailableBatchCard from "./AvailableBatchCard";
 import { deleteClass } from "./classesRepository";
+import { copyText } from "../../utils/copyText";
 
 export default function AvailableBatches({
   classes = [],
@@ -180,7 +181,7 @@ export default function AvailableBatches({
     }
   };
 
-  const handleCopyMarketingBlurb = (batch) => {
+  const handleCopyMarketingBlurb = async (batch) => {
     const regUrl = typeof window !== "undefined" ? `${window.location.origin}/register` : "https://myliberty.id/register";
     const levelName = LEVELS[batch.classLevel]?.label || batch.classLevel || "Standard";
 
@@ -198,13 +199,13 @@ export default function AvailableBatches({
       .filter(Boolean)
       .join("\n");
 
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text);
+    const res = await copyText(text);
+    if (res.ok) {
       setCopiedBatchId(batch.id);
       toast("Batch promo details copied to clipboard for WhatsApp & social!", "success");
       setTimeout(() => setCopiedBatchId(null), 2500);
     } else {
-      toast("Could not access clipboard", "error");
+      toast("Could not access clipboard: " + (res.error || "Blocked"), "error");
     }
   };
 

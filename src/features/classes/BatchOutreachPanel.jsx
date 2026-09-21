@@ -8,6 +8,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { normalizeWhatsAppNumber } from "../finance/receiptMessages";
+import { copyText } from "../../utils/copyText";
 
 // ── Outreach Message Templates ──────────────────────────────────────
 
@@ -76,11 +77,13 @@ export default function BatchOutreachPanel({ batch, users = [], onClose }) {
       .filter((c) => c.normalized);
   }, [students]);
 
-  const handleCopyAll = () => {
+  const handleCopyAll = async () => {
     const numbers = parentContacts.map((c) => `+${c.normalized}`).join("\n");
-    navigator.clipboard.writeText(numbers);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const res = await copyText(numbers);
+    if (res.ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const openWhatsApp = (normalized) => {

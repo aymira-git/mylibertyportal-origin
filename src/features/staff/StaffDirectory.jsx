@@ -9,6 +9,7 @@ import { useState, useMemo } from "react";
 import { useToast, useConfirm, Pagination, usePagination } from "../shared";
 import { updateStaffStatus, checkStaffHasAttendanceHistory } from "../dashboard/usersRepository";
 import { normalizeWhatsAppNumber } from "../finance/receiptMessages";
+import { copyText } from "../../utils/copyText";
 import {
   STAFF_ROLES,
   STAFF_ROLE_LABELS,
@@ -104,10 +105,14 @@ export default function StaffDirectory({
   );
 
   // Copy helper
-  const handleCopy = (text, label = "Email") => {
+  const handleCopy = async (text, label = "Email") => {
     if (!text) return;
-    navigator.clipboard.writeText(text);
-    toast(`Copied ${label} to clipboard!`);
+    const res = await copyText(text);
+    if (res.ok) {
+      toast(`Copied ${label} to clipboard!`, "success");
+    } else {
+      toast(`Failed to copy ${label}`, "error");
+    }
   };
 
   // 1-Click Status Change with Guards

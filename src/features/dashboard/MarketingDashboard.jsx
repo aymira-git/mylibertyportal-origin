@@ -3,6 +3,7 @@ import { db } from "../../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { WelcomeBanner, DashboardShell, useToast } from "../shared";
 import { UserPlus, BookOpen, Users, Copy, Check, ExternalLink } from "lucide-react";
+import { copyText } from "../../utils/copyText";
 import { AvailableBatches } from "../classes";
 import { useStaffDirectives, StaffDirectivesWidget } from "../staff";
 
@@ -21,12 +22,14 @@ function MarketingOverview({
       ? `${window.location.origin}/register`
       : "https://myliberty.id/register";
 
-  const handleCopyLink = () => {
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(registrationLink);
+  const handleCopyLink = async () => {
+    const res = await copyText(registrationLink);
+    if (res.ok) {
       setCopiedLink(true);
       toast("Student Registration link copied to clipboard!", "success");
       setTimeout(() => setCopiedLink(false), 2000);
+    } else {
+      toast("Could not copy registration link to clipboard", "error");
     }
   };
 

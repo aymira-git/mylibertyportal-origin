@@ -8,6 +8,7 @@
 import { useState, useMemo } from "react";
 import { useToast } from "../shared";
 import { getDistinctStaffBranches } from "./staffUtils";
+import { copyText } from "../../utils/copyText";
 import {
   Mail,
   UserPlus,
@@ -116,10 +117,14 @@ export default function InvitesPanel({
     });
   }, [pendingInvites, searchQuery]);
 
-  const handleCopyLink = (token) => {
+  const handleCopyLink = async (token) => {
     const link = `${window.location.origin}/join/${token}`;
-    navigator.clipboard.writeText(link);
-    toast("Link copied to clipboard!", "success");
+    const res = await copyText(link);
+    if (res.ok) {
+      toast("Link copied to clipboard!", "success");
+    } else {
+      toast("Failed to copy link to clipboard", "error");
+    }
   };
 
   const handleWhatsAppShare = (inv) => {

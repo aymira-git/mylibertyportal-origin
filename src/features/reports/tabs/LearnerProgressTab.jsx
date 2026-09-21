@@ -157,7 +157,7 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
       list = list.filter(
         (s) =>
           (s.displayName || "").toLowerCase().includes(q) ||
-          s.classes.some((c) => c.className.toLowerCase().includes(q))
+          s.classes.some((c) => (c.className || "").toLowerCase().includes(q))
       );
     }
     return list;
