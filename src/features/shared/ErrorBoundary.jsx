@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { reportError } from "../../utils/reportError";
 
 /**
  * Catches JS errors thrown while rendering anything inside it (a whole
@@ -25,11 +26,8 @@ export default class ErrorBoundary extends Component {
     return { hasError: true };
   }
 
-  componentDidCatch(error, info) {
-    // Same pattern as the rest of the app's catch blocks — logged to the
-    // console rather than sent anywhere, since there's no error-reporting
-    // backend set up yet.
-    console.error(`[ErrorBoundary${this.props.label ? `: ${this.props.label}` : ""}]`, error, info);
+  componentDidCatch(error) {
+    reportError(error, `error_boundary:${this.props.label || "app"}`);
   }
 
   handleReset = () => {

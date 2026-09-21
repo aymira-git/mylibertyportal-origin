@@ -184,6 +184,13 @@ service cloud.firestore {
         && resource.data.createdBy == request.auth.uid;
     }
 
+    match /errorLogs/{logId} {
+      allow create: if request.resource.data.message is string
+        && request.resource.data.timestamp is string;
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
