@@ -6,14 +6,9 @@
 
 import { useState, useMemo } from "react";
 import { X, Check, Loader2, AlertTriangle, Users, GraduationCap, ShieldAlert } from "lucide-react";
-import {
-  LEVEL_LIST,
-  TIERS,
-  TIER_KEYS,
-  LevelBadge,
-  PAYMENT_PLAN_LIST,
-  isCompatible,
-} from "../shared";
+import { LEVEL_LIST, TIERS, TIER_KEYS } from "../../constants/levels";
+import { normalizeBranch } from "../../constants/branches";
+import { LevelBadge, PAYMENT_PLAN_LIST, isCompatible } from "../shared";
 import { getBatchAvailability } from "../classes/batchAvailability";
 
 function formatDobAndAge(dob) {
@@ -152,7 +147,7 @@ export default function ApplicationPlacementModal({
                   {app.displayName || "Unnamed Applicant"}
                 </span>
                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-                  {app.branch || "General Branch"}
+                  {normalizeBranch(app.branch)}
                 </span>
                 <span className="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-full">
                   {app.classType || "Reguler"}

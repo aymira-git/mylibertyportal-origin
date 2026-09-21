@@ -10,6 +10,7 @@ import {
   createStaffAccount,
   deleteUserProfile,
 } from "./usersRepository";
+import { DEFAULT_BRANCH } from "../../constants/branches";
 
 const emptyFormData = {
   firstName: "",
@@ -34,7 +35,7 @@ const emptyFormData = {
   placeOfBirth: "",
   religion: "",
   address: "",
-  branch: "",
+  branch: DEFAULT_BRANCH,
   program: "",
   classType: "",
   schoolOrJob: "",
@@ -333,7 +334,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
     }
   };
 
-  const handleCreateInvite = async (email, role, branch = "Cabang Utama") => {
+  const handleCreateInvite = async (email, role, branch = DEFAULT_BRANCH) => {
     try {
       await createInvite(email, role, branch);
       toast("Invitation link generated successfully!", "success");

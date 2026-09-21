@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { LevelBadge } from "../shared";
 import BatchStatusPill from "./BatchStatusPill";
+import { normalizeBranch } from "../../constants/branches";
 
 export default function AvailableBatchCard({
   batch,
@@ -93,9 +94,11 @@ export default function AvailableBatchCard({
           <div className="flex items-center justify-between text-slate-600">
             <span className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1">
               <MapPin className="w-3 h-3" />
-              <span>Classroom</span>
+              <span>Campus &amp; Room</span>
             </span>
-            <span className="font-bold text-slate-800">{batch.classRoom || "Main Campus"}</span>
+            <span className="font-bold text-slate-800">
+              {normalizeBranch(batch.branch)} &bull; {batch.classRoom || "Main Room"}
+            </span>
           </div>
 
           <div className="flex items-center justify-between text-slate-600">

@@ -4,6 +4,7 @@ import { getStartOfTodayWitaIso, getTodayWitaString, uniqueClasses } from "../re
 import { getTodaysClasses } from "../../attendance";
 import { exportTableCSV, useToast } from "../../shared";
 import { Clock, CheckCircle2, XCircle, Search, RefreshCw } from "lucide-react";
+import { normalizeBranch, matchesBranchFilter } from "../../../constants/branches";
 
 const TodayTab = forwardRef(
   /**
@@ -73,7 +74,7 @@ const TodayTab = forwardRef(
       }
 
       if (branchFilter !== "all") {
-        list = list.filter((s) => (s.branch || "Cabang Utama") === branchFilter);
+        list = list.filter((s) => matchesBranchFilter(s.branch, branchFilter));
       }
 
       if (todaySearch.trim()) {
@@ -101,7 +102,7 @@ const TodayTab = forwardRef(
           return [
             s.displayName,
             scan ? "Checked In" : "Missing / Not In",
-            s.branch || "Cabang Utama",
+            normalizeBranch(s.branch),
             scan?.timestamp ? new Date(scan.timestamp).toLocaleTimeString() : "—",
             scan?.method || "—",
           ];
@@ -259,7 +260,7 @@ const TodayTab = forwardRef(
                         {student.displayName}
                       </p>
                       <p className="text-[11px] text-slate-400 font-medium">
-                        {student.branch || "Cabang Utama"}
+                        {normalizeBranch(student.branch)}
                         {scan &&
                           ` · Scanned at ${new Date(scan.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                       </p>

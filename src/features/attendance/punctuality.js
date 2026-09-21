@@ -296,9 +296,11 @@ export function computeMonthlyPunctuality(classes, shifts, instructorsById, year
 }
 
 function initInstructorStats(instructorId, instructorsById) {
+  const inst = instructorsById[instructorId];
   return {
     instructorId,
-    instructorName: instructorsById[instructorId]?.displayName || "Unknown",
+    instructorName: inst?.displayName || "Unknown",
+    branch: inst?.branch || "",
     sessionsScheduled: 0,
     sessionsAttended: 0,
     onTime: 0,

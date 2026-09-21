@@ -19,6 +19,7 @@ import {
   PAYMENT_PLAN_KEYS,
 } from "../shared";
 import { STAFF_STATUS_OPTIONS, STANDARD_BRANCHES } from "../staff/staffUtils";
+import { normalizeBranch } from "../../constants/branches";
 
 export default function UserForm({ formData, setFormData, editId, onSubmit }) {
   const isSelf = Boolean(editId && auth.currentUser && editId === auth.currentUser.uid);
@@ -284,7 +285,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                   Branch (Pilihan Cabang)
                 </label>
                 <select
-                  value={formData.branch || "Cabang Utama"}
+                  value={normalizeBranch(formData.branch)}
                   onChange={(e) => field("branch", e.target.value)}
                   className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs"
                 >
@@ -655,7 +656,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 Branch (Cabang)
               </label>
               <select
-                value={formData.branch || "Cabang Utama"}
+                value={normalizeBranch(formData.branch)}
                 onChange={(e) => field("branch", e.target.value)}
                 className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs"
               >

@@ -3,6 +3,7 @@ import { fetchStudentProgressData } from "../reportsRepository";
 import { getTodayWitaString, rangeToSince, uniqueClasses } from "../reportsUtils";
 import { isStudentAtRisk, AT_RISK_LABEL } from "../atRisk";
 import { exportTableCSV } from "../../shared";
+import { normalizeBranch, matchesBranchFilter } from "../../../constants/branches";
 import {
   GraduationCap,
   Search,
@@ -96,7 +97,7 @@ const LearnerProgressTab = forwardRef(
             const capturedName =
               history[0]?.displayName || assessments[0]?.studentName || "Former Student";
             const displayName = u ? u.displayName : `${capturedName} (Archived)`;
-            const branch = u?.branch || "Cabang Utama";
+            const branch = normalizeBranch(u?.branch);
 
             // Provisional (v1) At-Risk determination via modular helper
             const isAtRisk = isStudentAtRisk({
@@ -159,7 +160,7 @@ const LearnerProgressTab = forwardRef(
     const filteredStudents = useMemo(() => {
       let list = students;
       if (branchFilter !== "all") {
-        list = list.filter((s) => s.branch === branchFilter);
+        list = list.filter((s) => matchesBranchFilter(s.branch, branchFilter));
       }
       if (healthFilter === "at_risk") {
         list = list.filter((s) => s.isAtRisk);

@@ -15,7 +15,7 @@ describe("inviteSchema", () => {
     });
     expect(result.email).toBe("newinstructor@myliberty.id");
     expect(result.role).toBe("instructor");
-    expect(result.branch).toBe("Cabang Utama");
+    expect(result.branch).toBe("Kota Gorontalo");
   });
 
   it("rejects invalid emails", () => {
@@ -89,6 +89,7 @@ describe("batchSchema", () => {
     expect(parsed.maxCapacity).toBe(15);
     expect(parsed.minQuorum).toBe(4);
     expect(parsed.status).toBe("open");
+    expect(parsed.branch).toBe("Kota Gorontalo");
   });
 
   it("rejects batch missing name or level", () => {

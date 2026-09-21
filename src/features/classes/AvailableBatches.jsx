@@ -8,6 +8,7 @@ import AvailableBatchCard from "./AvailableBatchCard";
 import { deleteClass } from "./classesRepository";
 import { copyText } from "../../utils/copyText";
 import { getRegistrationUrl } from "../../constants/externalLinks";
+import { BRANCHES, matchesBranchFilter } from "../../constants/branches";
 
 export default function AvailableBatches({
   classes = [],
@@ -23,6 +24,7 @@ export default function AvailableBatches({
   const confirm = useConfirm();
 
   const [search, setSearch] = useState("");
+  const [branchFilter, setBranchFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -127,6 +129,7 @@ export default function AvailableBatches({
   const filteredBatches = useMemo(() => {
     return augmentedBatches
       .filter((b) => {
+        if (branchFilter !== "all" && !matchesBranchFilter(b.branch, branchFilter)) return false;
         if (tierFilter !== "all" && getTier(b.classLevel) !== tierFilter) return false;
         if (levelFilter !== "all" && b.classLevel !== levelFilter) return false;
         if (statusFilter === "open" && (!b.isAvailable || b.seatsAvailable <= 0)) return false;
@@ -153,7 +156,7 @@ export default function AvailableBatches({
           (b.classDay || "").toLowerCase().includes(q)
         );
       });
-  }, [augmentedBatches, tierFilter, levelFilter, statusFilter, search]);
+  }, [augmentedBatches, tierFilter, levelFilter, statusFilter, branchFilter, search]);
 
   const handleOpenAddModal = () => {
     setEditingBatch(null);
@@ -405,6 +408,20 @@ export default function AvailableBatches({
             <option value="upcoming">🔵 Upcoming Intake</option>
             <option value="full">🔴 Full / Closed</option>
             <option value="completed">🟣 Completed / Cancelled</option>
+          </select>
+
+          {/* Campus Branch Filter */}
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:border-[#1a3a8f] outline-none"
+          >
+            <option value="all">All Campuses</option>
+            {BRANCHES.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
           </select>
         </div>
       </div>

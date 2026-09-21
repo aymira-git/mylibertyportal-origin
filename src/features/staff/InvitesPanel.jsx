@@ -73,7 +73,7 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
   const toast = useToast();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("instructor");
-  const [inviteBranch, setInviteBranch] = useState("Cabang Utama");
+  const [inviteBranch, setInviteBranch] = useState("Kota Gorontalo");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 

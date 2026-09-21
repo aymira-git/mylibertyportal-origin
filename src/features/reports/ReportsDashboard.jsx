@@ -7,6 +7,7 @@ import {
   InstructorPunctualityTab,
 } from "./tabs";
 import { Clock, Download, Users, GraduationCap, TrendingUp, UserCheck } from "lucide-react";
+import { BRANCHES } from "../../constants/branches";
 
 export default function ReportsDashboard({
   isAdminView = false,
@@ -150,7 +151,11 @@ export default function ReportsDashboard({
               className="w-full p-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
             >
               <option value="all">All Campuses</option>
-              <option value="Cabang Utama">Cabang Utama</option>
+              {BRANCHES.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -212,7 +217,11 @@ export default function ReportsDashboard({
       )}
 
       {subTab === "instructors" && !isFrontOffice && (
-        <InstructorPunctualityTab ref={activeTabRef} isAdminView={isAdminView} />
+        <InstructorPunctualityTab
+          ref={activeTabRef}
+          isAdminView={isAdminView}
+          branchFilter={branchFilter}
+        />
       )}
     </div>
   );

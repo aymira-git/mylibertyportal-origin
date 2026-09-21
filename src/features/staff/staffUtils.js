@@ -4,6 +4,8 @@
  * and deletion guardrails.
  */
 
+import { BRANCHES, normalizeBranch, matchesBranchFilter } from "../../constants/branches.js";
+
 export const STAFF_ROLES = [
   "instructor",
   "frontoffice",
@@ -52,7 +54,7 @@ export const STAFF_STATUS_OPTIONS = Object.entries(STAFF_STATUS_MAP).map(([value
   label: conf.label,
 }));
 
-export const STANDARD_BRANCHES = ["Cabang Utama"];
+export const STANDARD_BRANCHES = BRANCHES;
 
 /**
  * Checks whether a class is currently active (not cancelled, not completed).
@@ -143,7 +145,7 @@ export function filterStaffMembers({
   }
 
   if (branchFilter !== "all") {
-    list = list.filter((u) => (u.branch || "").toLowerCase() === branchFilter.toLowerCase());
+    list = list.filter((u) => matchesBranchFilter(u.branch, branchFilter));
   }
 
   const q = (search || "").trim().toLowerCase();
@@ -168,7 +170,7 @@ export function getDistinctStaffBranches(users = []) {
   const set = new Set(STANDARD_BRANCHES);
   users.forEach((u) => {
     if (u.role !== "student" && u.branch) {
-      set.add(u.branch.trim());
+      set.add(normalizeBranch(u.branch));
     }
   });
   return Array.from(set).sort((a, b) => a.localeCompare(b));

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeBranch } from "../constants/branches.js";
 
 export const batchSchema = z.object({
   className: z.string().trim().min(1, "Batch name is required."),
@@ -15,6 +16,11 @@ export const batchSchema = z.object({
   endTime: z.string().optional(),
   schedule: z.string().optional(),
   classRoom: z.string().trim().optional().default("Main Campus"),
+  branch: z
+    .string()
+    .trim()
+    .optional()
+    .transform((b) => normalizeBranch(b)),
   maxCapacity: z.coerce.number().int().positive().default(15),
   minQuorum: z.coerce.number().int().nonnegative().default(4),
   status: z.string().trim().default("open"),

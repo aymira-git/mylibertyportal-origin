@@ -4,6 +4,7 @@ import { getTodayWitaString, rangeToSince } from "../reportsUtils";
 import { getBatchAvailability } from "../../classes";
 import { exportTableCSV } from "../../shared";
 import { TrendingUp, School, RefreshCw, Search, Users } from "lucide-react";
+import { normalizeBranch, matchesBranchFilter } from "../../../constants/branches";
 
 const AdmissionsTab = forwardRef(
   /**
@@ -37,7 +38,8 @@ const AdmissionsTab = forwardRef(
       let cls = admissionsData.classes || [];
 
       if (branchFilter !== "all") {
-        apps = apps.filter((a) => (a.branch || "Cabang Utama") === branchFilter);
+        apps = apps.filter((a) => matchesBranchFilter(a.branch, branchFilter));
+        cls = cls.filter((c) => matchesBranchFilter(c.branch, branchFilter));
       }
 
       const pending = apps.filter((a) => (a.status || "pending") === "pending").length;
@@ -91,7 +93,7 @@ const AdmissionsTab = forwardRef(
         const rows = (admissionsCalculated.filteredApps || []).map((a) => [
           a.fullName || a.studentName || "Prospective Student",
           a.program || a.courseType || "General English",
-          a.branch || "Cabang Utama",
+          normalizeBranch(a.branch),
           a.status || "pending",
           a.submittedAt ? new Date(a.submittedAt).toLocaleDateString() : "",
         ]);

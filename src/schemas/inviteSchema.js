@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeBranch } from "../constants/branches.js";
 
 export const ALLOWED_STAFF_ROLES = [
   "admin",
@@ -18,5 +19,5 @@ export const inviteSchema = z.object({
     .string()
     .trim()
     .optional()
-    .transform((b) => b || "Cabang Utama"),
+    .transform((b) => normalizeBranch(b)),
 });

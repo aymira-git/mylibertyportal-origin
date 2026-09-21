@@ -4,6 +4,7 @@
  */
 
 import { normalizeWhatsAppNumber } from "../finance/receiptMessages";
+import { BRANCHES, normalizeBranch, matchesBranchFilter } from "../../constants/branches";
 
 export function isPending(app) {
   return (app?.status || "pending") === "pending";
@@ -155,7 +156,7 @@ export function filterApplications({
   });
 
   if (branch && branch !== "all") {
-    list = list.filter((a) => (a.branch || "").toLowerCase() === branch.toLowerCase());
+    list = list.filter((a) => matchesBranchFilter(a.branch, branch));
   }
 
   if (program && program !== "all") {
@@ -200,10 +201,13 @@ export function filterApplications({
 }
 
 export function getDistinctValues(apps = [], field) {
-  const set = new Set();
+  const set = new Set(field === "branch" ? BRANCHES : []);
   for (const a of apps) {
-    const val = (a[field] || "").toString().trim();
-    if (val) set.add(val);
+    const rawVal = (a[field] || "").toString().trim();
+    if (rawVal) {
+      const val = field === "branch" ? normalizeBranch(rawVal) : rawVal;
+      set.add(val);
+    }
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b));
 }

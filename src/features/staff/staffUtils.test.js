@@ -115,6 +115,7 @@ describe("filterStaffMembers", () => {
     expect(names(filterStaffMembers({ users, statusFilter: "active" }))).toEqual(["Rina"]);
     expect(names(filterStaffMembers({ users, statusFilter: "on_leave" }))).toEqual(["Andi"]);
     expect(names(filterStaffMembers({ users, branchFilter: "Cabang Timur" }))).toEqual(["Andi"]);
+    expect(names(filterStaffMembers({ users, branchFilter: "Kota Gorontalo" }))).toEqual(["Rina"]);
   });
 
   it("searches name, nickname, email and phone", () => {
@@ -129,13 +130,24 @@ describe("filterStaffMembers", () => {
 });
 
 describe("getDistinctStaffBranches", () => {
-  it("always includes the standard branch and adds staff branches, ignoring students", () => {
+  it("always includes all 4 canonical branches and adds staff branches, ignoring students", () => {
     const users = [
       { role: "instructor", branch: " Cabang Timur " },
       { role: "student", branch: "Cabang Barat" },
       { role: "manager" },
     ];
-    expect(getDistinctStaffBranches(users)).toEqual(["Cabang Timur", "Cabang Utama"]);
-    expect(getDistinctStaffBranches()).toEqual(["Cabang Utama"]);
+    expect(getDistinctStaffBranches(users)).toEqual([
+      "Bone Bolango",
+      "Cabang Timur",
+      "Kota Gorontalo",
+      "Limboto",
+      "Pohuwato",
+    ]);
+    expect(getDistinctStaffBranches()).toEqual([
+      "Bone Bolango",
+      "Kota Gorontalo",
+      "Limboto",
+      "Pohuwato",
+    ]);
   });
 });

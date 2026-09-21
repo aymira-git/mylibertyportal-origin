@@ -26,7 +26,7 @@ describe("createInvite", () => {
     expect(op.data).toMatchObject({
       email: "rina@school.id",
       role: "instructor",
-      branch: "Cabang Utama",
+      branch: "Kota Gorontalo",
       used: false,
       token: MOCK_TOKEN,
     });
@@ -44,7 +44,7 @@ describe("createInvite", () => {
     expect(fake.find(`invites/${MOCK_TOKEN}`).data.branch).toBe("Cabang Timur");
     fake.reset();
     await createInvite("a@b.id", "manager", "");
-    expect(fake.find(`invites/${MOCK_TOKEN}`).data.branch).toBe("Cabang Utama");
+    expect(fake.find(`invites/${MOCK_TOKEN}`).data.branch).toBe("Kota Gorontalo");
   });
 
   it("throws validation error for invalid email or role", () => {

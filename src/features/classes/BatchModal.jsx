@@ -22,12 +22,16 @@ import {
   uploadFileToCloudinary,
 } from "../shared";
 import { createClass, updateClass } from "./classesRepository";
+import { BRANCHES, DEFAULT_BRANCH, normalizeBranch } from "../../constants/branches";
 
 function BatchForm({ batch, instructors, existingClasses = [], onClose, onSuccess = null }) {
   const toast = useToast();
   const isEditing = Boolean(batch?.id);
 
   const [className, setClassName] = useState(batch?.className || "");
+  const [branch, setBranch] = useState(
+    batch?.branch ? normalizeBranch(batch.branch) : DEFAULT_BRANCH
+  );
   const [classLevel, setClassLevel] = useState(batch?.classLevel || "warrior");
   const [minLevel, setMinLevel] = useState(batch?.minLevel || batch?.classLevel || "warrior");
   const [maxLevel, setMaxLevel] = useState(batch?.maxLevel || batch?.classLevel || "warrior");
@@ -130,6 +134,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
         endTime,
         schedule: scheduleFormatted,
         classRoom: classRoom.trim() || "Main Campus",
+        branch: branch ? normalizeBranch(branch) : DEFAULT_BRANCH,
         maxCapacity: Number(maxCapacity) || 15,
         minQuorum: Number(minQuorum) || 4,
         status: status || "open",
@@ -215,8 +220,8 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
           </div>
         )}
 
-        {/* Cohort Name & Level */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Cohort Name, Level, & Branch */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="sm:col-span-2 space-y-1">
             <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
               Batch Title *
@@ -253,6 +258,23 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               {LEVEL_KEYS.map((lvl) => (
                 <option key={lvl} value={lvl}>
                   {LEVELS[lvl]?.label} ({getStarText(lvl)} {TIERS[LEVELS[lvl]?.tier]?.label})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              Campus Branch *
+            </label>
+            <select
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
+            >
+              {BRANCHES.map((b) => (
+                <option key={b} value={b}>
+                  {b}
                 </option>
               ))}
             </select>

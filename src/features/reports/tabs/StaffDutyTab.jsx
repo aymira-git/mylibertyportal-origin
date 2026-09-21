@@ -11,6 +11,7 @@ import {
   StaffLeaveModal,
 } from "../../attendance";
 import { exportTableCSV, Pagination, usePagination, useToast, useConfirm } from "../../shared";
+import { normalizeBranch, matchesBranchFilter } from "../../../constants/branches";
 import {
   Clock,
   Calendar,
@@ -131,7 +132,7 @@ const StaffDutyTab = forwardRef(
     const filteredShifts = useMemo(() => {
       let list = shifts;
       if (branchFilter !== "all") {
-        list = list.filter((s) => (s.branch || "Cabang Utama") === branchFilter);
+        list = list.filter((s) => matchesBranchFilter(s.branch, branchFilter));
       }
       if (shiftRoleFilter !== "all") {
         list = list.filter((s) => s.role === shiftRoleFilter);
@@ -182,7 +183,7 @@ const StaffDutyTab = forwardRef(
         const rows = filteredShifts.map((s) => [
           s.displayName,
           s.role,
-          s.branch || "Cabang Utama",
+          normalizeBranch(s.branch),
           s.className || "",
           s.clockIn ? new Date(s.clockIn).toLocaleString() : "",
           s.clockOut ? new Date(s.clockOut).toLocaleString() : "",
@@ -357,7 +358,7 @@ const StaffDutyTab = forwardRef(
                       </span>
                       {s.branch && (
                         <span className="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
-                          {s.branch}
+                          {normalizeBranch(s.branch)}
                         </span>
                       )}
                       {s.className && (

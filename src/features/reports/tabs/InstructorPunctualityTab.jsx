@@ -5,13 +5,14 @@ import { computeMonthlyPunctuality } from "../../attendance";
 import { uniqueClasses } from "../reportsUtils";
 import { exportTableCSV } from "../../shared";
 import { UserCheck, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
+import { matchesBranchFilter, normalizeBranch } from "../../../constants/branches";
 
 const InstructorPunctualityTab = forwardRef(
   /**
-   * @param {{ isAdminView?: boolean }} props
+   * @param {{ isAdminView?: boolean; branchFilter?: string }} props
    * @param {any} ref
    */
-  function InstructorPunctualityTab({ isAdminView = false }, ref) {
+  function InstructorPunctualityTab({ isAdminView = false, branchFilter = "all" }, ref) {
     const now = new Date();
     const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
     const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -75,11 +76,17 @@ const InstructorPunctualityTab = forwardRef(
       []
     );
 
+    const filteredAnalytics = useMemo(() => {
+      if (branchFilter === "all") return analytics;
+      return analytics.filter((a) => matchesBranchFilter(a.branch, branchFilter));
+    }, [analytics, branchFilter]);
+
     // Expose exportCSV to parent
     useImperativeHandle(ref, () => ({
       exportCSV: () => {
         const headers = [
           "Instructor",
+          "Campus Branch",
           "Punctuality %",
           "Scheduled",
           "Attended",
@@ -88,8 +95,9 @@ const InstructorPunctualityTab = forwardRef(
           "Avg Tardiness (min)",
           "Data Quality",
         ];
-        const rows = analytics.map((a) => [
+        const rows = filteredAnalytics.map((a) => [
           a.instructorName,
+          normalizeBranch(a.branch),
           a.punctualityRate === null ? "N/A" : `${a.punctualityRate}%`,
           a.sessionsScheduled,
           a.sessionsAttended,
@@ -174,6 +182,7 @@ const InstructorPunctualityTab = forwardRef(
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/90 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider">
                     <th className="p-3.5">Instructor</th>
+                    <th className="p-3.5">Campus</th>
                     <th className="p-3.5 text-center">Scheduled</th>
                     <th className="p-3.5 text-center">Attended</th>
                     <th className="p-3.5 text-center">Late</th>
@@ -184,7 +193,7 @@ const InstructorPunctualityTab = forwardRef(
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
-                  {analytics.map((a) => {
+                  {filteredAnalytics.map((a) => {
                     const rate = a.punctualityRate;
                     const isExemplary = rate !== null && rate >= 90;
                     const isSatisfactory = rate !== null && rate >= 75 && rate < 90;
@@ -198,6 +207,9 @@ const InstructorPunctualityTab = forwardRef(
                               * Partial historical scan data
                             </span>
                           )}
+                        </td>
+                        <td className="p-3.5 font-semibold text-slate-500 text-xs">
+                          {normalizeBranch(a.branch)}
                         </td>
                         <td className="p-3.5 text-center font-semibold text-slate-700">
                           {a.sessionsScheduled}
