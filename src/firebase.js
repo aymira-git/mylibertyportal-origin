@@ -11,6 +11,21 @@ export const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1072836543676:web:713dc5f12930e89ce5fcb9"
 };
 
+// Startup validation: ensure essential Firebase client config is present and valid
+function validateFirebaseConfig(config) {
+  const required = ["apiKey", "projectId", "appId"];
+  const missing = required.filter(
+    (key) => !config[key] || typeof config[key] !== "string" || !config[key].trim()
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `[Firebase Config Error] Missing required configuration keys: ${missing.join(", ")}. Please check your environment or configuration settings.`
+    );
+  }
+}
+
+validateFirebaseConfig(firebaseConfig);
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);

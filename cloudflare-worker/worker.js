@@ -19,28 +19,39 @@ const MODES = {
     "Summarize the following notes into a few clear, well-organized bullet points:",
 };
 
-function corsHeaders(env) {
+function getCorsOrigin(request, env) {
+  const allowed = env.ALLOWED_ORIGIN || "*";
+  if (allowed === "*") return "*";
+  const requestOrigin = request?.headers?.get("Origin") || "";
+  const allowedList = allowed.split(",").map((s) => s.trim().toLowerCase());
+  if (requestOrigin && allowedList.includes(requestOrigin.toLowerCase())) {
+    return requestOrigin;
+  }
+  return allowedList[0] || "*";
+}
+
+function corsHeaders(request, env) {
   return {
-    "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "*",
+    "Access-Control-Allow-Origin": getCorsOrigin(request, env),
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
   };
 }
 
-function json(body, status, env) {
+function json(body, status, request, env) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...corsHeaders(env) },
+    headers: { "Content-Type": "application/json", ...corsHeaders(request, env) },
   });
 }
 
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
-      return new Response(null, { headers: corsHeaders(env) });
+      return new Response(null, { headers: corsHeaders(request, env) });
     }
     if (request.method !== "POST") {
-      return json({ error: "Method not allowed" }, 405, env);
+      return json({ error: "Method not allowed" }, 405, request, env);
     }
 
     // 1. Require a real, currently-valid MYLIBERTY login before spending
@@ -49,7 +60,7 @@ export default {
     const authHeader = request.headers.get("Authorization") || "";
     const idToken = authHeader.replace(/^Bearer\s+/i, "");
     if (!idToken) {
-      return json({ error: "Missing auth token" }, 401, env);
+      return json({ error: "Missing auth token" }, 401, request, env);
     }
     try {
       await jwtVerify(idToken, JWKS, {
@@ -57,7 +68,7 @@ export default {
         audience: FIREBASE_PROJECT_ID,
       });
     } catch {
-      return json({ error: "Invalid or expired login" }, 401, env);
+      return json({ error: "Invalid or expired login" }, 401, request, env);
     }
 
     // 2. Validate the request shape.
@@ -65,18 +76,28 @@ export default {
     try {
       body = await request.json();
     } catch {
-      return json({ error: "Invalid JSON body" }, 400, env);
+      return json({ error: "Invalid JSON body" }, 400, request, env);
     }
     const { mode, input } = body || {};
     const instruction = MODES[mode];
     if (!instruction || typeof input !== "string" || !input.trim()) {
-      return json({ error: "Invalid request" }, 400, env);
+      return json({ error: "Invalid request" }, 400, request, env);
     }
     if (input.length > 4000) {
-      return json({ error: "Input is too long (max 4000 characters)" }, 400, env);
+      return json({ error: "Input is too long (max 4000 characters)" }, 400, request, env);
     }
 
-    // 3. Call Gemini using the secret key, which only ever lives here on
+    // 3. Verify server secret exists before spending network hops
+    if (!env.GEMINI_API_KEY) {
+      return json(
+        { error: "AI Assistant is not configured on the server (missing GEMINI_API_KEY secret in Cloudflare)." },
+        500,
+        request,
+        env
+      );
+    }
+
+    // 4. Call Gemini using the secret key, which only ever lives here on
     //    Cloudflare's server — never sent to the browser.
     try {
       const prompt = `${instruction}\n\n${input}`;
@@ -96,13 +117,14 @@ export default {
         return json(
           { error: data?.error?.message || "Gemini request failed" },
           502,
+          request,
           env
         );
       }
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      return json({ text }, 200, env);
+      return json({ text }, 200, request, env);
     } catch {
-      return json({ error: "Server error contacting Gemini" }, 500, env);
+      return json({ error: "Server error contacting Gemini" }, 500, request, env);
     }
   },
 };
