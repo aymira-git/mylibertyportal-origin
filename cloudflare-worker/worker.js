@@ -100,7 +100,7 @@ export default {
     // 4. Call Gemini using the secret key, which only ever lives here on
     //    Cloudflare's server — never sent to the browser.
     try {
-      const model = env.GEMINI_MODEL || "gemini-1.5-flash";
+      const model = env.GEMINI_MODEL || "gemini-flash-latest";
       const prompt = `${instruction}\n\n${input}`;
       const geminiRes = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
