@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "node -e \"console.log('Worker ready')\"",
+    "build": "node build.js",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev"
   },
