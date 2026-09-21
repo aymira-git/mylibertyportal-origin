@@ -130,4 +130,23 @@ describe("applicationSchema", () => {
       })
     ).toThrow(/Student name is required/);
   });
+
+  it("normalizes branch to DEFAULT_BRANCH when missing or legacy alias", () => {
+    const missing = applicationSchema.parse({
+      displayName: "Jane Doe",
+    });
+    expect(missing.branch).toBe("Kota Gorontalo");
+
+    const legacy = applicationSchema.parse({
+      displayName: "Jane Doe",
+      branch: "Cabang Utama",
+    });
+    expect(legacy.branch).toBe("Kota Gorontalo");
+
+    const clean = applicationSchema.parse({
+      displayName: "Jane Doe",
+      branch: "  bone bolango  ",
+    });
+    expect(clean.branch).toBe("Bone Bolango");
+  });
 });

@@ -72,6 +72,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
       endTime,
       instructorId,
       classRoom,
+      branch,
       status: status || "open",
       className: className || "(New Batch)",
     };
@@ -83,6 +84,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
     endTime,
     instructorId,
     classRoom,
+    branch,
     status,
     className,
     existingClasses,

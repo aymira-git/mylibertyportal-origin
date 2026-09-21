@@ -143,10 +143,15 @@ const LearnerProgressTab = forwardRef(
 
     // Student KPI Summary Metrics
     const studentKpiStats = useMemo(() => {
-      const totalEnrolled = students.filter((s) => !s.isArchived).length;
-      const atRiskCount = students.filter((s) => s.isAtRisk).length;
-      const highAttendanceCount = students.filter((s) => s.attendanceCount >= 8).length;
-      const evaluatedCount = students.filter((s) => s.assessments.length > 0).length;
+      const branchStudents =
+        branchFilter === "all"
+          ? students
+          : students.filter((s) => matchesBranchFilter(s.branch, branchFilter));
+
+      const totalEnrolled = branchStudents.filter((s) => !s.isArchived).length;
+      const atRiskCount = branchStudents.filter((s) => s.isAtRisk).length;
+      const highAttendanceCount = branchStudents.filter((s) => s.attendanceCount >= 8).length;
+      const evaluatedCount = branchStudents.filter((s) => s.assessments.length > 0).length;
 
       return {
         totalEnrolled,
@@ -154,7 +159,7 @@ const LearnerProgressTab = forwardRef(
         highAttendanceCount,
         evaluatedCount,
       };
-    }, [students]);
+    }, [students, branchFilter]);
 
     // Filtered Students List
     const filteredStudents = useMemo(() => {

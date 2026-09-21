@@ -1,4 +1,5 @@
 import { getTodayWitaWeekday, validateHHmm, WITA_OFFSET_MS } from "../../utils/dateWita.js";
+import { normalizeBranch } from "../../constants/branches.js";
 
 // Company policy: an instructor must clock in at least this many minutes
 // BEFORE the scheduled start time to count as "on time." Arriving after
@@ -300,7 +301,7 @@ function initInstructorStats(instructorId, instructorsById) {
   return {
     instructorId,
     instructorName: inst?.displayName || "Unknown",
-    branch: inst?.branch || "",
+    branch: normalizeBranch(inst?.branch),
     sessionsScheduled: 0,
     sessionsAttended: 0,
     onTime: 0,

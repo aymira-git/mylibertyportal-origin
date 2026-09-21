@@ -1,5 +1,6 @@
 import { auth, db } from "../../firebase";
 import { collection, getDocs, getDoc, doc, query, where } from "firebase/firestore";
+import { normalizeBranch } from "../../constants/branches.js";
 
 /**
  * All direct Firestore reads for the Reports domain live here.
@@ -52,7 +53,7 @@ export async function fetchStaffShifts(isAdminView, since = null) {
       return {
         id: d.id,
         ...data,
-        branch: user?.branch || data.branch || "Cabang Utama",
+        branch: normalizeBranch(user?.branch || data.branch),
       };
     })
     .filter((shift) => existingUsersMap.has(shift.userId))

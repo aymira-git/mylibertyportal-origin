@@ -226,4 +226,98 @@ describe("checkDraftConflicts", () => {
     expect(result.teacherConflicts).toHaveLength(0);
     expect(result.roomConflicts).toHaveLength(0);
   });
+
+  describe("multi-campus branch conflict handling", () => {
+    it("does not report room conflicts when identical room names belong to different branches", () => {
+      const clsPohuwato = cls({
+        id: "p1",
+        className: "Pohuwato Batch",
+        branch: "Pohuwato",
+        classRoom: "Main Campus",
+        instructorId: "inst1",
+      });
+      const clsGorontalo = cls({
+        id: "g1",
+        className: "Gorontalo Batch",
+        branch: "Kota Gorontalo",
+        classRoom: "Main Campus",
+        instructorId: "inst2",
+      });
+
+      const { roomConflicts, teacherConflicts } = findScheduleConflicts([
+        clsPohuwato,
+        clsGorontalo,
+      ]);
+      expect(roomConflicts).toHaveLength(0);
+      expect(teacherConflicts).toHaveLength(0);
+    });
+
+    it("reports room conflicts when identical room names belong to the same branch", () => {
+      const cls1 = cls({
+        id: "g1",
+        className: "Batch 1",
+        branch: "Kota Gorontalo",
+        classRoom: "Lab A",
+        instructorId: "inst1",
+      });
+      const cls2 = cls({
+        id: "g2",
+        className: "Batch 2",
+        branch: "Kota Gorontalo",
+        classRoom: "Lab A",
+        instructorId: "inst2",
+      });
+
+      const { roomConflicts } = findScheduleConflicts([cls1, cls2]);
+      expect(roomConflicts).toHaveLength(1);
+      expect(roomConflicts[0].detail).toContain("Kota Gorontalo");
+    });
+
+    it("reports teacher conflict if the same instructor is scheduled across different branches", () => {
+      const cls1 = cls({
+        id: "g1",
+        className: "Batch 1",
+        branch: "Kota Gorontalo",
+        classRoom: "Room A",
+        instructorId: "shared-instructor",
+      });
+      const cls2 = cls({
+        id: "b1",
+        className: "Batch 2",
+        branch: "Bone Bolango",
+        classRoom: "Room B",
+        instructorId: "shared-instructor",
+      });
+
+      const { teacherConflicts, roomConflicts } = findScheduleConflicts([cls1, cls2]);
+      expect(roomConflicts).toHaveLength(0);
+      expect(teacherConflicts).toHaveLength(1);
+    });
+
+    it("respects draft.branch in checkDraftConflicts", () => {
+      const existing = [
+        cls({
+          id: "ex1",
+          branch: "Kota Gorontalo",
+          classRoom: "Room 1",
+          instructorId: "inst1",
+        }),
+      ];
+      const draftDifferentBranch = cls({
+        id: undefined,
+        branch: "Limboto",
+        classRoom: "Room 1",
+        instructorId: "inst2",
+      });
+      const draftSameBranch = cls({
+        id: undefined,
+        branch: "Kota Gorontalo",
+        classRoom: "Room 1",
+        instructorId: "inst2",
+      });
+
+      expect(checkDraftConflicts(draftDifferentBranch, existing).roomConflicts).toHaveLength(0);
+      expect(checkDraftConflicts(draftSameBranch, existing).roomConflicts).toHaveLength(1);
+    });
+  });
 });

@@ -8,10 +8,11 @@ import { doc, deleteDoc, setDoc } from "firebase/firestore";
  */
 
 import { inviteSchema } from "../../schemas";
+import { DEFAULT_BRANCH } from "../../constants/branches.js";
 
 export const INVITE_EXPIRATION_DAYS = 7;
 
-export function createInvite(email, role, branch = "Cabang Utama") {
+export function createInvite(email, role, branch = DEFAULT_BRANCH) {
   const validated = inviteSchema.parse({ email, role, branch });
   const token = crypto.randomUUID();
   const now = Date.now();

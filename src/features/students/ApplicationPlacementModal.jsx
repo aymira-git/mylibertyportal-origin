@@ -5,11 +5,21 @@
  */
 
 import { useState, useMemo } from "react";
-import { X, Check, Loader2, AlertTriangle, Users, GraduationCap, ShieldAlert } from "lucide-react";
+import {
+  X,
+  Check,
+  Loader2,
+  AlertTriangle,
+  Users,
+  GraduationCap,
+  ShieldAlert,
+  Building2,
+} from "lucide-react";
 import { LEVEL_LIST, TIERS, TIER_KEYS } from "../../constants/levels";
-import { normalizeBranch } from "../../constants/branches";
+import { normalizeBranch, matchesBranchFilter } from "../../constants/branches";
 import { LevelBadge, PAYMENT_PLAN_LIST, isCompatible } from "../shared";
 import { getBatchAvailability } from "../classes/batchAvailability";
+import { sortPlacementBatches } from "./admissionsUtils";
 
 function formatDobAndAge(dob) {
   if (!dob) return "—";
@@ -47,16 +57,13 @@ export default function ApplicationPlacementModal({
     return classes.filter((cls) => getBatchAvailability(cls).canEnroll);
   }, [classes]);
 
-  // Sort batches: compatible with selectedLevel first, then by name
+  // Sort batches: applicant's branch first, then compatible with selectedLevel, then by name
   const sortedClasses = useMemo(() => {
-    return [...enrollableClasses].sort((a, b) => {
-      const aComp = isCompatible(selectedLevel, a);
-      const bComp = isCompatible(selectedLevel, b);
-      if (aComp && !bComp) return -1;
-      if (!aComp && bComp) return 1;
-      return (a.className || "").localeCompare(b.className || "");
+    return sortPlacementBatches(enrollableClasses, {
+      selectedLevel,
+      appBranch: app.branch,
     });
-  }, [enrollableClasses, selectedLevel]);
+  }, [enrollableClasses, selectedLevel, app.branch]);
 
   const selectedClass = useMemo(() => {
     if (!selectedClassId) return null;
@@ -305,18 +312,31 @@ export default function ApplicationPlacementModal({
               {sortedClasses.map((cls) => {
                 const avail = getBatchAvailability(cls);
                 const compat = isCompatible(selectedLevel, cls);
+                const branchName = normalizeBranch(cls.branch);
                 return (
                   <option key={cls.id} value={cls.id}>
                     {compat ? "✓ " : ""}
-                    {cls.className} · {cls.classLevel?.toUpperCase() || "WARRIOR"} ·{" "}
+                    [{branchName}] {cls.className} · {cls.classLevel?.toUpperCase() || "WARRIOR"} ·{" "}
                     {cls.classSchedule || "Flexible"} ({avail.studentCount}/{avail.capacity} seats)
                   </option>
                 );
               })}
             </select>
+
+            {selectedClass && !matchesBranchFilter(selectedClass.branch, app.branch) && (
+              <p className="text-[11px] text-amber-850 bg-amber-50 p-2.5 rounded-xl border border-amber-200 font-medium flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 shrink-0 text-amber-700" />
+                <span>
+                  Cross-Campus Placement: This cohort is at{" "}
+                  <strong>{normalizeBranch(selectedClass.branch)}</strong>, while the applicant
+                  requested <strong>{normalizeBranch(app.branch)}</strong>.
+                </span>
+              </p>
+            )}
+
             <p className="text-[10px] text-slate-400 font-medium">
-              Only batches with open seats and active enrollment status are selectable. Batches
-              matching the candidate level are listed first.
+              Only batches with open seats and active enrollment status are selectable. Cohorts
+              matching the applicant&apos;s campus and academic level are listed first.
             </p>
           </div>
 

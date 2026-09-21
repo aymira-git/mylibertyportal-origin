@@ -354,4 +354,22 @@ describe("computeMonthlyPunctuality", () => {
     expect(stats.sessionsScheduled).toBe(4); // Saturdays: 5, 12, 19, 26
     expect(stats.absent).toBe(4);
   });
+
+  it("normalizes instructor branch fallback to Kota Gorontalo for missing or legacy branches", () => {
+    const insts = {
+      i1: { displayName: "Ms. Rina" },
+      i2: { displayName: "Mr. Budi", branch: "Cabang Utama" },
+      i3: { displayName: "Ms. Dewi", branch: " bone bolango " },
+    };
+    const classes = [
+      { ...baseClass, id: "c1", instructorId: "i1" },
+      { ...baseClass, id: "c2", instructorId: "i2" },
+      { ...baseClass, id: "c3", instructorId: "i3" },
+    ];
+    const stats = computeMonthlyPunctuality(classes, [], insts, SEPT.year, SEPT.month);
+    const byId = Object.fromEntries(stats.map((s) => [s.instructorId, s.branch]));
+    expect(byId.i1).toBe("Kota Gorontalo");
+    expect(byId.i2).toBe("Kota Gorontalo");
+    expect(byId.i3).toBe("Bone Bolango");
+  });
 });

@@ -10,7 +10,7 @@ import {
   createStaffAccount,
   deleteUserProfile,
 } from "./usersRepository";
-import { DEFAULT_BRANCH } from "../../constants/branches";
+import { DEFAULT_BRANCH, normalizeBranch } from "../../constants/branches";
 
 const emptyFormData = {
   firstName: "",
@@ -193,7 +193,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
           dob: formData.dob,
           educationLevel: formData.educationLevel,
           email: formData.email,
-          branch: formData.branch || "",
+          branch: normalizeBranch(formData.branch),
           status: formData.status || "active",
           photoURL: formData.photoURL || "",
         };
@@ -263,7 +263,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
       placeOfBirth: user.placeOfBirth || "",
       religion: user.religion || "",
       address: user.address || "",
-      branch: user.branch || "",
+      branch: normalizeBranch(user.branch),
       program: user.program || "",
       classType: user.classType || "",
       schoolOrJob: user.schoolOrJob || "",

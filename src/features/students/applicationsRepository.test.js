@@ -63,6 +63,14 @@ describe("approveApplication", () => {
     expect(fake.find("applications/app1").data.approvedBy).toBe("system");
   });
 
+  it("normalizes applicant branch when creating the active student profile", async () => {
+    const student = await approveApplication({
+      app: { ...app, branch: "Cabang Utama" },
+    });
+    expect(student.branch).toBe("Kota Gorontalo");
+    expect(fake.find(`users/${student.id}`).data.branch).toBe("Kota Gorontalo");
+  });
+
   it("enrols the student in the chosen batch, and the batch level wins", async () => {
     fake.seed("classes", [
       {

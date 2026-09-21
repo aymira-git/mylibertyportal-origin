@@ -1,3 +1,5 @@
+import { normalizeBranch } from "../../constants/branches.js";
+
 function clean(value) {
   return (value || "").toString().trim();
 }
@@ -30,7 +32,7 @@ export function buildStudentRecord(fields = {}) {
     placeOfBirth: clean(fields.placeOfBirth),
     religion: clean(fields.religion),
     address: clean(fields.address),
-    branch: clean(fields.branch),
+    branch: normalizeBranch(fields.branch),
     program: clean(fields.program),
     classType: clean(fields.classType),
     schoolOrJob: clean(fields.schoolOrJob),

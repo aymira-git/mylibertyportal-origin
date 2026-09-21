@@ -5,6 +5,7 @@
 
 import { normalizeWhatsAppNumber } from "../finance/receiptMessages";
 import { BRANCHES, normalizeBranch, matchesBranchFilter } from "../../constants/branches";
+import { isCompatible } from "../../constants/levels";
 
 export function isPending(app) {
   return (app?.status || "pending") === "pending";
@@ -211,3 +212,31 @@ export function getDistinctValues(apps = [], field) {
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b));
 }
+
+/**
+ * Sorts intake class cohorts for placement:
+ * 1. Batches matching the applicant's branch come first.
+ * 2. Within branch grouping, batches compatible with the selected level come first.
+ * 3. Alphabetical tie-breaking by className.
+ */
+export function sortPlacementBatches(
+  classes = [],
+  { selectedLevel = "warrior", appBranch = "" } = {}
+) {
+  return [...classes].sort((a, b) => {
+    if (appBranch) {
+      const aBranchMatch = matchesBranchFilter(a.branch, appBranch);
+      const bBranchMatch = matchesBranchFilter(b.branch, appBranch);
+      if (aBranchMatch && !bBranchMatch) return -1;
+      if (!aBranchMatch && bBranchMatch) return 1;
+    }
+
+    const aComp = isCompatible(selectedLevel, a);
+    const bComp = isCompatible(selectedLevel, b);
+    if (aComp && !bComp) return -1;
+    if (!aComp && bComp) return 1;
+
+    return (a.className || "").localeCompare(b.className || "");
+  });
+}
+

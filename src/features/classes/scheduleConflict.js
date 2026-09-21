@@ -14,6 +14,8 @@
  * .trim().toLowerCase() before comparison.
  */
 
+import { normalizeBranch } from "../../constants/branches.js";
+
 // ── Weekday Sets ────────────────────────────────────────────────────
 
 const DAY_MAP = {
@@ -148,15 +150,19 @@ export function findScheduleConflicts(classes) {
         });
       }
 
-      // Room conflict
+      // Room conflict: physical rooms only conflict if on the SAME campus branch
+      const branchA = normalizeBranch(a.branch);
+      const branchB = normalizeBranch(b.branch);
+      const isSameBranch = branchA.toLowerCase() === branchB.toLowerCase();
+
       const roomA = normalizeRoom(a.classRoom);
       const roomB = normalizeRoom(b.classRoom);
-      if (roomA && roomB && roomA === roomB) {
+      if (isSameBranch && roomA && roomB && roomA === roomB) {
         roomConflicts.push({
           classA: a,
           classB: b,
           type: "room",
-          detail: `Room "${a.classRoom}" is double-booked: "${a.className}" (${a.classDay} ${a.startTime}–${a.endTime}) and "${b.className}" (${b.classDay} ${b.startTime}–${b.endTime})`,
+          detail: `Room "${a.classRoom}" at ${branchA} is double-booked: "${a.className}" (${a.classDay} ${a.startTime}–${a.endTime}) and "${b.className}" (${b.classDay} ${b.startTime}–${b.endTime})`,
         });
       }
     }

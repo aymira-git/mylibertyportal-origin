@@ -96,17 +96,37 @@ const StaffDutyTab = forwardRef(
 
     // Multiple Open Shifts & KPI Radar
     const multiOpenUserIds = useMemo(() => {
-      return detectMultipleOpenShifts(shifts);
-    }, [shifts]);
+      const branchShifts =
+        branchFilter === "all"
+          ? shifts
+          : shifts.filter((s) => matchesBranchFilter(s.branch, branchFilter));
+      return detectMultipleOpenShifts(branchShifts);
+    }, [shifts, branchFilter]);
 
     const todayWita = useMemo(() => getTodayWitaString(), []);
 
     const staffKpiStats = useMemo(() => {
-      const onDutyList = shifts.filter((s) => getShiftStatus(s) === "on_duty");
-      const staleList = shifts.filter((s) => getShiftStatus(s) === "stale");
-      const autoClosedList = shifts.filter((s) => s.autoClosed && s.reviewStatus !== "reviewed");
+      const branchShifts =
+        branchFilter === "all"
+          ? shifts
+          : shifts.filter((s) => matchesBranchFilter(s.branch, branchFilter));
 
-      const lateTodayCount = shifts.filter((s) => {
+      const staffMap = new Map(staffMembers.map((m) => [m.id, m]));
+      const branchLeaves =
+        branchFilter === "all"
+          ? leaves
+          : leaves.filter((l) => {
+              const m = staffMap.get(l.userId);
+              return matchesBranchFilter(m?.branch, branchFilter);
+            });
+
+      const onDutyList = branchShifts.filter((s) => getShiftStatus(s) === "on_duty");
+      const staleList = branchShifts.filter((s) => getShiftStatus(s) === "stale");
+      const autoClosedList = branchShifts.filter(
+        (s) => s.autoClosed && s.reviewStatus !== "reviewed"
+      );
+
+      const lateTodayCount = branchShifts.filter((s) => {
         if (!s.clockIn) return false;
         const shiftDate = s.clockIn.slice(0, 10);
         return (
@@ -115,7 +135,7 @@ const StaffDutyTab = forwardRef(
         );
       }).length;
 
-      const onLeaveCount = leaves.filter((l) => {
+      const onLeaveCount = branchLeaves.filter((l) => {
         const end = l.endDate || l.startDate;
         return l.startDate <= todayWita && todayWita <= end;
       }).length;
@@ -127,7 +147,7 @@ const StaffDutyTab = forwardRef(
         lateTodayCount,
         onLeaveCount,
       };
-    }, [shifts, leaves, todayWita]);
+    }, [shifts, leaves, staffMembers, todayWita, branchFilter]);
 
     const filteredShifts = useMemo(() => {
       let list = shifts;

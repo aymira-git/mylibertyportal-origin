@@ -42,10 +42,20 @@ const TodayTab = forwardRef(
 
     // Today's Computed Metrics
     const todayComputed = useMemo(() => {
-      const scheduledClasses = getTodaysClasses(todayClasses);
+      let scheduledClasses = getTodaysClasses(todayClasses);
+      if (branchFilter !== "all") {
+        scheduledClasses = scheduledClasses.filter((cls) =>
+          matchesBranchFilter(cls.branch, branchFilter)
+        );
+      }
       const scheduledStudentIds = new Set(scheduledClasses.flatMap((cls) => cls.studentIds || []));
 
-      const expectedStudents = allStudentsList.filter((s) => scheduledStudentIds.has(s.id));
+      let expectedStudents = allStudentsList.filter((s) => scheduledStudentIds.has(s.id));
+      if (branchFilter !== "all") {
+        expectedStudents = expectedStudents.filter((s) =>
+          matchesBranchFilter(s.branch, branchFilter)
+        );
+      }
       const scannedUserIds = new Set(todayScans.map((s) => s.userId));
 
       const checkedInStudents = expectedStudents.filter((s) => scannedUserIds.has(s.id));
@@ -60,7 +70,7 @@ const TodayTab = forwardRef(
         checkedInStudents,
         missingStudents,
       };
-    }, [todayClasses, todayScans, allStudentsList]);
+    }, [todayClasses, todayScans, allStudentsList, branchFilter]);
 
     // Filtered Today List
     const filteredTodayList = useMemo(() => {

@@ -8,6 +8,7 @@ import {
   getNameKey,
   getPhoneKey,
   isPending,
+  sortPlacementBatches,
 } from "./admissionsUtils.js";
 
 describe("isPending", () => {
@@ -273,5 +274,60 @@ describe("getDistinctValues", () => {
       {},
     ];
     expect(getDistinctValues(apps, "program")).toEqual(["General", "IELTS"]);
+  });
+});
+
+describe("sortPlacementBatches", () => {
+  const cPohuwatoWarrior = {
+    id: "p1",
+    className: "Pohuwato Warrior",
+    branch: "Pohuwato",
+    classLevel: "warrior",
+  };
+  const cGorontaloWarrior = {
+    id: "g1",
+    className: "Gorontalo Warrior",
+    branch: "Kota Gorontalo",
+    classLevel: "warrior",
+  };
+  const cGorontaloMaster = {
+    id: "g2",
+    className: "Gorontalo Master",
+    branch: "Kota Gorontalo",
+    classLevel: "master",
+  };
+  const cBoneBolangoWarrior = {
+    id: "b1",
+    className: "Bone Bolango Warrior",
+    branch: "Bone Bolango",
+    classLevel: "warrior",
+  };
+
+  it("prioritizes cohorts matching the applicant's branch first", () => {
+    const classes = [cGorontaloWarrior, cPohuwatoWarrior, cBoneBolangoWarrior];
+    const sorted = sortPlacementBatches(classes, {
+      selectedLevel: "warrior",
+      appBranch: "Pohuwato",
+    });
+    expect(sorted.map((c) => c.id)).toEqual(["p1", "b1", "g1"]);
+  });
+
+  it("within the matching branch, prioritizes cohorts compatible with selected level", () => {
+    const classes = [cGorontaloMaster, cGorontaloWarrior, cPohuwatoWarrior];
+    const sorted = sortPlacementBatches(classes, {
+      selectedLevel: "warrior",
+      appBranch: "Kota Gorontalo",
+    });
+    // g1 (Gorontalo + compatible warrior) comes before g2 (Gorontalo + incompatible master), which comes before p1 (different branch)
+    expect(sorted.map((c) => c.id)).toEqual(["g1", "g2", "p1"]);
+  });
+
+  it("handles legacy alias matching in appBranch", () => {
+    const classes = [cPohuwatoWarrior, cGorontaloWarrior];
+    const sorted = sortPlacementBatches(classes, {
+      selectedLevel: "warrior",
+      appBranch: "Cabang Utama", // legacy alias maps to Kota Gorontalo
+    });
+    expect(sorted[0].id).toBe("g1");
   });
 });

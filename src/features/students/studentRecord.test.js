@@ -71,6 +71,12 @@ describe("buildStudentRecord", () => {
       [...Object.keys(buildStudentRecord({})), "paidUntil"].sort()
     );
   });
+
+  it("normalizes branch to DEFAULT_BRANCH and canonicalizes branch names", () => {
+    expect(buildStudentRecord().branch).toBe("Kota Gorontalo");
+    expect(buildStudentRecord({ branch: "Cabang Utama" }).branch).toBe("Kota Gorontalo");
+    expect(buildStudentRecord({ branch: " limboto " }).branch).toBe("Limboto");
+  });
 });
 
 describe("isActiveStudent", () => {

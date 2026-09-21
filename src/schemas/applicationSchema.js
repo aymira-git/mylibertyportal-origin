@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeBranch } from "../constants/branches.js";
 
 export const applicationSchema = z.object({
   displayName: z.string().trim().min(1, "Student name is required."),
@@ -9,7 +10,11 @@ export const applicationSchema = z.object({
   placeOfBirth: z.string().trim().optional().default(""),
   religion: z.string().trim().optional().default(""),
   address: z.string().trim().optional().default(""),
-  branch: z.string().trim().optional().default(""),
+  branch: z
+    .string()
+    .trim()
+    .optional()
+    .transform((b) => normalizeBranch(b)),
   program: z.string().trim().optional().default(""),
   classType: z.string().trim().optional().default(""),
   schoolOrJob: z.string().trim().optional().default(""),

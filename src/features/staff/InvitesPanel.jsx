@@ -8,6 +8,7 @@
 import { useState, useMemo } from "react";
 import { useToast } from "../shared";
 import { getDistinctStaffBranches } from "./staffUtils";
+import { DEFAULT_BRANCH } from "../../constants/branches.js";
 import { copyText } from "../../utils/copyText";
 import {
   Mail,
@@ -73,7 +74,7 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
   const toast = useToast();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("instructor");
-  const [inviteBranch, setInviteBranch] = useState("Kota Gorontalo");
+  const [inviteBranch, setInviteBranch] = useState(DEFAULT_BRANCH);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -329,7 +330,7 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
                     <div className="flex items-center gap-3 text-[11px] text-slate-400">
                       <span className="flex items-center gap-1">
                         <Building2 className="w-3 h-3 text-slate-400" />
-                        <span>{inv.branch || "Cabang Utama"}</span>
+                        <span>{inv.branch || DEFAULT_BRANCH}</span>
                       </span>
                       <span>·</span>
                       <span className="flex items-center gap-1">
