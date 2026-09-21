@@ -16,29 +16,53 @@ describe("getBatchAvailability", () => {
 
   it("defaults to capacity 15 and status open", () => {
     const r = getBatchAvailability({ studentIds: ids(2) });
-    expect(r).toMatchObject({ studentCount: 2, capacity: 15, seatsAvailable: 13, computedStatus: "open", canEnroll: true });
+    expect(r).toMatchObject({
+      studentCount: 2,
+      capacity: 15,
+      seatsAvailable: 13,
+      computedStatus: "open",
+      canEnroll: true,
+    });
   });
 
   it("copes with a class that has no studentIds yet", () => {
-    expect(getBatchAvailability({ maxCapacity: 10 })).toMatchObject({ studentCount: 0, seatsAvailable: 10 });
+    expect(getBatchAvailability({ maxCapacity: 10 })).toMatchObject({
+      studentCount: 0,
+      seatsAvailable: 10,
+    });
   });
 
-  it.each([undefined, null, "", "abc", 0])("falls back to 15 seats when maxCapacity is %s", (maxCapacity) => {
-    expect(getBatchAvailability({ maxCapacity }).capacity).toBe(15);
-  });
+  it.each([undefined, null, "", "abc", 0])(
+    "falls back to 15 seats when maxCapacity is %s",
+    (maxCapacity) => {
+      expect(getBatchAvailability({ maxCapacity }).capacity).toBe(15);
+    }
+  );
 
   it("accepts capacity stored as a numeric string", () => {
-    expect(getBatchAvailability({ maxCapacity: "8", studentIds: ids(3) })).toMatchObject({ capacity: 8, seatsAvailable: 5 });
+    expect(getBatchAvailability({ maxCapacity: "8", studentIds: ids(3) })).toMatchObject({
+      capacity: 8,
+      seatsAvailable: 5,
+    });
   });
 
   it("becomes 'filling_fast' with 3 or fewer seats left", () => {
-    expect(getBatchAvailability({ maxCapacity: 10, studentIds: ids(6) }).computedStatus).toBe("open"); // 4 left
-    expect(getBatchAvailability({ maxCapacity: 10, studentIds: ids(7) }).computedStatus).toBe("filling_fast"); // 3 left
-    expect(getBatchAvailability({ maxCapacity: 10, studentIds: ids(9) }).computedStatus).toBe("filling_fast"); // 1 left
+    expect(getBatchAvailability({ maxCapacity: 10, studentIds: ids(6) }).computedStatus).toBe(
+      "open"
+    ); // 4 left
+    expect(getBatchAvailability({ maxCapacity: 10, studentIds: ids(7) }).computedStatus).toBe(
+      "filling_fast"
+    ); // 3 left
+    expect(getBatchAvailability({ maxCapacity: 10, studentIds: ids(9) }).computedStatus).toBe(
+      "filling_fast"
+    ); // 1 left
   });
 
   it("does not show 'filling_fast' for upcoming batches", () => {
-    expect(getBatchAvailability({ status: "upcoming", maxCapacity: 10, studentIds: ids(8) }).computedStatus).toBe("upcoming");
+    expect(
+      getBatchAvailability({ status: "upcoming", maxCapacity: 10, studentIds: ids(8) })
+        .computedStatus
+    ).toBe("upcoming");
   });
 
   it("becomes 'full' at capacity, and blocks enrolment", () => {
@@ -58,7 +82,9 @@ describe("getBatchAvailability", () => {
   });
 
   it("does not enrol into an in_progress batch that has no seats", () => {
-    expect(getBatchAvailability({ status: "in_progress", maxCapacity: 4, studentIds: ids(4) }).canEnroll).toBe(false);
+    expect(
+      getBatchAvailability({ status: "in_progress", maxCapacity: 4, studentIds: ids(4) }).canEnroll
+    ).toBe(false);
   });
 
   it.each(["cancelled", "completed"])("never allows enrolment into a %s batch", (status) => {

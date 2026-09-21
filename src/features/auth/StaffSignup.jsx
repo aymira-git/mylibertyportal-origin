@@ -19,7 +19,7 @@ async function commitWithRetry(commit, attempts = 3) {
     } catch (err) {
       const isPermission = err.code === "permission-denied" || err.code === "unauthenticated";
       if (!isPermission || attempt >= attempts) throw err;
-      await new Promise(resolve => setTimeout(resolve, 400 * attempt));
+      await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
     }
   }
 }
@@ -62,7 +62,7 @@ export default function StaffSignup() {
     phone: "",
     dob: "",
     educationLevel: "Universitas",
-    password: ""
+    password: "",
   });
 
   // The no-token case is fully handled above, in initial state — nothing
@@ -138,7 +138,7 @@ export default function StaffSignup() {
         dob: formData.dob,
         educationLevel: formData.educationLevel,
         inviteId: invite.id,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
 
       // The Firestore client can briefly still be using the pre-signup
@@ -150,7 +150,9 @@ export default function StaffSignup() {
       setSuccess(true);
     } catch (err) {
       if (err.code === "auth/email-already-in-use") {
-        setSubmitError("An account with this email already exists in our system. If you've already registered, please try logging in. If you were recently deleted and are trying to re-register, an administrator must manually clear your old account from the Firebase Console first.");
+        setSubmitError(
+          "An account with this email already exists in our system. If you've already registered, please try logging in. If you were recently deleted and are trying to re-register, an administrator must manually clear your old account from the Firebase Console first."
+        );
       } else if (err.code === "auth/weak-password") {
         setSubmitError("That password is too short. Please use at least 6 characters.");
       } else if (err.code === "auth/network-request-failed") {
@@ -162,8 +164,9 @@ export default function StaffSignup() {
         // the person in front of the screen should at least be told what
         // state they're in and what to ask for, instead of a raw SDK error.
         setSubmitError(
-          "Your login was created, but saving your profile failed: " + err.message +
-          " Please don't register again — ask an administrator to finish setting up your profile, then log in with the password you just chose."
+          "Your login was created, but saving your profile failed: " +
+            err.message +
+            " Please don't register again — ask an administrator to finish setting up your profile, then log in with the password you just chose."
         );
       } else {
         setSubmitError(err.message);
@@ -213,7 +216,8 @@ export default function StaffSignup() {
           </div>
           <h2 className="text-xl font-extrabold text-slate-900 mb-2">Welcome to the Team!</h2>
           <p className="text-slate-500 text-xs mb-6 leading-relaxed">
-            Your staff account has been provisioned and registered in our database. You can now sign in with your credentials.
+            Your staff account has been provisioned and registered in our database. You can now sign
+            in with your credentials.
           </p>
           <a
             href="/"

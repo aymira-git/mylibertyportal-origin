@@ -56,9 +56,7 @@ export default function PaymentHistoryTab({
               })}{" "}
               • Rec by: {h.recordedBy}
             </p>
-            {h.notes && (
-              <p className="text-[11px] text-slate-500 italic">Note: {h.notes}</p>
-            )}
+            {h.notes && <p className="text-[11px] text-slate-500 italic">Note: {h.notes}</p>}
           </div>
 
           <div className="flex flex-col gap-1.5 shrink-0">

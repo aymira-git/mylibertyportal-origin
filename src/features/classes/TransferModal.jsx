@@ -28,9 +28,7 @@ export default function TransferModal({
   const toast = useToast();
 
   const [targetClassId, setTargetClassId] = useState("");
-  const [transferDate, setTransferDate] = useState(
-    () => new Date().toISOString().slice(0, 10)
-  );
+  const [transferDate, setTransferDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [reason, setReason] = useState("Schedule adjustment");
   const [customReason, setCustomReason] = useState("");
   const [search, setSearch] = useState("");
@@ -89,8 +87,8 @@ export default function TransferModal({
 
   const levelMismatch = Boolean(
     selectedTargetClass &&
-      student?.currentLevel &&
-      !isCompatible(student.currentLevel, selectedTargetClass)
+    student?.currentLevel &&
+    !isCompatible(student.currentLevel, selectedTargetClass)
   );
 
   if (!isOpen || !student) return null;
@@ -158,7 +156,11 @@ export default function TransferModal({
         <div className="p-5 sm:p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/70">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-[#1a3a8f] flex items-center justify-center font-bold shrink-0">
-              {sourceClass ? <ArrowRightLeft className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+              {sourceClass ? (
+                <ArrowRightLeft className="w-5 h-5" />
+              ) : (
+                <UserPlus className="w-5 h-5" />
+              )}
             </div>
             <div>
               <h3 className="font-extrabold text-slate-900 text-lg">
@@ -258,8 +260,8 @@ export default function TransferModal({
                         isSelected
                           ? "border-[#1a3a8f] bg-indigo-50/50 shadow-xs ring-1 ring-[#1a3a8f]"
                           : isAvailable
-                          ? "border-slate-200 hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
-                          : "border-slate-200/60 bg-slate-100/60 opacity-60 cursor-not-allowed"
+                            ? "border-slate-200 hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+                            : "border-slate-200/60 bg-slate-100/60 opacity-60 cursor-not-allowed"
                       }`}
                     >
                       <div className="space-y-1 min-w-0">
@@ -340,7 +342,9 @@ export default function TransferModal({
           )}
 
           {/* Effective Date & Optional Reason */}
-          <div className={`grid gap-3 pt-1 ${sourceClass ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+          <div
+            className={`grid gap-3 pt-1 ${sourceClass ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}
+          >
             <div className="space-y-1">
               <label className="block text-[11px] font-black uppercase tracking-wider text-slate-700">
                 {sourceClass ? "Transfer Effective Date" : "Enrollment Date"}
@@ -377,9 +381,7 @@ export default function TransferModal({
 
           {sourceClass && reason === "Other" && (
             <div className="space-y-1">
-              <label className="block text-[11px] font-bold text-slate-600">
-                Specify Reason
-              </label>
+              <label className="block text-[11px] font-bold text-slate-600">Specify Reason</label>
               <input
                 type="text"
                 placeholder="Enter specific transfer note..."
@@ -406,11 +408,19 @@ export default function TransferModal({
               disabled={transferring || !targetClassId}
               className="px-5 py-2.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-xs rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
             >
-              {sourceClass ? <ArrowRightLeft className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+              {sourceClass ? (
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+              ) : (
+                <UserPlus className="w-3.5 h-3.5" />
+              )}
               <span>
                 {sourceClass
-                  ? (transferring ? "Transferring..." : "Confirm Transfer")
-                  : (transferring ? "Enrolling..." : "Confirm Enrollment")}
+                  ? transferring
+                    ? "Transferring..."
+                    : "Confirm Transfer"
+                  : transferring
+                    ? "Enrolling..."
+                    : "Confirm Enrollment"}
               </span>
             </button>
           </div>

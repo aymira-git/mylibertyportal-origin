@@ -15,10 +15,7 @@ import {
   normalizeWhatsAppNumber,
   buildWhatsAppRenewalReminderMessage,
 } from "../finance/receiptMessages";
-import {
-  fetchPendingPromotions,
-  promoteStudentLevel,
-} from "./progressReportsRepository";
+import { fetchPendingPromotions, promoteStudentLevel } from "./progressReportsRepository";
 import { updateStudentStatus, checkStudentHasHistory } from "../dashboard/usersRepository";
 import { removeStudentFromClass } from "../classes/classesRepository";
 import { isActiveStudent, STUDENT_STATUS_MAP } from "./studentRecord";
@@ -26,11 +23,7 @@ import { getStudentPlanLabel } from "./studentRosterBadges";
 import StudentRosterFilters from "./StudentRosterFilters";
 import StudentRosterMobileList from "./StudentRosterMobileList";
 import StudentRosterTable from "./StudentRosterTable";
-import {
-  Users,
-  FileSpreadsheet,
-  UserPlus,
-} from "lucide-react";
+import { Users, FileSpreadsheet, UserPlus } from "lucide-react";
 
 export default function StudentRoster({
   students = [],
@@ -72,12 +65,17 @@ export default function StudentRoster({
         const classNames = enrolledClasses.map((c) => c.className).join(", ");
         const shouldRemove = await confirm(
           `${student.displayName || "This student"} is currently enrolled in ${enrolledClasses.length} cohort(s): ${classNames}.\n\n` +
-          `Would you like to remove them from these cohorts now to immediately free up seats?`
+            `Would you like to remove them from these cohorts now to immediately free up seats?`
         );
         if (shouldRemove) {
           try {
-            await Promise.all(enrolledClasses.map((cls) => removeStudentFromClass(cls, student.id)));
-            toast(`Removed ${student.displayName || "Student"} from ${enrolledClasses.length} cohort(s).`, "info");
+            await Promise.all(
+              enrolledClasses.map((cls) => removeStudentFromClass(cls, student.id))
+            );
+            toast(
+              `Removed ${student.displayName || "Student"} from ${enrolledClasses.length} cohort(s).`,
+              "info"
+            );
           } catch (err) {
             toast(`Could not remove from cohorts: ${err.message}`, "error");
           }
@@ -103,14 +101,16 @@ export default function StudentRoster({
       const classNames = enrolledClasses.map((c) => c.className).join(", ");
       toast(
         `Cannot delete ${student.displayName}: Student is actively enrolled in ${enrolledClasses.length} cohort(s) (${classNames}). ` +
-        `Please remove them from cohorts or mark their status as "Inactive" or "Graduated" instead.`,
+          `Please remove them from cohorts or mark their status as "Inactive" or "Graduated" instead.`,
         "error"
       );
       return;
     }
 
     try {
-      const { hasPayments, hasAttendance, hasReports, error } = await checkStudentHasHistory(student.id);
+      const { hasPayments, hasAttendance, hasReports, error } = await checkStudentHasHistory(
+        student.id
+      );
       if (error) {
         toast(
           `Could not verify student history (${error}). Deletion cancelled for data safety.`,
@@ -125,13 +125,16 @@ export default function StudentRoster({
         if (hasReports) reasons.push("academic evaluations");
         toast(
           `Cannot delete: ${student.displayName} has recorded history (${reasons.join(", ")}). ` +
-          `Deleting this profile would corrupt historical records. Please mark their status as "Inactive" or "Graduated" instead.`,
+            `Deleting this profile would corrupt historical records. Please mark their status as "Inactive" or "Graduated" instead.`,
           "error"
         );
         return;
       }
     } catch (err) {
-      toast(`Failed to verify student history: ${err.message}. Deletion cancelled for safety.`, "error");
+      toast(
+        `Failed to verify student history: ${err.message}. Deletion cancelled for safety.`,
+        "error"
+      );
       return;
     }
 
@@ -191,7 +194,10 @@ export default function StudentRoster({
 
     try {
       await promoteStudentLevel(student.id, nextLevel, report?.id);
-      toast(`Successfully promoted ${student.displayName} to ${nextLevel.toUpperCase()}!`, "success");
+      toast(
+        `Successfully promoted ${student.displayName} to ${nextLevel.toUpperCase()}!`,
+        "success"
+      );
       loadPendingPromotions();
     } catch (err) {
       toast(`Failed to promote student: ${err.message}`, "error");
@@ -217,10 +223,13 @@ export default function StudentRoster({
     students.filter(isActiveStudent).forEach((s) => {
       const cls = getStudentClasses(s.id);
       if (!cls || cls.length === 0) unassigned++;
-      const health = s.paymentStatus === "pending"
-        ? { status: "pending" }
-        : getPaymentHealthStatus(s.paidUntil);
-      if (health.status === "due_soon" || health.status === "expired" || health.status === "invalid_date") {
+      const health =
+        s.paymentStatus === "pending" ? { status: "pending" } : getPaymentHealthStatus(s.paidUntil);
+      if (
+        health.status === "due_soon" ||
+        health.status === "expired" ||
+        health.status === "invalid_date"
+      ) {
         dueOrExpired++;
       }
     });
@@ -232,7 +241,10 @@ export default function StudentRoster({
     const rawPhone = s.parentPhone || s.phone;
     const formatted = normalizeWhatsAppNumber(rawPhone);
     if (!formatted) {
-      toast(`No valid phone number for ${s.displayName}. Please update contact details first.`, "error");
+      toast(
+        `No valid phone number for ${s.displayName}. Please update contact details first.`,
+        "error"
+      );
       return;
     }
 
@@ -263,9 +275,10 @@ export default function StudentRoster({
         const studentClasses = getStudentClasses(s.id);
         const enrollmentJoinedDate = studentClasses.find((c) => c.dateJoined)?.dateJoined || "";
         const effectiveStatus = s.status || "active";
-        const health = s.paymentStatus === "pending"
-          ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
-          : getPaymentHealthStatus(s.paidUntil);
+        const health =
+          s.paymentStatus === "pending"
+            ? { status: "pending", label: "Pending", tone: "amber", remainingDays: null }
+            : getPaymentHealthStatus(s.paidUntil);
         const tier = getTier(s.currentLevel || "warrior");
         return {
           ...s,
@@ -280,7 +293,12 @@ export default function StudentRoster({
         // 1. Status Filter
         if (statusFilter === "active" && s.effectiveStatus !== "active") return false;
         if (statusFilter === "on_leave" && s.effectiveStatus !== "on_leave") return false;
-        if (statusFilter === "inactive_graduated" && s.effectiveStatus !== "inactive" && s.effectiveStatus !== "graduated") return false;
+        if (
+          statusFilter === "inactive_graduated" &&
+          s.effectiveStatus !== "inactive" &&
+          s.effectiveStatus !== "graduated"
+        )
+          return false;
 
         // 2. Action Filter
         if (actionFilter === "unassigned" && s.studentClasses.length > 0) return false;
@@ -289,7 +307,8 @@ export default function StudentRoster({
           s.paymentHealth.status !== "due_soon" &&
           s.paymentHealth.status !== "expired" &&
           s.paymentHealth.status !== "invalid_date"
-        ) return false;
+        )
+          return false;
         if (actionFilter === "beginner" && s.tier !== "beginner") return false;
         if (actionFilter === "intermediate" && s.tier !== "intermediate") return false;
         if (actionFilter === "fluent" && s.tier !== "fluent") return false;
@@ -313,9 +332,20 @@ export default function StudentRoster({
         if (valA > valB) return studentSortAsc ? 1 : -1;
         return 0;
       });
-  }, [students, getStudentClasses, statusFilter, actionFilter, searchQuery, studentSortField, studentSortAsc]);
+  }, [
+    students,
+    getStudentClasses,
+    statusFilter,
+    actionFilter,
+    searchQuery,
+    studentSortField,
+    studentSortAsc,
+  ]);
 
-  const { page, setPage, totalPages, pageItems, from, to, total } = usePagination(sortedStudents, 25);
+  const { page, setPage, totalPages, pageItems, from, to, total } = usePagination(
+    sortedStudents,
+    25
+  );
 
   const handlePrint = () => {
     const headers = [
@@ -334,9 +364,7 @@ export default function StudentRoster({
     const rows = sortedStudents.map((s) => {
       const planLabel = getStudentPlanLabel(s) || "—";
       const isPending = s.paymentStatus === "pending";
-      const health = isPending
-        ? { label: "Pending" }
-        : getPaymentHealthStatus(s.paidUntil);
+      const health = isPending ? { label: "Pending" } : getPaymentHealthStatus(s.paidUntil);
       return [
         s.displayName || "",
         `${s.parentName || "N/A"} (${s.parentPhone || "N/A"})`,
@@ -347,8 +375,12 @@ export default function StudentRoster({
         health.label,
         planLabel,
         s.paidUntil || s.lastPaymentPeriod || "—",
-        s.studentClasses.length ? s.studentClasses.map((c) => c.className).join(", ") : "Unassigned",
-        s.studentClasses.length ? s.studentClasses.map((c) => c.instructorName || "Unassigned").join(", ") : "—",
+        s.studentClasses.length
+          ? s.studentClasses.map((c) => c.className).join(", ")
+          : "Unassigned",
+        s.studentClasses.length
+          ? s.studentClasses.map((c) => c.instructorName || "Unassigned").join(", ")
+          : "—",
       ];
     });
     exportTableCSV(`student-roster-${new Date().toISOString().slice(0, 10)}`, headers, rows);
@@ -364,7 +396,9 @@ export default function StudentRoster({
           </div>
           <div>
             <h3 className="font-extrabold text-slate-900 text-base">Student Roster</h3>
-            <p className="text-xs text-slate-500 font-medium">Manage student dossiers, enrollments, and ID badges</p>
+            <p className="text-xs text-slate-500 font-medium">
+              Manage student dossiers, enrollments, and ID badges
+            </p>
           </div>
         </div>
 

@@ -1,5 +1,15 @@
 import { auth, db, getSecondaryAuth } from "../../firebase";
-import { collection, doc, setDoc, addDoc, deleteDoc, query, where, limit, getDocs } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  setDoc,
+  addDoc,
+  deleteDoc,
+  query,
+  where,
+  limit,
+  getDocs,
+} from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 
 /**
@@ -53,10 +63,7 @@ export async function checkStaffHasAttendanceHistory(uid) {
   try {
     const shiftsQuery = query(collection(db, "shifts"), where("userId", "==", uid), limit(1));
     const leaveQuery = query(collection(db, "staffLeave"), where("userId", "==", uid), limit(1));
-    const [shiftsSnap, leaveSnap] = await Promise.all([
-      getDocs(shiftsQuery),
-      getDocs(leaveQuery),
-    ]);
+    const [shiftsSnap, leaveSnap] = await Promise.all([getDocs(shiftsQuery), getDocs(leaveQuery)]);
     return {
       hasShifts: !shiftsSnap.empty,
       hasLeave: !leaveSnap.empty,
@@ -76,9 +83,21 @@ export async function checkStaffHasAttendanceHistory(uid) {
 export async function checkStudentHasHistory(uid) {
   if (!uid) return { hasPayments: false, hasAttendance: false, hasReports: false, error: null };
   try {
-    const paymentsQuery = query(collection(db, "payments"), where("studentId", "==", uid), limit(1));
-    const attendanceQuery = query(collection(db, "attendance"), where("userId", "==", uid), limit(1));
-    const reportsQuery = query(collection(db, "progressReports"), where("studentId", "==", uid), limit(1));
+    const paymentsQuery = query(
+      collection(db, "payments"),
+      where("studentId", "==", uid),
+      limit(1)
+    );
+    const attendanceQuery = query(
+      collection(db, "attendance"),
+      where("userId", "==", uid),
+      limit(1)
+    );
+    const reportsQuery = query(
+      collection(db, "progressReports"),
+      where("studentId", "==", uid),
+      limit(1)
+    );
     const [paymentsSnap, attendanceSnap, reportsSnap] = await Promise.all([
       getDocs(paymentsQuery),
       getDocs(attendanceQuery),
@@ -116,7 +135,7 @@ export async function createStaffAccount(email, password, staffData) {
   } catch (err) {
     throw new Error(
       `Account was created in Firebase Auth, but saving the profile failed: ${err.message}. ` +
-      `An admin must finish this manually in the Firebase Console, or delete the Auth account and try again.`,
+        `An admin must finish this manually in the Firebase Console, or delete the Auth account and try again.`,
       { cause: err }
     );
   }

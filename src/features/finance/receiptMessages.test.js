@@ -58,26 +58,46 @@ describe("buildWhatsAppReceiptMessage", () => {
 
   it("includes every detail of the payment", () => {
     const msg = buildWhatsAppReceiptMessage(rcp);
-    ["R-001", "Budi", "3 Months", "October 2026 – December 2026", "Cash", "997.500", "Sep 21, 2026", "Dec 21, 2026", "Paid by mother"].forEach(
-      (part) => expect(msg).toContain(part)
-    );
+    [
+      "R-001",
+      "Budi",
+      "3 Months",
+      "October 2026 – December 2026",
+      "Cash",
+      "997.500",
+      "Sep 21, 2026",
+      "Dec 21, 2026",
+      "Paid by mother",
+    ].forEach((part) => expect(msg).toContain(part));
   });
 
   it("leaves out optional lines that have no value", () => {
-    const msg = buildWhatsAppReceiptMessage({ ...rcp, planName: "", coverageEnd: undefined, paidUntil: undefined, notes: "" });
+    const msg = buildWhatsAppReceiptMessage({
+      ...rcp,
+      planName: "",
+      coverageEnd: undefined,
+      paidUntil: undefined,
+      notes: "",
+    });
     expect(msg).not.toContain("Payment Plan");
     expect(msg).not.toContain("Valid Through");
     expect(msg).not.toContain("Notes");
   });
 
   it("falls back to N/A for a missing receipt number or date", () => {
-    const msg = buildWhatsAppReceiptMessage({ ...rcp, receiptNumber: undefined, recordedAt: undefined });
+    const msg = buildWhatsAppReceiptMessage({
+      ...rcp,
+      receiptNumber: undefined,
+      recordedAt: undefined,
+    });
     expect(msg).toContain("*Receipt No:* N/A");
     expect(msg).toContain("*Date:* N/A");
   });
 
   it("uses paidUntil when there is no coverageEnd", () => {
-    expect(buildWhatsAppReceiptMessage({ ...rcp, coverageEnd: undefined, paidUntil: "2027-01-05" })).toContain("Jan 5, 2027");
+    expect(
+      buildWhatsAppReceiptMessage({ ...rcp, coverageEnd: undefined, paidUntil: "2027-01-05" })
+    ).toContain("Jan 5, 2027");
   });
 
   describe("on a device set behind UTC", () => {
@@ -99,20 +119,30 @@ describe("buildWhatsAppRenewalReminderMessage", () => {
   const base = { student: { displayName: "Budi" }, paidUntil: "2026-10-05", planLabel: "3 Months" };
 
   it("says the plan expired when remainingDays is negative", () => {
-    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: -3 })).toContain("expired on *Oct 5, 2026*");
+    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: -3 })).toContain(
+      "expired on *Oct 5, 2026*"
+    );
   });
 
   it("says it expires today at zero days", () => {
-    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: 0 })).toContain("expires *today*");
+    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: 0 })).toContain(
+      "expires *today*"
+    );
   });
 
   it("counts days remaining, with correct singular and plural", () => {
-    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: 1 })).toContain("(1 day remaining)");
-    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: 5 })).toContain("(5 days remaining)");
+    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: 1 })).toContain(
+      "(1 day remaining)"
+    );
+    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: 5 })).toContain(
+      "(5 days remaining)"
+    );
   });
 
   it("uses a general sentence when remainingDays is unknown", () => {
-    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: null })).toContain("is due for renewal.");
+    expect(buildWhatsAppRenewalReminderMessage({ ...base, remainingDays: null })).toContain(
+      "is due for renewal."
+    );
     expect(buildWhatsAppRenewalReminderMessage({ ...base })).toContain("is due for renewal.");
   });
 

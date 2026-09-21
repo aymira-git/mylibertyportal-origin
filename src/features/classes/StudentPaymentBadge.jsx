@@ -28,10 +28,10 @@ export default function StudentPaymentBadge({ student }) {
           health.status === "active"
             ? "bg-emerald-500"
             : health.status === "due_soon"
-            ? "bg-amber-500"
-            : health.status === "expired" || health.status === "invalid_date"
-            ? "bg-rose-500"
-            : "bg-slate-400"
+              ? "bg-amber-500"
+              : health.status === "expired" || health.status === "invalid_date"
+                ? "bg-rose-500"
+                : "bg-slate-400"
         }`}
       />
       <span>{health.label}</span>

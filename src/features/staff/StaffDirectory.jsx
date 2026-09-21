@@ -64,7 +64,8 @@ export default function StaffDirectory({
     [users]
   );
   const instructorCount = useMemo(
-    () => users.filter((u) => u.role === "instructor" && (u.status || "active") === "active").length,
+    () =>
+      users.filter((u) => u.role === "instructor" && (u.status || "active") === "active").length,
     [users]
   );
   const opsCount = useMemo(
@@ -76,16 +77,10 @@ export default function StaffDirectory({
       ).length,
     [users]
   );
-  const pendingInvitesCount = useMemo(
-    () => invites.filter((i) => !i.used).length,
-    [invites]
-  );
+  const pendingInvitesCount = useMemo(() => invites.filter((i) => !i.used).length, [invites]);
 
   // Dynamic branch list
-  const branchOptions = useMemo(
-    () => getDistinctStaffBranches(users),
-    [users]
-  );
+  const branchOptions = useMemo(() => getDistinctStaffBranches(users), [users]);
 
   // Filtered staff members
   const filteredStaff = useMemo(() => {
@@ -131,10 +126,7 @@ export default function StaffDirectory({
     }
 
     // Guard R8: Warning if deactivating an instructor with live active classes
-    if (
-      (newStatus === "resigned" || newStatus === "terminated") &&
-      user.role === "instructor"
-    ) {
+    if ((newStatus === "resigned" || newStatus === "terminated") && user.role === "instructor") {
       const workload = getInstructorWorkload(user.id, classes);
       if (workload.batchCount > 0) {
         const classNames = workload.assignedClasses.map((c) => c.className || "Class").join(", ");
@@ -387,9 +379,7 @@ export default function StaffDirectory({
                 <span>{STAFF_ROLE_LABELS[r] || r}</span>
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                    isSelected
-                      ? "bg-white/20 text-white"
-                      : "bg-slate-200 text-slate-700"
+                    isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
                   }`}
                 >
                   {count}
@@ -412,8 +402,7 @@ export default function StaffDirectory({
       ) : (
         <div className="space-y-3.5">
           {pageItems.map((u) => {
-            const statusConfig =
-              STAFF_STATUS_MAP[u.status || "active"] || STAFF_STATUS_MAP.active;
+            const statusConfig = STAFF_STATUS_MAP[u.status || "active"] || STAFF_STATUS_MAP.active;
             const isAdminRole = u.role === "admin";
             const isInstructor = u.role === "instructor";
             const isSelf = currentUserId && u.id === currentUserId;
@@ -428,9 +417,7 @@ export default function StaffDirectory({
               : null;
 
             // Workload telemetry: Computed for instructors
-            const workload = isInstructor
-              ? getInstructorWorkload(u.id, classes)
-              : null;
+            const workload = isInstructor ? getInstructorWorkload(u.id, classes) : null;
 
             return (
               <div
@@ -453,8 +440,8 @@ export default function StaffDirectory({
                           isAdminRole
                             ? "bg-gradient-to-br from-purple-700 to-indigo-800"
                             : isInstructor
-                            ? "bg-gradient-to-br from-[#1a3a8f] to-indigo-600"
-                            : "bg-gradient-to-br from-slate-700 to-slate-900"
+                              ? "bg-gradient-to-br from-[#1a3a8f] to-indigo-600"
+                              : "bg-gradient-to-br from-slate-700 to-slate-900"
                         }`}
                       >
                         {u.displayName ? u.displayName.slice(0, 2) : "??"}
@@ -467,17 +454,15 @@ export default function StaffDirectory({
                           {u.displayName || "Staff Member"}
                         </span>
                         {u.nickname && (
-                          <span className="text-slate-400 font-medium text-xs">
-                            ({u.nickname})
-                          </span>
+                          <span className="text-slate-400 font-medium text-xs">({u.nickname})</span>
                         )}
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-md border uppercase ${
                             isAdminRole
                               ? "bg-purple-50 text-purple-800 border-purple-200"
                               : isInstructor
-                              ? "bg-indigo-50 text-[#1a3a8f] border-indigo-100"
-                              : "bg-slate-100 text-slate-700 border-slate-200"
+                                ? "bg-indigo-50 text-[#1a3a8f] border-indigo-100"
+                                : "bg-slate-100 text-slate-700 border-slate-200"
                           }`}
                         >
                           {STAFF_ROLE_LABELS[u.role] || u.role}
@@ -486,9 +471,7 @@ export default function StaffDirectory({
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${statusConfig.badgeClass}`}
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotClass}`}
-                          />
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotClass}`} />
                           <span>{statusConfig.label}</span>
                         </span>
 
@@ -522,9 +505,7 @@ export default function StaffDirectory({
                         {u.branch && (
                           <>
                             <span>·</span>
-                            <span className="text-slate-600 font-semibold">
-                              {u.branch}
-                            </span>
+                            <span className="text-slate-600 font-semibold">{u.branch}</span>
                           </>
                         )}
                       </div>

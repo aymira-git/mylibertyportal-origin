@@ -213,7 +213,9 @@ export default function StudentRosterTable({
                 <td className="p-3.5 text-slate-600 font-medium whitespace-nowrap">
                   {s.educationLevel || s.schoolOrJob || "—"}
                 </td>
-                <td className="p-3.5 text-slate-500 whitespace-nowrap text-[11px]">{s.dob || "—"}</td>
+                <td className="p-3.5 text-slate-500 whitespace-nowrap text-[11px]">
+                  {s.dob || "—"}
+                </td>
                 <td className="p-3.5 text-slate-600 font-semibold whitespace-nowrap">
                   {s.effectiveJoinedDate || "—"}
                 </td>
@@ -244,7 +246,9 @@ export default function StudentRosterTable({
                     {canRemind && (
                       <button
                         type="button"
-                        onClick={(e) => onSendRenewalReminder && onSendRenewalReminder(e, s, health)}
+                        onClick={(e) =>
+                          onSendRenewalReminder && onSendRenewalReminder(e, s, health)
+                        }
                         title="Send WhatsApp renewal reminder"
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition shadow-2xs cursor-pointer"
                       >
@@ -293,7 +297,10 @@ export default function StudentRosterTable({
                     )
                   ) : (
                     studentClasses.map((c, idx) => (
-                      <div key={idx} className="mb-1 last:mb-0 whitespace-nowrap inline-flex items-center gap-1.5 mr-2">
+                      <div
+                        key={idx}
+                        className="mb-1 last:mb-0 whitespace-nowrap inline-flex items-center gap-1.5 mr-2"
+                      >
                         <span className="text-[#1a3a8f] font-bold text-[11px] bg-indigo-50/80 px-2 py-0.5 rounded-md border border-indigo-100">
                           {c.className}
                         </span>

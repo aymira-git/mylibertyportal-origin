@@ -33,12 +33,19 @@ describe("getInstructorWorkload", () => {
   });
 
   it("returns zeros without an instructor id or without classes", () => {
-    expect(getInstructorWorkload("", classes)).toEqual({ assignedClasses: [], batchCount: 0, studentCount: 0 });
+    expect(getInstructorWorkload("", classes)).toEqual({
+      assignedClasses: [],
+      batchCount: 0,
+      studentCount: 0,
+    });
     expect(getInstructorWorkload("i1")).toMatchObject({ batchCount: 0, studentCount: 0 });
   });
 
   it("copes with a class that has no studentIds", () => {
-    expect(getInstructorWorkload("i1", [{ id: "c", instructorId: "i1" }])).toMatchObject({ batchCount: 1, studentCount: 0 });
+    expect(getInstructorWorkload("i1", [{ id: "c", instructorId: "i1" }])).toMatchObject({
+      batchCount: 1,
+      studentCount: 0,
+    });
   });
 });
 
@@ -76,8 +83,21 @@ describe("canDeleteStaff", () => {
 
 describe("filterStaffMembers", () => {
   const users = [
-    { id: "1", role: "instructor", displayName: "Rina", email: "rina@x.id", branch: "Cabang Utama" },
-    { id: "2", role: "frontoffice", displayName: "Andi", nickname: "Dede", status: "on_leave", branch: "cabang timur" },
+    {
+      id: "1",
+      role: "instructor",
+      displayName: "Rina",
+      email: "rina@x.id",
+      branch: "Cabang Utama",
+    },
+    {
+      id: "2",
+      role: "frontoffice",
+      displayName: "Andi",
+      nickname: "Dede",
+      status: "on_leave",
+      branch: "cabang timur",
+    },
     { id: "3", role: "student", displayName: "Budi" },
     { id: "4", role: "instructor", displayName: "Citra", phone: "0812", status: "resigned" },
   ];
@@ -88,7 +108,10 @@ describe("filterStaffMembers", () => {
   });
 
   it("filters by role, status (missing = active) and branch (case-insensitive)", () => {
-    expect(names(filterStaffMembers({ users, roleFilter: "instructor" }))).toEqual(["Citra", "Rina"]);
+    expect(names(filterStaffMembers({ users, roleFilter: "instructor" }))).toEqual([
+      "Citra",
+      "Rina",
+    ]);
     expect(names(filterStaffMembers({ users, statusFilter: "active" }))).toEqual(["Rina"]);
     expect(names(filterStaffMembers({ users, statusFilter: "on_leave" }))).toEqual(["Andi"]);
     expect(names(filterStaffMembers({ users, branchFilter: "Cabang Timur" }))).toEqual(["Andi"]);

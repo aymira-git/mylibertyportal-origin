@@ -75,7 +75,13 @@ describe("groupTabsByCategory", () => {
   ];
 
   it("orders groups Main, Academic, Operations, System, then custom groups", () => {
-    expect(groupTabsByCategory(tabs).map(([cat]) => cat)).toEqual(["Main", "Academic", "Operations", "System", "Extra"]);
+    expect(groupTabsByCategory(tabs).map(([cat]) => cat)).toEqual([
+      "Main",
+      "Academic",
+      "Operations",
+      "System",
+      "Extra",
+    ]);
   });
 
   it("leaves hidden tabs out", () => {

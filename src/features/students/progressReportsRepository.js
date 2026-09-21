@@ -1,5 +1,14 @@
 import { db } from "../../firebase";
-import { addDoc, collection, doc, getDocs, query, updateDoc, where, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
 import { getStars } from "../shared/levels";
 
 /**
@@ -11,23 +20,20 @@ export function createProgressReport(report) {
 
 export async function fetchInstructorProgressReports(instructorId) {
   if (!instructorId) return [];
-  const q = query(
-    collection(db, "progressReports"),
-    where("instructorId", "==", instructorId)
-  );
+  const q = query(collection(db, "progressReports"), where("instructorId", "==", instructorId));
   const snap = await getDocs(q);
   return snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => new Date(b.examDate || b.submittedAt || 0) - new Date(a.examDate || a.submittedAt || 0));
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort(
+      (a, b) =>
+        new Date(b.examDate || b.submittedAt || 0) - new Date(a.examDate || a.submittedAt || 0)
+    );
 }
 
 export async function fetchPendingPromotions() {
-  const q = query(
-    collection(db, "progressReports"),
-    where("eligibleForPromotion", "==", true)
-  );
+  const q = query(collection(db, "progressReports"), where("eligibleForPromotion", "==", true));
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function clearPromotionEligibility(reportId) {

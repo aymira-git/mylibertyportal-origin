@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fake } from "../../test/firestoreFake.js";
 import { createInvite, deleteInvite, INVITE_EXPIRATION_DAYS } from "./invitesRepository.js";
 
-vi.mock("firebase/firestore", async () => (await import("../../test/firestoreFake.js")).firestoreModule);
+vi.mock(
+  "firebase/firestore",
+  async () => (await import("../../test/firestoreFake.js")).firestoreModule
+);
 vi.mock("../../firebase", () => ({ db: {}, auth: {} }));
 
 beforeEach(() => {
@@ -19,7 +22,11 @@ describe("createInvite", () => {
     const op = fake.find("invites/token-123");
     expect(op.kind).toBe("set");
     expect(op.data).toMatchObject({
-      email: "rina@school.id", role: "instructor", branch: "Cabang Utama", used: false, token: "token-123",
+      email: "rina@school.id",
+      role: "instructor",
+      branch: "Cabang Utama",
+      used: false,
+      token: "token-123",
     });
   });
 

@@ -17,13 +17,13 @@
 // ── Weekday Sets ────────────────────────────────────────────────────
 
 const DAY_MAP = {
-  "Mon/Wed":  new Set(["mon", "wed"]),
-  "Tue/Thu":  new Set(["tue", "thu"]),
+  "Mon/Wed": new Set(["mon", "wed"]),
+  "Tue/Thu": new Set(["tue", "thu"]),
   "Fri Only": new Set(["fri"]),
   "Sat Only": new Set(["sat"]),
   "Sun Only": new Set(["sun"]),
-  "Sat/Sun":  new Set(["sat", "sun"]),
-  "Everyday": new Set(["sat", "sun", "mon", "tue", "wed", "thu"]),
+  "Sat/Sun": new Set(["sat", "sun"]),
+  Everyday: new Set(["sat", "sun", "mon", "tue", "wed", "thu"]),
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -68,7 +68,12 @@ function parseDayString(str) {
   return new Set(
     clean
       .split(/[/,]/)
-      .map((s) => s.trim().replace(/\s+only$/i, "").slice(0, 3))
+      .map((s) =>
+        s
+          .trim()
+          .replace(/\s+only$/i, "")
+          .slice(0, 3)
+      )
       .filter(Boolean)
   );
 }
@@ -174,9 +179,7 @@ export function checkDraftConflicts(draft, existingClasses) {
 
   // Build a temporary list with the draft appended, excluding the draft's
   // own existing record (for edits) so it doesn't conflict with itself.
-  const others = (existingClasses || []).filter(
-    (cls) => cls.id !== draft.id && isActiveClass(cls)
-  );
+  const others = (existingClasses || []).filter((cls) => cls.id !== draft.id && isActiveClass(cls));
 
   // Wrap draft as a pseudo-class for the engine
   const draftId = draft.id || "__draft__";

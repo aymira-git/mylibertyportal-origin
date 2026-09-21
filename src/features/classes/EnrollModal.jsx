@@ -1,21 +1,19 @@
 import { useState, useMemo } from "react";
-import {
-  UserPlus,
-  ArrowRightLeft,
-  X,
-} from "lucide-react";
-import {
-  LevelBadge,
-  isCompatible,
-  useToast,
-} from "../shared";
+import { UserPlus, ArrowRightLeft, X } from "lucide-react";
+import { LevelBadge, isCompatible, useToast } from "../shared";
 import {
   addStudentToClass,
   syncStudentsCurrentLevel,
   transferStudentBetweenClasses,
 } from "./classesRepository";
 
-export default function EnrollModal({ batch, students = [], allClasses = [], onClose, onEnrolled }) {
+export default function EnrollModal({
+  batch,
+  students = [],
+  allClasses = [],
+  onClose,
+  onEnrolled,
+}) {
   const toast = useToast();
   const [enrollMode, setEnrollMode] = useState("direct"); // "direct" | "transfer"
   const [selectedStudentId, setSelectedStudentId] = useState("");
@@ -65,8 +63,7 @@ export default function EnrollModal({ batch, students = [], allClasses = [], onC
   }, [enrollMode, selectedTransfer, students, selectedStudentId]);
 
   const levelMismatch = Boolean(
-    selectedStudent?.currentLevel &&
-    !isCompatible(selectedStudent.currentLevel, batch)
+    selectedStudent?.currentLevel && !isCompatible(selectedStudent.currentLevel, batch)
   );
 
   const handleSubmit = async (e) => {
@@ -140,7 +137,9 @@ export default function EnrollModal({ batch, students = [], allClasses = [], onC
             </div>
             <div>
               <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">
-                {enrollMode === "transfer" ? "Transfer Student to Batch" : "Enroll Student into Batch"}
+                {enrollMode === "transfer"
+                  ? "Transfer Student to Batch"
+                  : "Enroll Student into Batch"}
               </h3>
               <p className="text-xs text-slate-500">
                 {enrollMode === "transfer"
@@ -164,7 +163,9 @@ export default function EnrollModal({ batch, students = [], allClasses = [], onC
             <LevelBadge level={batch.classLevel || "warrior"} />
           </div>
           <div className="flex items-center justify-between text-slate-600 font-medium text-[11px]">
-            <span>{batch.schedule || batch.classDay} · {batch.classRoom || "Main Campus"}</span>
+            <span>
+              {batch.schedule || batch.classDay} · {batch.classRoom || "Main Campus"}
+            </span>
             <span className="font-black text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
               {batch.seatsAvailable} seat{batch.seatsAvailable === 1 ? "" : "s"} remaining
             </span>
@@ -208,7 +209,8 @@ export default function EnrollModal({ batch, students = [], allClasses = [], onC
               </label>
               {eligibleStudents.length === 0 ? (
                 <p className="text-xs text-amber-700 bg-amber-50 p-3 rounded-xl border border-amber-200">
-                  All active students are already enrolled in this batch, or no students are registered yet.
+                  All active students are already enrolled in this batch, or no students are
+                  registered yet.
                 </p>
               ) : (
                 <select
@@ -246,7 +248,8 @@ export default function EnrollModal({ batch, students = [], allClasses = [], onC
                   <option value="">-- Choose student &amp; source cohort --</option>
                   {transferCandidates.map((cand) => (
                     <option key={cand.key} value={cand.key}>
-                      {cand.student.displayName || cand.student.name || cand.student.email} (from {cand.sourceClass.className})
+                      {cand.student.displayName || cand.student.name || cand.student.email} (from{" "}
+                      {cand.sourceClass.className})
                     </option>
                   ))}
                 </select>
@@ -262,7 +265,8 @@ export default function EnrollModal({ batch, students = [], allClasses = [], onC
                 {selectedStudent?.displayName} is recorded at{" "}
                 <span className="font-bold uppercase">{selectedStudent?.currentLevel}</span> level,
                 while this batch is <span className="font-bold uppercase">{batch.classLevel}</span>.
-                Enrolling will update the student&apos;s recorded current level to {batch.classLevel}.
+                Enrolling will update the student&apos;s recorded current level to{" "}
+                {batch.classLevel}.
               </p>
             </div>
           )}

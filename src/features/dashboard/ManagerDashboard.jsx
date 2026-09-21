@@ -5,11 +5,7 @@ import { AIAssistant, DashboardShell, useToast } from "../shared";
 import { ReportsDashboard } from "../reports";
 import { createTodo, deleteTodo, toggleTodoComplete } from "../staff";
 import { getShiftStatus } from "../attendance";
-import {
-  ManagerOverview,
-  ClassesAndCoverageTab,
-  StaffDirectivesTab,
-} from "./manager";
+import { ManagerOverview, ClassesAndCoverageTab, StaffDirectivesTab } from "./manager";
 
 export default function ManagerDashboard() {
   const toast = useToast();
@@ -61,10 +57,16 @@ export default function ManagerDashboard() {
         setTodosPermission(true);
       },
       (err) => {
-        if (err?.code === "permission-denied" || err?.message?.includes("insufficient permissions")) {
+        if (
+          err?.code === "permission-denied" ||
+          err?.message?.includes("insufficient permissions")
+        ) {
           // Handled gracefully: live database rules must be deployed
           setTodosPermission(false);
-          console.warn("todos listener: Manager read permission denied by Firestore rules. Update rules in Firebase Console.", err);
+          console.warn(
+            "todos listener: Manager read permission denied by Firestore rules. Update rules in Firebase Console.",
+            err
+          );
         } else {
           console.warn("todos listener:", err);
         }
@@ -93,7 +95,10 @@ export default function ManagerDashboard() {
           isLocal: true,
         };
         setTodos((prev) => [localTodo, ...prev]);
-        toast("Directive stored locally. Deploy firestore.rules to persist to Firebase.", "warning");
+        toast(
+          "Directive stored locally. Deploy firestore.rules to persist to Firebase.",
+          "warning"
+        );
       } else {
         toast("Error creating directive: " + err.message, "error");
       }
@@ -129,7 +134,7 @@ export default function ManagerDashboard() {
                   ...t,
                   completed,
                   completedAt: completed ? new Date().toISOString() : null,
-                  completedByName: completed ? (auth.currentUser?.displayName || "Manager") : null,
+                  completedByName: completed ? auth.currentUser?.displayName || "Manager" : null,
                 }
               : t
           )
@@ -144,9 +149,18 @@ export default function ManagerDashboard() {
 
   // Derived datasets
   const students = useMemo(() => users.filter((u) => u.role === "student"), [users]);
-  const activeStudents = useMemo(() => students.filter((s) => (s.status || "active") === "active"), [students]);
-  const staff = useMemo(() => users.filter((u) => u.role !== "student" && u.role !== "admin"), [users]);
-  const activeStaff = useMemo(() => staff.filter((u) => (u.status || "active") === "active"), [staff]);
+  const activeStudents = useMemo(
+    () => students.filter((s) => (s.status || "active") === "active"),
+    [students]
+  );
+  const staff = useMemo(
+    () => users.filter((u) => u.role !== "student" && u.role !== "admin"),
+    [users]
+  );
+  const activeStaff = useMemo(
+    () => staff.filter((u) => (u.status || "active") === "active"),
+    [staff]
+  );
   const pendingApplications = useMemo(
     () => applications.filter((a) => (a.status || "pending") === "pending"),
     [applications]
@@ -159,14 +173,18 @@ export default function ManagerDashboard() {
   const classesWithIssues = useMemo(() => {
     const activeInstructorIds = new Set(
       users
-        .filter((u) => (u.role === "instructor" || u.role === "admin") && (u.status || "active") === "active")
+        .filter(
+          (u) =>
+            (u.role === "instructor" || u.role === "admin") && (u.status || "active") === "active"
+        )
         .map((u) => u.id)
     );
     return classes
       .map((c) => {
         const assignedUser = c.instructorId ? users.find((u) => u.id === c.instructorId) : null;
         const needsInstructor = !c.instructorId || !assignedUser;
-        const instructorInactive = !!c.instructorId && assignedUser && !activeInstructorIds.has(c.instructorId);
+        const instructorInactive =
+          !!c.instructorId && assignedUser && !activeInstructorIds.has(c.instructorId);
         const needsRoom = !c.classRoom || c.classRoom === "N/A" || c.classRoom.trim() === "";
         return { ...c, needsInstructor, instructorInactive, needsRoom };
       })

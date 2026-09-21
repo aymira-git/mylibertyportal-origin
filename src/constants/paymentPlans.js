@@ -9,7 +9,14 @@
  * in the Payment Modal and stored as paymentPlan = "custom".
  */
 
-import { addMonths, format, parseISO, startOfDay, differenceInCalendarDays, isValid } from "date-fns";
+import {
+  addMonths,
+  format,
+  parseISO,
+  startOfDay,
+  differenceInCalendarDays,
+  isValid,
+} from "date-fns";
 
 export const PAYMENT_PLANS = {
   monthly: {
@@ -104,7 +111,7 @@ export function calculatePlanPricing(planId, baseMonthlyRate = DEFAULT_BASE_MONT
  */
 export function calculateExpiryDate(startDate, months) {
   if (!months || months <= 0) return null;
-  const start = typeof startDate === "string" ? parseISO(startDate) : (startDate || new Date());
+  const start = typeof startDate === "string" ? parseISO(startDate) : startDate || new Date();
   if (!isValid(start)) return null;
   const end = addMonths(start, months);
   if (!isValid(end)) return null;
@@ -116,7 +123,7 @@ export function calculateExpiryDate(startDate, months) {
  * e.g. "October 2026 – September 2027 (12 Mo)" or "October 2026"
  */
 export function calculateCoveragePeriod(startDate, months) {
-  const start = typeof startDate === "string" ? parseISO(startDate) : (startDate || new Date());
+  const start = typeof startDate === "string" ? parseISO(startDate) : startDate || new Date();
   if (!isValid(start)) return "—";
   if (!months || months === 1) {
     return format(start, "MMMM yyyy");

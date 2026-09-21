@@ -12,22 +12,13 @@ const REASON_CODES = [
   { id: "other", label: "Other / Administrative Adjustment" },
 ];
 
-export default function ShiftAdjustmentModal({
-  shift,
-  actor,
-  onClose,
-  onSuccess,
-}) {
+export default function ShiftAdjustmentModal({ shift, actor, onClose, onSuccess }) {
   const toast = useToast();
-  const [clockIn, setClockIn] = useState(
-    shift?.clockIn ? formatWitaForInput(shift.clockIn) : ""
-  );
+  const [clockIn, setClockIn] = useState(shift?.clockIn ? formatWitaForInput(shift.clockIn) : "");
   const [clockOut, setClockOut] = useState(
     shift?.clockOut ? formatWitaForInput(shift.clockOut) : ""
   );
-  const [reasonCode, setReasonCode] = useState(
-    shift?.autoClosed ? "forgot_clock_out" : "other"
-  );
+  const [reasonCode, setReasonCode] = useState(shift?.autoClosed ? "forgot_clock_out" : "other");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -93,9 +84,7 @@ export default function ShiftAdjustmentModal({
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 text-base">
-                Audited Shift Adjustment
-              </h3>
+              <h3 className="font-extrabold text-slate-900 text-base">Audited Shift Adjustment</h3>
               <p className="text-xs text-slate-500 font-medium">
                 {shift.displayName} ({shift.role}) — {shift.className || "General Duty"}
               </p>
@@ -113,7 +102,8 @@ export default function ShiftAdjustmentModal({
         <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
           {shift.autoClosed && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 font-medium">
-              ⚠️ This shift was auto-closed by the system due to a missing clock-out. Please review and adjust the actual exit time below.
+              ⚠️ This shift was auto-closed by the system due to a missing clock-out. Please review
+              and adjust the actual exit time below.
             </div>
           )}
 
@@ -187,7 +177,8 @@ export default function ShiftAdjustmentModal({
           </div>
 
           <p className="text-[10px] text-slate-400 italic">
-            This correction will be recorded in the immutable shiftAuditEvents collection with your admin ID and timestamp.
+            This correction will be recorded in the immutable shiftAuditEvents collection with your
+            admin ID and timestamp.
           </p>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">

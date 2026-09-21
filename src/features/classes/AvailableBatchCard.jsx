@@ -39,10 +39,7 @@ export default function AvailableBatchCard({
         <div className="flex items-start justify-between gap-2">
           <LevelBadge level={batch.classLevel || "warrior"} />
           <div className="flex items-center gap-1.5">
-            <BatchStatusPill
-              status={batch.computedStatus}
-              seatsAvailable={batch.seatsAvailable}
-            />
+            <BatchStatusPill status={batch.computedStatus} seatsAvailable={batch.seatsAvailable} />
 
             {/* Edit / Delete strictly for Admin */}
             {canAdminister && (
@@ -98,9 +95,7 @@ export default function AvailableBatchCard({
               <MapPin className="w-3 h-3" />
               <span>Classroom</span>
             </span>
-            <span className="font-bold text-slate-800">
-              {batch.classRoom || "Main Campus"}
-            </span>
+            <span className="font-bold text-slate-800">{batch.classRoom || "Main Campus"}</span>
           </div>
 
           <div className="flex items-center justify-between text-slate-600">
@@ -146,15 +141,17 @@ export default function AvailableBatchCard({
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="font-extrabold text-slate-700 flex items-center gap-1">
               <Users className="w-3 h-3 text-[#1a3a8f]" />
-              <span>{batch.studentCount} / {batch.maxCapacity} Enrolled</span>
+              <span>
+                {batch.studentCount} / {batch.maxCapacity} Enrolled
+              </span>
             </span>
             <span
               className={`font-black text-xs ${
                 batch.seatsAvailable === 0
                   ? "text-rose-600"
                   : batch.seatsAvailable <= 3
-                  ? "text-amber-600"
-                  : "text-emerald-700"
+                    ? "text-amber-600"
+                    : "text-emerald-700"
               }`}
             >
               {batch.seatsAvailable} seat{batch.seatsAvailable === 1 ? "" : "s"} left
@@ -167,8 +164,8 @@ export default function AvailableBatchCard({
                 batch.seatsAvailable === 0
                   ? "bg-rose-500"
                   : batch.seatsAvailable <= 3
-                  ? "bg-amber-500"
-                  : "bg-emerald-500"
+                    ? "bg-amber-500"
+                    : "bg-emerald-500"
               }`}
               style={{ width: `${batch.occupancyRate}%` }}
             />
@@ -240,12 +237,12 @@ export default function AvailableBatchCard({
                   {batch.isAvailable
                     ? "Enroll Student"
                     : batch.computedStatus === "full"
-                    ? "Batch Full"
-                    : batch.computedStatus === "cancelled"
-                    ? "Cancelled"
-                    : batch.computedStatus === "completed"
-                    ? "Completed"
-                    : "Unavailable"}
+                      ? "Batch Full"
+                      : batch.computedStatus === "cancelled"
+                        ? "Cancelled"
+                        : batch.computedStatus === "completed"
+                          ? "Completed"
+                          : "Unavailable"}
                 </span>
               </button>
             )}

@@ -1,18 +1,6 @@
 import { useState, useMemo } from "react";
-import {
-  BookOpen,
-  Plus,
-  Search,
-} from "lucide-react";
-import {
-  LEVELS,
-  LEVEL_KEYS,
-  TIERS,
-  TIER_KEYS,
-  getTier,
-  useToast,
-  useConfirm,
-} from "../shared";
+import { BookOpen, Plus, Search } from "lucide-react";
+import { LEVELS, LEVEL_KEYS, TIERS, TIER_KEYS, getTier, useToast, useConfirm } from "../shared";
 import BatchModal from "./BatchModal";
 import EnrollModal from "./EnrollModal";
 import BatchesOverviewWidget from "./BatchesOverviewWidget";
@@ -93,8 +81,8 @@ export default function AvailableBatches({
         seatsAvailable > 0;
 
       const instructorName = cls.instructorId
-        ? (instructorMap.get(cls.instructorId) || cls.instructorName || "Assigned Instructor")
-        : (cls.instructorName || "Unassigned (TBA)");
+        ? instructorMap.get(cls.instructorId) || cls.instructorName || "Assigned Instructor"
+        : cls.instructorName || "Unassigned (TBA)";
 
       return {
         ...cls,
@@ -117,9 +105,12 @@ export default function AvailableBatches({
     const totalOpenSeats = augmentedBatches
       .filter((b) => b.isAvailable)
       .reduce((acc, b) => acc + b.seatsAvailable, 0);
-    const fillingFastCount = augmentedBatches.filter((b) => b.computedStatus === "filling_fast").length;
+    const fillingFastCount = augmentedBatches.filter(
+      (b) => b.computedStatus === "filling_fast"
+    ).length;
     const openBatchesCount = augmentedBatches.filter((b) => b.isAvailable).length;
-    const overallOccupancy = totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
+    const overallOccupancy =
+      totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
 
     return {
       totalBatches,
@@ -141,8 +132,14 @@ export default function AvailableBatches({
         if (statusFilter === "open" && (!b.isAvailable || b.seatsAvailable <= 0)) return false;
         if (statusFilter === "filling_fast" && b.computedStatus !== "filling_fast") return false;
         if (statusFilter === "upcoming" && b.computedStatus !== "upcoming") return false;
-        if (statusFilter === "full" && b.computedStatus !== "full" && b.seatsAvailable > 0) return false;
-        if (statusFilter === "completed" && b.computedStatus !== "completed" && b.computedStatus !== "cancelled") return false;
+        if (statusFilter === "full" && b.computedStatus !== "full" && b.seatsAvailable > 0)
+          return false;
+        if (
+          statusFilter === "completed" &&
+          b.computedStatus !== "completed" &&
+          b.computedStatus !== "cancelled"
+        )
+          return false;
         return true;
       })
       .filter((b) => {
@@ -269,7 +266,8 @@ export default function AvailableBatches({
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Monitor seat capacity, schedules, room allocations, and student enrollment status across the academy.
+              Monitor seat capacity, schedules, room allocations, and student enrollment status
+              across the academy.
             </p>
           </div>
 
@@ -321,9 +319,7 @@ export default function AvailableBatches({
               Filling Fast (&le; 3 seats)
             </p>
             <p className="text-2xl font-black text-amber-900 mt-0.5">{stats.fillingFastCount}</p>
-            <p className="text-[10px] text-amber-700 font-medium mt-0.5">
-              High demand cohorts
-            </p>
+            <p className="text-[10px] text-amber-700 font-medium mt-0.5">High demand cohorts</p>
           </div>
         </div>
 
@@ -373,7 +369,9 @@ export default function AvailableBatches({
                 >
                   <span>{tier.starText}</span>
                   <span>{tier.label}</span>
-                  <span className={`text-[10px] font-normal ${isSelected ? "text-indigo-200" : "text-slate-400"}`}>
+                  <span
+                    className={`text-[10px] font-normal ${isSelected ? "text-indigo-200" : "text-slate-400"}`}
+                  >
                     ({tier.levels.map((l) => LEVELS[l]?.label).join("/")})
                   </span>
                 </button>

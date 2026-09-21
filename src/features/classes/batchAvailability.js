@@ -33,10 +33,7 @@ export function getBatchAvailability(cls) {
   }
 
   // in_progress batches stay enrollable for late joiners (matching EnrollModal)
-  const canEnroll =
-    seatsAvailable > 0 &&
-    cls.status !== "cancelled" &&
-    cls.status !== "completed";
+  const canEnroll = seatsAvailable > 0 && cls.status !== "cancelled" && cls.status !== "completed";
 
   return {
     studentCount,

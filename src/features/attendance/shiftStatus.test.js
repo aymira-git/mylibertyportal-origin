@@ -32,7 +32,9 @@ describe("isShiftStale", () => {
   });
 
   it("is never stale once clocked out, or when data is missing", () => {
-    expect(isShiftStale({ role: "instructor", clockIn: hoursAgo(50), clockOut: hoursAgo(1) })).toBe(false);
+    expect(isShiftStale({ role: "instructor", clockIn: hoursAgo(50), clockOut: hoursAgo(1) })).toBe(
+      false
+    );
     expect(isShiftStale({ role: "instructor" })).toBe(false);
     expect(isShiftStale(null)).toBe(false);
     expect(isShiftStale(undefined)).toBe(false);
@@ -41,11 +43,20 @@ describe("isShiftStale", () => {
 
 describe("getShiftStatus", () => {
   it("prefers 'corrected' over every other flag", () => {
-    expect(getShiftStatus({ corrected: true, autoClosed: true, clockOut: hoursAgo(1), clockIn: hoursAgo(5) })).toBe("corrected");
+    expect(
+      getShiftStatus({
+        corrected: true,
+        autoClosed: true,
+        clockOut: hoursAgo(1),
+        clockIn: hoursAgo(5),
+      })
+    ).toBe("corrected");
   });
 
   it("reports auto_closed when the system closed the shift", () => {
-    expect(getShiftStatus({ autoClosed: true, clockIn: hoursAgo(9), clockOut: hoursAgo(1) })).toBe("auto_closed");
+    expect(getShiftStatus({ autoClosed: true, clockIn: hoursAgo(9), clockOut: hoursAgo(1) })).toBe(
+      "auto_closed"
+    );
   });
 
   it("distinguishes on_duty from stale for open shifts", () => {
@@ -54,7 +65,9 @@ describe("getShiftStatus", () => {
   });
 
   it("reports completed when there is a clock-out", () => {
-    expect(getShiftStatus({ role: "instructor", clockIn: hoursAgo(5), clockOut: hoursAgo(3) })).toBe("completed");
+    expect(
+      getShiftStatus({ role: "instructor", clockIn: hoursAgo(5), clockOut: hoursAgo(3) })
+    ).toBe("completed");
   });
 
   it("treats a missing shift as completed rather than crashing", () => {

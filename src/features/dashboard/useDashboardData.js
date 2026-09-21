@@ -4,18 +4,49 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useToast, useConfirm } from "../shared";
 import { buildStudentRecord, isActiveStudent } from "../students";
 import { createInvite, deleteInvite, createTodo, deleteTodo, toggleTodoComplete } from "../staff";
-import { saveStudentRecord, updateStaffRecord, createStaffAccount, deleteUserProfile } from "./usersRepository";
+import {
+  saveStudentRecord,
+  updateStaffRecord,
+  createStaffAccount,
+  deleteUserProfile,
+} from "./usersRepository";
 
 const emptyFormData = {
-  firstName: "", lastName: "", nickname: "", displayName: "", gender: "male",
-  email: "", password: "", role: "instructor", phone: "", dob: "",
-  educationLevel: "SD", joinedDate: "", parentName: "", parentPhone: "",
-  currentLevel: "warrior", rating: "1", paymentPlan: "monthly", status: "active", notes: "",
-  placeOfBirth: "", religion: "", address: "", branch: "", program: "",
-  classType: "", schoolOrJob: "", classOrSemester: "",
-  fatherName: "", fatherJob: "", fatherPhone: "",
-  motherName: "", motherJob: "", motherPhone: "",
-  referralSource: "", photoURL: ""
+  firstName: "",
+  lastName: "",
+  nickname: "",
+  displayName: "",
+  gender: "male",
+  email: "",
+  password: "",
+  role: "instructor",
+  phone: "",
+  dob: "",
+  educationLevel: "SD",
+  joinedDate: "",
+  parentName: "",
+  parentPhone: "",
+  currentLevel: "warrior",
+  rating: "1",
+  paymentPlan: "monthly",
+  status: "active",
+  notes: "",
+  placeOfBirth: "",
+  religion: "",
+  address: "",
+  branch: "",
+  program: "",
+  classType: "",
+  schoolOrJob: "",
+  classOrSemester: "",
+  fatherName: "",
+  fatherJob: "",
+  fatherPhone: "",
+  motherName: "",
+  motherJob: "",
+  motherPhone: "",
+  referralSource: "",
+  photoURL: "",
 };
 
 /**
@@ -69,22 +100,22 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
 
     const unsubUsers = onSnapshot(
       usersQuery,
-      snap => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      (snap) => setUsers(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       handleListenerError("users")
     );
     const unsubClasses = onSnapshot(
       collection(db, "classes"),
-      snap => setClasses(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      (snap) => setClasses(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       handleListenerError("classes")
     );
     const unsubApplications = onSnapshot(
       collection(db, "applications"),
-      snap => setApplications(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      (snap) => setApplications(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       handleListenerError("applications")
     );
     const unsubTodos = onSnapshot(
       collection(db, "todos"),
-      snap => setTodos(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      (snap) => setTodos(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       handleListenerError("todos")
     );
     // firestore.rules allows `list` on invites for admin OR front office,
@@ -95,7 +126,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
     // other listener now.
     const unsubInvites = onSnapshot(
       collection(db, "invites"),
-      snap => setInvites(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      (snap) => setInvites(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       handleListenerError("invites")
     );
 
@@ -112,7 +143,8 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
     e.preventDefault();
     try {
       if (formData.role === "student") {
-        const studentDisplayName = formData.displayName?.trim() || `${formData.firstName} ${formData.lastName}`.trim();
+        const studentDisplayName =
+          formData.displayName?.trim() || `${formData.firstName} ${formData.lastName}`.trim();
         const studentData = buildStudentRecord({
           displayName: studentDisplayName,
           nickname: formData.nickname,
@@ -147,7 +179,8 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
 
         await saveStudentRecord(editId, studentData);
       } else {
-        const staffDisplayName = `${formData.firstName} ${formData.lastName}`.trim() || formData.displayName?.trim() || "";
+        const staffDisplayName =
+          `${formData.firstName} ${formData.lastName}`.trim() || formData.displayName?.trim() || "";
         const staffData = {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -171,11 +204,19 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
         }
       }
 
-      toast(editId ? "Profile updated!" : (formData.role === "student" ? "Student added to roster!" : "Account created!"));
+      toast(
+        editId
+          ? "Profile updated!"
+          : formData.role === "student"
+            ? "Student added to roster!"
+            : "Account created!"
+      );
       setEditId(null);
       setFormData(emptyFormData);
       setActiveTab?.(formData.role === "student" ? "students" : "directory");
-    } catch (err) { toast(err.message, "error"); }
+    } catch (err) {
+      toast(err.message, "error");
+    }
   };
 
   const handleAddStaff = () => {
@@ -204,14 +245,20 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
       displayName: user.displayName || "",
       nickname: user.nickname || "",
       gender: user.gender || "male",
-      email: user.email || "", password: "PREFILLED_PASSWORD", role: user.role || "student", phone: user.phone || "", dob: user.dob || "",
-      educationLevel: user.educationLevel || "SD", joinedDate: user.joinedDate || "",
+      email: user.email || "",
+      password: "PREFILLED_PASSWORD",
+      role: user.role || "student",
+      phone: user.phone || "",
+      dob: user.dob || "",
+      educationLevel: user.educationLevel || "SD",
+      joinedDate: user.joinedDate || "",
       parentName: user.parentName || user.fatherName || user.motherName || "",
       parentPhone: user.parentPhone || user.fatherPhone || user.motherPhone || "",
       currentLevel: user.currentLevel || "warrior",
       paymentPlan: user.paymentPlan || "monthly",
       status: user.status || "active",
-      rating: user.rating || "1", notes: user.notes || "",
+      rating: user.rating || "1",
+      notes: user.notes || "",
       placeOfBirth: user.placeOfBirth || "",
       religion: user.religion || "",
       address: user.address || "",
@@ -227,15 +274,19 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
       motherJob: user.motherJob || "",
       motherPhone: user.motherPhone || "",
       referralSource: user.referralSource || "",
-      photoURL: user.photoURL || ""
+      photoURL: user.photoURL || "",
     });
     setActiveTab?.("addUser");
   };
 
   const handleDelete = async (uid, { skipConfirm = false } = {}) => {
-    const user = users.find(profile => profile.id === uid);
+    const user = users.find((profile) => profile.id === uid);
     if (!user) return;
-    if (!skipConfirm && !(await confirm(`Are you sure you want to delete ${user.displayName || "this profile"}?`))) return;
+    if (
+      !skipConfirm &&
+      !(await confirm(`Are you sure you want to delete ${user.displayName || "this profile"}?`))
+    )
+      return;
 
     try {
       await deleteUserProfile(uid);
@@ -243,7 +294,9 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
         if (user.role === "student") {
           toast("Student roster profile deleted.");
         } else {
-          toast("Staff profile deleted from Firestore. The Firebase Auth account still exists and must be deleted separately in Firebase Console before this email can be registered again.");
+          toast(
+            "Staff profile deleted from Firestore. The Firebase Auth account still exists and must be deleted separately in Firebase Console before this email can be registered again."
+          );
         }
       }
     } catch (err) {
@@ -306,28 +359,54 @@ export function useDashboardData({ restrictedRead = false, setActiveTab } = {}) 
 
   const getStudentClasses = (studentId) => {
     return classes
-      .filter(c => (c.studentIds || []).includes(studentId))
-      .map(c => ({
+      .filter((c) => (c.studentIds || []).includes(studentId))
+      .map((c) => ({
         className: c.className,
-        instructorName: users.find(u => u.id === c.instructorId)?.displayName || "Unassigned",
-        dateJoined: (c.enrollments || []).find(e => e.studentId === studentId)?.dateJoined || "",
+        instructorName: users.find((u) => u.id === c.instructorId)?.displayName || "Unassigned",
+        dateJoined: (c.enrollments || []).find((e) => e.studentId === studentId)?.dateJoined || "",
       }));
   };
 
-  const instructors = users.filter(u => u.role === "instructor");
-  const activeInstructors = users.filter(u => u.role === "instructor" && (u.status || "active") === "active");
-  const students = users.filter(u => u.role === "student");
-  const enrolledStudentIds = classes.flatMap(cls => cls.studentIds || []);
-  const unenrolledStudents = students.filter(s => isActiveStudent(s) && !enrolledStudentIds.includes(s.id));
-  const pendingApplications = applications.filter(application => (application.status || "pending") === "pending").length;
+  const instructors = users.filter((u) => u.role === "instructor");
+  const activeInstructors = users.filter(
+    (u) => u.role === "instructor" && (u.status || "active") === "active"
+  );
+  const students = users.filter((u) => u.role === "student");
+  const enrolledStudentIds = classes.flatMap((cls) => cls.studentIds || []);
+  const unenrolledStudents = students.filter(
+    (s) => isActiveStudent(s) && !enrolledStudentIds.includes(s.id)
+  );
+  const pendingApplications = applications.filter(
+    (application) => (application.status || "pending") === "pending"
+  ).length;
 
   return {
-    users, classes, applications, invites, todos,
-    editId, setEditId, selectedStudent, setSelectedStudent,
-    formData, setFormData,
-    handleSave, handleEdit, handleAddStaff, handleAddStudent, handleDelete,
-    handleAddTodo, handleDeleteTodo, handleToggleTodo,
-    handleCreateInvite, handleDeleteInvite,
-    getStudentClasses, instructors, activeInstructors, students, unenrolledStudents, pendingApplications,
+    users,
+    classes,
+    applications,
+    invites,
+    todos,
+    editId,
+    setEditId,
+    selectedStudent,
+    setSelectedStudent,
+    formData,
+    setFormData,
+    handleSave,
+    handleEdit,
+    handleAddStaff,
+    handleAddStudent,
+    handleDelete,
+    handleAddTodo,
+    handleDeleteTodo,
+    handleToggleTodo,
+    handleCreateInvite,
+    handleDeleteInvite,
+    getStudentClasses,
+    instructors,
+    activeInstructors,
+    students,
+    unenrolledStudents,
+    pendingApplications,
   };
 }

@@ -17,7 +17,13 @@ describe("calculatePlanPricing", () => {
     ["annual", 12, 4200000, 630000, 3570000],
     ["biennial", 24, 8400000, 1680000, 6720000],
   ])("prices the %s plan (%i months)", (planId, months, subtotal, discountAmount, total) => {
-    expect(calculatePlanPricing(planId)).toMatchObject({ planId, months, subtotal, discountAmount, total });
+    expect(calculatePlanPricing(planId)).toMatchObject({
+      planId,
+      months,
+      subtotal,
+      discountAmount,
+      total,
+    });
   });
 
   it("always satisfies subtotal - discount = total", () => {
@@ -36,7 +42,12 @@ describe("calculatePlanPricing", () => {
   });
 
   it("prices an unknown or custom plan as one month with no discount", () => {
-    expect(calculatePlanPricing("custom")).toMatchObject({ planId: "custom", months: 1, total: 350000, discountAmount: 0 });
+    expect(calculatePlanPricing("custom")).toMatchObject({
+      planId: "custom",
+      months: 1,
+      total: 350000,
+      discountAmount: 0,
+    });
     expect(calculatePlanPricing("nonsense").total).toBe(350000);
     expect(calculatePlanPricing(undefined).planId).toBe("custom");
   });
@@ -96,24 +107,46 @@ describe("getPaymentHealthStatus", () => {
   afterEach(() => vi.useRealTimers());
 
   it.each([undefined, null, "", "   ", 20261001])("reports 'legacy' when paidUntil is %s", (v) => {
-    expect(getPaymentHealthStatus(v)).toMatchObject({ status: "legacy", label: "No Plan Set", remainingDays: null });
+    expect(getPaymentHealthStatus(v)).toMatchObject({
+      status: "legacy",
+      label: "No Plan Set",
+      remainingDays: null,
+    });
   });
 
   it("reports 'invalid_date' for text that is not a date", () => {
-    expect(getPaymentHealthStatus("next month")).toMatchObject({ status: "invalid_date", tone: "rose" });
+    expect(getPaymentHealthStatus("next month")).toMatchObject({
+      status: "invalid_date",
+      tone: "rose",
+    });
   });
 
   it("is 'expired' from the day after paidUntil", () => {
-    expect(getPaymentHealthStatus("2026-09-20")).toMatchObject({ status: "expired", remainingDays: -1, tone: "rose" });
+    expect(getPaymentHealthStatus("2026-09-20")).toMatchObject({
+      status: "expired",
+      remainingDays: -1,
+      tone: "rose",
+    });
   });
 
   it("is 'due_soon' on the day itself and up to 14 days out", () => {
-    expect(getPaymentHealthStatus("2026-09-21")).toMatchObject({ status: "due_soon", remainingDays: 0 });
-    expect(getPaymentHealthStatus("2026-10-05")).toMatchObject({ status: "due_soon", remainingDays: 14, tone: "amber" });
+    expect(getPaymentHealthStatus("2026-09-21")).toMatchObject({
+      status: "due_soon",
+      remainingDays: 0,
+    });
+    expect(getPaymentHealthStatus("2026-10-05")).toMatchObject({
+      status: "due_soon",
+      remainingDays: 14,
+      tone: "amber",
+    });
   });
 
   it("is 'active' from 15 days out", () => {
-    expect(getPaymentHealthStatus("2026-10-06")).toMatchObject({ status: "active", remainingDays: 15, tone: "emerald" });
+    expect(getPaymentHealthStatus("2026-10-06")).toMatchObject({
+      status: "active",
+      remainingDays: 15,
+      tone: "emerald",
+    });
   });
 });
 

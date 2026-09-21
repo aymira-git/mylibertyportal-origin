@@ -10,7 +10,7 @@ import {
   FileText,
   Video,
   Link2,
-  Loader2
+  Loader2,
 } from "lucide-react";
 
 export default function TeachingMaterial() {
@@ -101,7 +101,9 @@ export default function TeachingMaterial() {
           </div>
           <div>
             <h3 className="font-extrabold text-slate-900 text-sm">Add Curriculum Resource</h3>
-            <p className="text-[11px] text-slate-500 font-medium">Link worksheets, slides, or videos</p>
+            <p className="text-[11px] text-slate-500 font-medium">
+              Link worksheets, slides, or videos
+            </p>
           </div>
         </div>
 
@@ -160,7 +162,9 @@ export default function TeachingMaterial() {
             </div>
             <div>
               <h3 className="font-extrabold text-slate-900 text-sm">Active Lesson Materials</h3>
-              <p className="text-[11px] text-slate-500 font-medium">Quick reference repository for your classes</p>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Quick reference repository for your classes
+              </p>
             </div>
           </div>
           <span className="bg-indigo-50 text-[#1a3a8f] px-2.5 py-1 rounded-full font-extrabold text-[11px]">
@@ -175,7 +179,8 @@ export default function TeachingMaterial() {
           </div>
         ) : materials.length === 0 ? (
           <div className="p-8 text-center bg-slate-50/70 rounded-2xl border border-dashed border-slate-200 text-slate-500 text-xs">
-            No teaching materials attached to your profile yet. Add your first resource using the form.
+            No teaching materials attached to your profile yet. Add your first resource using the
+            form.
           </div>
         ) : (
           <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">

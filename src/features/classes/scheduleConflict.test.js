@@ -108,32 +108,51 @@ describe("findScheduleConflicts", () => {
   });
 
   it("reports both kinds when instructor and room clash together", () => {
-    const { teacherConflicts, roomConflicts } = findScheduleConflicts([cls({ id: "a" }), cls({ id: "b" })]);
+    const { teacherConflicts, roomConflicts } = findScheduleConflicts([
+      cls({ id: "a" }),
+      cls({ id: "b" }),
+    ]);
     expect(teacherConflicts).toHaveLength(1);
     expect(roomConflicts).toHaveLength(1);
   });
 
   it("does not flag classes on different days, or back-to-back classes", () => {
     const a = cls({ id: "a" });
-    expect(findScheduleConflicts([a, cls({ id: "b", classDay: "Tue/Thu" })]).teacherConflicts).toHaveLength(0);
-    expect(findScheduleConflicts([a, cls({ id: "c", startTime: "11:30", endTime: "13:00" })]).teacherConflicts).toHaveLength(0);
+    expect(
+      findScheduleConflicts([a, cls({ id: "b", classDay: "Tue/Thu" })]).teacherConflicts
+    ).toHaveLength(0);
+    expect(
+      findScheduleConflicts([a, cls({ id: "c", startTime: "11:30", endTime: "13:00" })])
+        .teacherConflicts
+    ).toHaveLength(0);
   });
 
   it("ignores completed and cancelled classes", () => {
     const a = cls({ id: "a" });
-    expect(findScheduleConflicts([a, cls({ id: "b", status: "completed" })]).teacherConflicts).toHaveLength(0);
-    expect(findScheduleConflicts([a, cls({ id: "c", status: "Cancelled" })]).teacherConflicts).toHaveLength(0);
+    expect(
+      findScheduleConflicts([a, cls({ id: "b", status: "completed" })]).teacherConflicts
+    ).toHaveLength(0);
+    expect(
+      findScheduleConflicts([a, cls({ id: "c", status: "Cancelled" })]).teacherConflicts
+    ).toHaveLength(0);
   });
 
   it("treats a missing status as open (still checked)", () => {
-    const { teacherConflicts } = findScheduleConflicts([cls({ id: "a", status: undefined }), cls({ id: "b", status: undefined })]);
+    const { teacherConflicts } = findScheduleConflicts([
+      cls({ id: "a", status: undefined }),
+      cls({ id: "b", status: undefined }),
+    ]);
     expect(teacherConflicts).toHaveLength(1);
   });
 
   it("skips classes with missing or malformed times instead of crashing", () => {
     const a = cls({ id: "a" });
-    expect(() => findScheduleConflicts([a, cls({ id: "b", startTime: "" }), cls({ id: "c", endTime: "soon" })])).not.toThrow();
-    expect(findScheduleConflicts([a, cls({ id: "b", startTime: "" })]).teacherConflicts).toHaveLength(0);
+    expect(() =>
+      findScheduleConflicts([a, cls({ id: "b", startTime: "" }), cls({ id: "c", endTime: "soon" })])
+    ).not.toThrow();
+    expect(
+      findScheduleConflicts([a, cls({ id: "b", startTime: "" })]).teacherConflicts
+    ).toHaveLength(0);
   });
 
   it("does not flag two classes that have no instructor or no room assigned", () => {
@@ -150,7 +169,10 @@ describe("findScheduleConflicts", () => {
   });
 
   it("writes a readable message that names both classes", () => {
-    const { teacherConflicts } = findScheduleConflicts([cls({ id: "a", className: "Alpha" }), cls({ id: "b", className: "Beta" })]);
+    const { teacherConflicts } = findScheduleConflicts([
+      cls({ id: "a", className: "Alpha" }),
+      cls({ id: "b", className: "Beta" }),
+    ]);
     expect(teacherConflicts[0].detail).toContain("Alpha");
     expect(teacherConflicts[0].detail).toContain("Beta");
   });
@@ -160,7 +182,10 @@ describe("checkDraftConflicts", () => {
   const existing = [cls({ id: "e1", classRoom: "Room B" })];
 
   it("returns nothing for a missing draft", () => {
-    expect(checkDraftConflicts(null, existing)).toEqual({ teacherConflicts: [], roomConflicts: [] });
+    expect(checkDraftConflicts(null, existing)).toEqual({
+      teacherConflicts: [],
+      roomConflicts: [],
+    });
   });
 
   it("flags a draft that clashes with an existing class", () => {
@@ -171,12 +196,18 @@ describe("checkDraftConflicts", () => {
 
   it("does not make an edited batch clash with its own saved version", () => {
     const draft = cls({ id: "e1", classRoom: "Room B" });
-    expect(checkDraftConflicts(draft, existing)).toEqual({ teacherConflicts: [], roomConflicts: [] });
+    expect(checkDraftConflicts(draft, existing)).toEqual({
+      teacherConflicts: [],
+      roomConflicts: [],
+    });
   });
 
   it("gives a clean result for a draft that fits", () => {
     const draft = cls({ id: undefined, classDay: "Tue/Thu" });
-    expect(checkDraftConflicts(draft, existing)).toEqual({ teacherConflicts: [], roomConflicts: [] });
+    expect(checkDraftConflicts(draft, existing)).toEqual({
+      teacherConflicts: [],
+      roomConflicts: [],
+    });
   });
 
   // Open to debate: BatchModal shows a warning whenever this function returns
@@ -185,7 +216,12 @@ describe("checkDraftConflicts", () => {
   // not about the draft.
   it("only reports clashes that involve the draft itself", () => {
     const alreadyClashing = [cls({ id: "x1" }), cls({ id: "x2" })];
-    const unrelatedDraft = cls({ id: undefined, classDay: "Sat Only", instructorId: "i9", classRoom: "Room Z" });
+    const unrelatedDraft = cls({
+      id: undefined,
+      classDay: "Sat Only",
+      instructorId: "i9",
+      classRoom: "Room Z",
+    });
     const result = checkDraftConflicts(unrelatedDraft, alreadyClashing);
     expect(result.teacherConflicts).toHaveLength(0);
     expect(result.roomConflicts).toHaveLength(0);

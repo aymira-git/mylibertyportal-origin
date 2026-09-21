@@ -1,12 +1,5 @@
 import { useState, useMemo } from "react";
-import {
-  MessageCircle,
-  X,
-  Copy,
-  Check,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { MessageCircle, X, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { normalizeWhatsAppNumber } from "../finance/receiptMessages";
 import { copyText } from "../../utils/copyText";
 
@@ -54,14 +47,17 @@ export default function BatchOutreachPanel({ batch, users = [], onClose }) {
   }, [batch, users]);
 
   // Build message context from batch
-  const msgContext = useMemo(() => ({
-    className: batch?.className || "Class",
-    classDay: batch?.classDay || "",
-    startTime: batch?.startTime || "",
-    endTime: batch?.endTime || "",
-    classRoom: batch?.classRoom || "",
-    instructorName: batch?.instructorName || "",
-  }), [batch]);
+  const msgContext = useMemo(
+    () => ({
+      className: batch?.className || "Class",
+      classDay: batch?.classDay || "",
+      startTime: batch?.startTime || "",
+      endTime: batch?.endTime || "",
+      classRoom: batch?.classRoom || "",
+      instructorName: batch?.instructorName || "",
+    }),
+    [batch]
+  );
 
   const template = TEMPLATES.find((t) => t.id === selectedTemplate) || TEMPLATES[0];
   const message = template.build(msgContext);
@@ -103,11 +99,10 @@ export default function BatchOutreachPanel({ batch, users = [], onClose }) {
               <MessageCircle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 text-lg">
-                Batch Outreach
-              </h3>
+              <h3 className="font-extrabold text-slate-900 text-lg">Batch Outreach</h3>
               <p className="text-xs text-slate-500">
-                {batch.className} — {parentContacts.length} parent{parentContacts.length !== 1 ? "s" : ""} reachable
+                {batch.className} — {parentContacts.length} parent
+                {parentContacts.length !== 1 ? "s" : ""} reachable
               </p>
             </div>
           </div>
@@ -132,7 +127,9 @@ export default function BatchOutreachPanel({ batch, users = [], onClose }) {
               className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-emerald-600 outline-none transition"
             >
               {TEMPLATES.map((t) => (
-                <option key={t.id} value={t.id}>{t.label}</option>
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
               ))}
             </select>
           </div>
@@ -143,7 +140,11 @@ export default function BatchOutreachPanel({ batch, users = [], onClose }) {
             className="flex items-center gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider hover:text-slate-700 transition"
           >
             <span>Message Preview</span>
-            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {expanded ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
           </button>
           {expanded && (
             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3.5 text-xs text-slate-700 font-medium whitespace-pre-wrap leading-relaxed">
@@ -162,7 +163,11 @@ export default function BatchOutreachPanel({ batch, users = [], onClose }) {
                   onClick={handleCopyAll}
                   className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-lg transition"
                 >
-                  {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                  {copied ? (
+                    <Check className="w-3 h-3 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3 h-3" />
+                  )}
                   <span>{copied ? "Copied!" : "Copy All Numbers"}</span>
                 </button>
               )}
@@ -198,7 +203,9 @@ export default function BatchOutreachPanel({ batch, users = [], onClose }) {
 
           {/* Disclaimer */}
           <p className="text-[10px] text-slate-400 italic text-center pt-2 border-t border-slate-100">
-            Each &quot;Send&quot; button opens a pre-filled WhatsApp chat — you send individually. For bulk messaging, use &quot;Copy All Numbers&quot; and paste into a WhatsApp broadcast list.
+            Each &quot;Send&quot; button opens a pre-filled WhatsApp chat — you send individually.
+            For bulk messaging, use &quot;Copy All Numbers&quot; and paste into a WhatsApp broadcast
+            list.
           </p>
         </div>
       </div>

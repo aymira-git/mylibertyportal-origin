@@ -17,14 +17,22 @@ export function printTable(title, headers, rows, onBlocked) {
   }
 
   const escapeHtml = (val) =>
-    String(val ?? "").replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-    }[c]));
+    String(val ?? "").replace(
+      /[&<>"']/g,
+      (c) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[c]
+    );
 
-  const headerRow = headers.map(h => `<th>${escapeHtml(h)}</th>`).join("");
-  const bodyRows = rows.map(row =>
-    `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`
-  ).join("");
+  const headerRow = headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
+  const bodyRows = rows
+    .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`)
+    .join("");
 
   win.document.write(`
     <!DOCTYPE html>

@@ -181,7 +181,13 @@ describe("computeMonthlyPunctuality", () => {
       shift("s5", "2026-09-16", "09:00"), // on time
     ]; // 21, 23, 28, 30 have no shift -> absent
 
-    const [stats] = computeMonthlyPunctuality([baseClass], shifts, instructors, SEPT.year, SEPT.month);
+    const [stats] = computeMonthlyPunctuality(
+      [baseClass],
+      shifts,
+      instructors,
+      SEPT.year,
+      SEPT.month
+    );
 
     expect(stats).toMatchObject({
       instructorId: "i1",
@@ -249,13 +255,25 @@ describe("computeMonthlyPunctuality", () => {
 
   it("only counts shifts that fall on the same calendar day as the session", () => {
     const yesterdayShift = shift("s1", "2026-09-06", "09:30"); // Sunday, not a class day
-    const [stats] = computeMonthlyPunctuality([baseClass], [yesterdayShift], instructors, SEPT.year, SEPT.month);
+    const [stats] = computeMonthlyPunctuality(
+      [baseClass],
+      [yesterdayShift],
+      instructors,
+      SEPT.year,
+      SEPT.month
+    );
     expect(stats.sessionsAttended).toBe(0);
   });
 
   it("matches old shifts that have no classId, and flags them as limited accuracy", () => {
     const legacy = { id: "old", userId: "i1", clockIn: witaIso("2026-09-02", "09:30") };
-    const [stats] = computeMonthlyPunctuality([baseClass], [legacy], instructors, SEPT.year, SEPT.month);
+    const [stats] = computeMonthlyPunctuality(
+      [baseClass],
+      [legacy],
+      instructors,
+      SEPT.year,
+      SEPT.month
+    );
     expect(stats.sessionsAttended).toBe(1);
     expect(stats.onTime).toBe(1);
     expect(stats.limitedAccuracy).toBe(true);
@@ -264,14 +282,26 @@ describe("computeMonthlyPunctuality", () => {
   it("does not guess which class an old shift belonged to when two classes share a weekday", () => {
     const other = { ...baseClass, id: "c2", startTime: "15:00" };
     const legacy = { id: "old", userId: "i1", clockIn: witaIso("2026-09-02", "09:30") };
-    const [stats] = computeMonthlyPunctuality([baseClass, other], [legacy], instructors, SEPT.year, SEPT.month);
+    const [stats] = computeMonthlyPunctuality(
+      [baseClass, other],
+      [legacy],
+      instructors,
+      SEPT.year,
+      SEPT.month
+    );
     expect(stats.sessionsAttended).toBe(0);
   });
 
   it("never lets one shift satisfy two different sessions", () => {
     const only = shift("s1", "2026-09-02", "09:30");
     const twin = { ...baseClass, id: "c1" };
-    const [stats] = computeMonthlyPunctuality([baseClass, twin], [only], instructors, SEPT.year, SEPT.month);
+    const [stats] = computeMonthlyPunctuality(
+      [baseClass, twin],
+      [only],
+      instructors,
+      SEPT.year,
+      SEPT.month
+    );
     expect(stats.sessionsAttended).toBe(1);
   });
 
@@ -283,16 +313,34 @@ describe("computeMonthlyPunctuality", () => {
       { id: "c", userId: "i1", classId: "p1", clockIn: witaIso("2026-10-01", "16:00") }, // other month
     ];
     const [stats] = computeMonthlyPunctuality([priv], shifts, instructors, SEPT.year, SEPT.month);
-    expect(stats).toMatchObject({ sessionsScheduled: 2, sessionsAttended: 2, onTime: 2, absent: 0, limitedAccuracy: true });
+    expect(stats).toMatchObject({
+      sessionsScheduled: 2,
+      sessionsAttended: 2,
+      onTime: 2,
+      absent: 0,
+      limitedAccuracy: true,
+    });
   });
 
   it("tallies auto-closed shifts for instructors that have tracked classes, this month only", () => {
     const shifts = [
       shift("s1", "2026-09-02", "09:30", { autoClosed: true }),
       shift("s2", "2026-08-31", "09:30", { autoClosed: true }), // previous month
-      { id: "s3", userId: "ghost", classId: "zz", clockIn: witaIso("2026-09-02", "09:30"), autoClosed: true },
+      {
+        id: "s3",
+        userId: "ghost",
+        classId: "zz",
+        clockIn: witaIso("2026-09-02", "09:30"),
+        autoClosed: true,
+      },
     ];
-    const result = computeMonthlyPunctuality([baseClass], shifts, instructors, SEPT.year, SEPT.month);
+    const result = computeMonthlyPunctuality(
+      [baseClass],
+      shifts,
+      instructors,
+      SEPT.year,
+      SEPT.month
+    );
     expect(result).toHaveLength(1);
     expect(result[0].autoClosedCount).toBe(1);
   });

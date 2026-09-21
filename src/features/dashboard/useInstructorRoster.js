@@ -72,8 +72,8 @@ export function useInstructorRoster() {
 
     const unsubStudents = onSnapshot(
       query(collection(db, "users"), where("role", "==", "student")),
-      snap => setStudents(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-      err => {
+      (snap) => setStudents(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => {
         console.error("instructor students listener:", err);
         setError(err.message);
       }
@@ -81,11 +81,16 @@ export function useInstructorRoster() {
 
     const unsubMe = onSnapshot(
       doc(db, "users", uid),
-      snap => setInstructorName(snap.exists() ? (snap.data().displayName || "") : ""),
-      err => console.error("instructor profile listener:", err)
+      (snap) => setInstructorName(snap.exists() ? snap.data().displayName || "" : ""),
+      (err) => console.error("instructor profile listener:", err)
     );
 
-    return () => { unsubClasses(); unsubSubClasses(); unsubStudents(); unsubMe(); };
+    return () => {
+      unsubClasses();
+      unsubSubClasses();
+      unsubStudents();
+      unsubMe();
+    };
   }, [uid]);
 
   return { uid, classes, students, instructorName, loading, error };

@@ -13,12 +13,24 @@ export default function InstructorClasses({
   allClasses = [],
 }) {
   const [subTab, setSubTab] = useState("my_classes");
-  const { classes: rawClasses, students: allStudents, instructorName, loading, error } = useInstructorRoster();
+  const {
+    classes: rawClasses,
+    students: allStudents,
+    instructorName,
+    loading,
+    error,
+  } = useInstructorRoster();
   const classes = useMemo(() => uniqueClasses(rawClasses), [rawClasses]);
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  const enrolledIds = useMemo(() => new Set(classes.flatMap((cls) => cls.studentIds || [])), [classes]);
-  const students = useMemo(() => allStudents.filter((student) => enrolledIds.has(student.id)), [allStudents, enrolledIds]);
+  const enrolledIds = useMemo(
+    () => new Set(classes.flatMap((cls) => cls.studentIds || [])),
+    [classes]
+  );
+  const students = useMemo(
+    () => allStudents.filter((student) => enrolledIds.has(student.id)),
+    [allStudents, enrolledIds]
+  );
 
   const activeFilteredClass = useMemo(() => {
     if (!selectedClassFilter || selectedClassFilter === "all") return null;
@@ -37,7 +49,9 @@ export default function InstructorClasses({
       .map((cls) => ({
         className: cls.className,
         instructorName: instructorName || "Unassigned",
-        dateJoined: (cls.enrollments || []).find((enrollment) => enrollment.studentId === studentId)?.dateJoined || "",
+        dateJoined:
+          (cls.enrollments || []).find((enrollment) => enrollment.studentId === studentId)
+            ?.dateJoined || "",
       }));
   };
 
@@ -105,7 +119,10 @@ export default function InstructorClasses({
             <Info className="w-4 h-4 text-amber-600" />
             <span>No Assigned Teaching Cohorts</span>
           </div>
-          <p>You have not been assigned to any student cohorts yet. Check in with administration for class scheduling.</p>
+          <p>
+            You have not been assigned to any student cohorts yet. Check in with administration for
+            class scheduling.
+          </p>
         </div>
       </div>
     );
@@ -161,9 +178,13 @@ export default function InstructorClasses({
             }`}
           >
             <span>All Cohorts</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-              selectedClassFilter === "all" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
-            }`}>
+            <span
+              className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                selectedClassFilter === "all"
+                  ? "bg-white/20 text-white"
+                  : "bg-slate-200 text-slate-600"
+              }`}
+            >
               {students.length}
             </span>
           </button>
@@ -182,9 +203,11 @@ export default function InstructorClasses({
                 }`}
               >
                 <span>{cls.className}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
-                }`}>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
+                  }`}
+                >
                   {count}
                 </span>
               </button>
@@ -198,7 +221,9 @@ export default function InstructorClasses({
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-extrabold text-slate-900">{activeFilteredClass.className}</span>
               <span className="text-slate-500 font-medium">· {activeFilteredClass.schedule}</span>
-              <span className="text-slate-500 font-medium">· Room: {activeFilteredClass.classRoom || "Main Campus"}</span>
+              <span className="text-slate-500 font-medium">
+                · Room: {activeFilteredClass.classRoom || "Main Campus"}
+              </span>
               {activeFilteredClass.classLevel && (
                 <LevelBadge level={activeFilteredClass.classLevel} />
               )}

@@ -40,7 +40,9 @@ export default function ConfirmProvider({ children }) {
       {request && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
           <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full">
-            <p className="text-sm font-semibold text-slate-800 whitespace-pre-line">{request.message}</p>
+            <p className="text-sm font-semibold text-slate-800 whitespace-pre-line">
+              {request.message}
+            </p>
             <div className="flex gap-2 mt-5">
               <button
                 onClick={() => handleChoice(false)}

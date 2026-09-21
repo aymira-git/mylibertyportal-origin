@@ -160,11 +160,15 @@ export default function BadgeModal({ person, onClose }) {
               {/* Academic Metadata Grid */}
               <div className="grid grid-cols-2 gap-2 text-[11px] pt-3 border-t border-slate-100 text-slate-600">
                 <div className="text-left bg-slate-50/70 p-2 rounded-xl">
-                  <span className="block text-[9px] uppercase font-bold text-slate-400">Date of Birth</span>
+                  <span className="block text-[9px] uppercase font-bold text-slate-400">
+                    Date of Birth
+                  </span>
                   <span className="font-semibold text-slate-800">{person.dob || "—"}</span>
                 </div>
                 <div className="text-right bg-slate-50/70 p-2 rounded-xl">
-                  <span className="block text-[9px] uppercase font-bold text-slate-400">Education / Track</span>
+                  <span className="block text-[9px] uppercase font-bold text-slate-400">
+                    Education / Track
+                  </span>
                   <span className="font-semibold text-slate-800 truncate block">
                     {person.educationLevel || person.schoolOrJob || "Active Track"}
                   </span>

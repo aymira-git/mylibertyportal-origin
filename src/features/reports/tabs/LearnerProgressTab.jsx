@@ -14,12 +14,7 @@ import {
 } from "lucide-react";
 
 const LearnerProgressTab = forwardRef(function LearnerProgressTab(
-  {
-    branchFilter = "all",
-    rangeDays = 30,
-    isAdminView = false,
-    isFrontOffice = false,
-  },
+  { branchFilter = "all", rangeDays = 30, isAdminView = false, isFrontOffice = false },
   ref
 ) {
   const [students, setStudents] = useState([]);
@@ -33,8 +28,12 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
   const fetchStudentProgress = useCallback(async () => {
     setStudentsLoading(true);
     try {
-      const { users, classes: rawClasses, attendance, progress } =
-        await fetchStudentProgressData(isAdminView, isFrontOffice, rangeToSince(rangeDays));
+      const {
+        users,
+        classes: rawClasses,
+        attendance,
+        progress,
+      } = await fetchStudentProgressData(isAdminView, isFrontOffice, rangeToSince(rangeDays));
 
       const usersById = {};
       users.forEach((u) => {
@@ -50,9 +49,10 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
         ...progress.map((p) => p.studentId),
       ]);
 
-      const relevantStudentIds = (isAdminView || isFrontOffice)
-        ? null
-        : new Set(fetchedClasses.flatMap((c) => c.studentIds || []));
+      const relevantStudentIds =
+        isAdminView || isFrontOffice
+          ? null
+          : new Set(fetchedClasses.flatMap((c) => c.studentIds || []));
 
       const studentList = Array.from(allStudentIds)
         .filter((id) => {
@@ -82,9 +82,13 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
           const assessments = progress
             .filter((report) => report.studentId === id)
             .filter((report) => selectedClassId === "all" || report.classId === selectedClassId)
-            .sort((a, b) => new Date(b.examDate || b.submittedAt) - new Date(a.examDate || a.submittedAt));
+            .sort(
+              (a, b) =>
+                new Date(b.examDate || b.submittedAt) - new Date(a.examDate || a.submittedAt)
+            );
 
-          const capturedName = history[0]?.displayName || assessments[0]?.studentName || "Former Student";
+          const capturedName =
+            history[0]?.displayName || assessments[0]?.studentName || "Former Student";
           const displayName = u ? u.displayName : `${capturedName} (Archived)`;
           const branch = u?.branch || "Cabang Utama";
 
@@ -111,7 +115,11 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
             assessments,
           };
         })
-        .filter((student) => selectedClassId === "all" || student.classes.some((cls) => cls.classId === selectedClassId))
+        .filter(
+          (student) =>
+            selectedClassId === "all" ||
+            student.classes.some((cls) => cls.classId === selectedClassId)
+        )
         .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
 
       setStudents(studentList);
@@ -167,7 +175,16 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
   useImperativeHandle(ref, () => ({
     exportCSV: () => {
       const todayStr = getTodayWitaString();
-      const headers = ["Learner Name", "Campus Branch", "Status", "Drop-out Alert", "Classes", "Check-ins", "Last Check-in", "Evaluations"];
+      const headers = [
+        "Learner Name",
+        "Campus Branch",
+        "Status",
+        "Drop-out Alert",
+        "Classes",
+        "Check-ins",
+        "Last Check-in",
+        "Evaluations",
+      ];
       const rows = filteredStudents.map((s) => [
         s.displayName,
         s.branch,
@@ -224,27 +241,35 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#1a3a8f]">
                 Active Students
               </p>
-              <p className="text-2xl font-black text-[#1a3a8f] mt-1">{studentKpiStats.totalEnrolled}</p>
+              <p className="text-2xl font-black text-[#1a3a8f] mt-1">
+                {studentKpiStats.totalEnrolled}
+              </p>
             </div>
             <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-100">
               <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700">
                 At-Risk Drop-Outs
               </p>
-              <p className="text-2xl font-black text-rose-900 mt-1">{studentKpiStats.atRiskCount}</p>
+              <p className="text-2xl font-black text-rose-900 mt-1">
+                {studentKpiStats.atRiskCount}
+              </p>
               <p className="text-[10px] text-rose-600 font-medium">{AT_RISK_LABEL}</p>
             </div>
             <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
               <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
                 High Attendance
               </p>
-              <p className="text-2xl font-black text-emerald-900 mt-1">{studentKpiStats.highAttendanceCount}</p>
+              <p className="text-2xl font-black text-emerald-900 mt-1">
+                {studentKpiStats.highAttendanceCount}
+              </p>
               <p className="text-[10px] text-emerald-600 font-medium">8+ Scans in period</p>
             </div>
             <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
               <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
                 CEFR Evaluated
               </p>
-              <p className="text-2xl font-black text-blue-900 mt-1">{studentKpiStats.evaluatedCount}</p>
+              <p className="text-2xl font-black text-blue-900 mt-1">
+                {studentKpiStats.evaluatedCount}
+              </p>
               <p className="text-[10px] text-blue-600 font-medium">With exam band score</p>
             </div>
           </div>
@@ -255,7 +280,9 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
               <button
                 onClick={() => setHealthFilter("all")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                  healthFilter === "all" ? "bg-[#1a3a8f] text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  healthFilter === "all"
+                    ? "bg-[#1a3a8f] text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 All Learners ({students.length})
@@ -263,7 +290,9 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
               <button
                 onClick={() => setHealthFilter("at_risk")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                  healthFilter === "at_risk" ? "bg-rose-600 text-white shadow-xs" : "bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60"
+                  healthFilter === "at_risk"
+                    ? "bg-rose-600 text-white shadow-xs"
+                    : "bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60"
                 }`}
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
@@ -272,7 +301,9 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
               <button
                 onClick={() => setHealthFilter("regular")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                  healthFilter === "regular" ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  healthFilter === "regular"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 Regular Attendance
@@ -304,7 +335,9 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
                 <div
                   key={s.id}
                   className={`p-4 rounded-2xl border transition shadow-2xs space-y-3 ${
-                    s.isAtRisk ? "bg-rose-50/40 border-rose-200" : "bg-slate-50/70 border-slate-200/80 hover:bg-white"
+                    s.isAtRisk
+                      ? "bg-rose-50/40 border-rose-200"
+                      : "bg-slate-50/70 border-slate-200/80 hover:bg-white"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -328,7 +361,9 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
                       </div>
 
                       {s.classes.length === 0 ? (
-                        <p className="text-[11px] text-slate-400 italic">No current cohort assignment</p>
+                        <p className="text-[11px] text-slate-400 italic">
+                          No current cohort assignment
+                        </p>
                       ) : (
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
                           {s.classes.map((c, i) => (
@@ -348,7 +383,8 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
                         {s.attendanceCount} check-in{s.attendanceCount === 1 ? "" : "s"}
                       </span>
                       <span className="text-[10px] text-slate-400 font-medium">
-                        Last: {s.lastCheckIn ? new Date(s.lastCheckIn).toLocaleDateString() : "Never"}
+                        Last:{" "}
+                        {s.lastCheckIn ? new Date(s.lastCheckIn).toLocaleDateString() : "Never"}
                       </span>
                     </div>
                   </div>
@@ -367,19 +403,27 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                         <div>
                           <span className="text-[10px] text-slate-400 font-medium">Date</span>
-                          <p className="font-bold text-slate-800">{s.assessments[0].examDate || "N/A"}</p>
+                          <p className="font-bold text-slate-800">
+                            {s.assessments[0].examDate || "N/A"}
+                          </p>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 font-medium">CEFR Level</span>
-                          <p className="font-bold text-slate-800 capitalize">{s.assessments[0].level || "N/A"}</p>
+                          <p className="font-bold text-slate-800 capitalize">
+                            {s.assessments[0].level || "N/A"}
+                          </p>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 font-medium">Class</span>
-                          <p className="font-bold text-slate-800 truncate">{s.assessments[0].className || "N/A"}</p>
+                          <p className="font-bold text-slate-800 truncate">
+                            {s.assessments[0].className || "N/A"}
+                          </p>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400 font-medium">Evaluator</span>
-                          <p className="font-bold text-slate-800 truncate">{s.assessments[0].instructorName || "Teacher"}</p>
+                          <p className="font-bold text-slate-800 truncate">
+                            {s.assessments[0].instructorName || "Teacher"}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -392,8 +436,14 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
                         onClick={() => setExpandedId(isExpanded ? null : s.id)}
                         className="text-xs font-bold text-[#1a3a8f] hover:underline flex items-center gap-1 cursor-pointer"
                       >
-                        {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                        <span>{isExpanded ? "Hide" : "View"} {s.history.length} Attendance Records</span>
+                        {isExpanded ? (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                        <span>
+                          {isExpanded ? "Hide" : "View"} {s.history.length} Attendance Records
+                        </span>
                       </button>
 
                       {isExpanded && (
@@ -415,7 +465,12 @@ const LearnerProgressTab = forwardRef(function LearnerProgressTab(
                                 </span>
                               </div>
                               <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-                                <span>{new Date(record.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                                <span>
+                                  {new Date(record.timestamp).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
                                 <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-600 uppercase">
                                   {record.method || "KIOSK"}
                                 </span>

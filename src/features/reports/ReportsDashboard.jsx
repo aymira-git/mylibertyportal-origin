@@ -6,14 +6,7 @@ import {
   AdmissionsTab,
   InstructorPunctualityTab,
 } from "./tabs";
-import {
-  Clock,
-  Download,
-  Users,
-  GraduationCap,
-  TrendingUp,
-  UserCheck,
-} from "lucide-react";
+import { Clock, Download, Users, GraduationCap, TrendingUp, UserCheck } from "lucide-react";
 
 export default function ReportsDashboard({
   isAdminView = false,
@@ -56,7 +49,8 @@ export default function ReportsDashboard({
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              MYLIBERTY International English School — Operational audit logs &amp; performance metrics
+              MYLIBERTY International English School — Operational audit logs &amp; performance
+              metrics
             </p>
           </div>
 
@@ -136,7 +130,9 @@ export default function ReportsDashboard({
               }`}
             >
               <UserCheck className="w-3.5 h-3.5" />
-              <span>{isActualAdmin || isAdminView ? "Instructor Punctuality" : "My Punctuality"}</span>
+              <span>
+                {isActualAdmin || isAdminView ? "Instructor Punctuality" : "My Punctuality"}
+              </span>
             </button>
           )}
         </div>
@@ -212,18 +208,11 @@ export default function ReportsDashboard({
       )}
 
       {subTab === "admissions" && (isAdminView || isFrontOffice) && (
-        <AdmissionsTab
-          ref={activeTabRef}
-          branchFilter={branchFilter}
-          rangeDays={rangeDays}
-        />
+        <AdmissionsTab ref={activeTabRef} branchFilter={branchFilter} rangeDays={rangeDays} />
       )}
 
       {subTab === "instructors" && !isFrontOffice && (
-        <InstructorPunctualityTab
-          ref={activeTabRef}
-          isAdminView={isAdminView}
-        />
+        <InstructorPunctualityTab ref={activeTabRef} isAdminView={isAdminView} />
       )}
     </div>
   );

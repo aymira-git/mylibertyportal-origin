@@ -9,13 +9,19 @@ import { getCleanLabel, getTabIcon } from "./tabUtils";
  * permissions and individual tab components stay shared between phone and
  * desktop views.
  */
-export default function MobileDashboardShell({ tabs, activeTab, onTabChange, title, extraSidebarContent }) {
+export default function MobileDashboardShell({
+  tabs,
+  activeTab,
+  onTabChange,
+  title,
+  extraSidebarContent,
+}) {
   const [moreOpen, setMoreOpen] = useState(false);
-  const visibleTabs = tabs.filter(tab => !tab.hidden);
+  const visibleTabs = tabs.filter((tab) => !tab.hidden);
   const primaryTabs = visibleTabs.slice(0, 4);
   const moreTabs = visibleTabs.slice(4);
-  const active = tabs.find(tab => tab.id === activeTab);
-  const activeIsInMore = moreTabs.some(tab => tab.id === activeTab);
+  const active = tabs.find((tab) => tab.id === activeTab);
+  const activeIsInMore = moreTabs.some((tab) => tab.id === activeTab);
 
   const selectTab = (tabId) => {
     onTabChange(tabId);
@@ -26,8 +32,12 @@ export default function MobileDashboardShell({ tabs, activeTab, onTabChange, tit
     <div className="md:hidden">
       {/* Dashboard Subheader & Action Launcher (Scrolls with content, no competing sticky) */}
       <div className="-mx-3 -mt-3 mb-4 border-b border-slate-200/90 bg-white px-3.5 py-3 sm:-mx-4 sm:-mt-4 sm:px-4 shadow-2xs">
-        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#1a3a8f]">{title || "MYLIBERTY"}</p>
-        <h2 className="mt-0.5 text-lg font-black text-slate-800 leading-tight">{getCleanLabel(active?.label) || "Dashboard"}</h2>
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#1a3a8f]">
+          {title || "MYLIBERTY"}
+        </p>
+        <h2 className="mt-0.5 text-lg font-black text-slate-800 leading-tight">
+          {getCleanLabel(active?.label) || "Dashboard"}
+        </h2>
         {extraSidebarContent && <div className="mt-2.5">{extraSidebarContent}</div>}
       </div>
 
@@ -54,7 +64,7 @@ export default function MobileDashboardShell({ tabs, activeTab, onTabChange, tit
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {moreTabs.map(tab => {
+              {moreTabs.map((tab) => {
                 const Icon = getTabIcon(tab);
                 const label = getCleanLabel(tab.label);
                 const isActive = activeTab === tab.id;
@@ -70,17 +80,21 @@ export default function MobileDashboardShell({ tabs, activeTab, onTabChange, tit
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                        isActive ? "bg-white/20 text-white" : "bg-white text-[#1a3a8f] shadow-2xs"
-                      }`}>
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                          isActive ? "bg-white/20 text-white" : "bg-white text-[#1a3a8f] shadow-2xs"
+                        }`}
+                      >
                         <Icon className="w-4 h-4" />
                       </div>
                       <span className="truncate">{label}</span>
                     </div>
                     {tab.badge !== undefined && tab.badge !== null && (
-                      <span className={`px-1.5 py-0.5 text-[10px] font-black rounded-full shrink-0 ${
-                        isActive ? "bg-white text-[#1a3a8f]" : "bg-amber-100 text-amber-800"
-                      }`}>
+                      <span
+                        className={`px-1.5 py-0.5 text-[10px] font-black rounded-full shrink-0 ${
+                          isActive ? "bg-white text-[#1a3a8f]" : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
                         {tab.badge}
                       </span>
                     )}
@@ -94,7 +108,7 @@ export default function MobileDashboardShell({ tabs, activeTab, onTabChange, tit
 
       {/* Floating Bottom Navigation Bar with Home Indicator Safe Area */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex gap-1 bg-[#1a3a8f]/95 backdrop-blur-lg border-t border-white/10 px-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-6px_20px_rgba(15,23,42,0.2)]">
-        {primaryTabs.map(tab => {
+        {primaryTabs.map((tab) => {
           const Icon = getTabIcon(tab);
           const label = getCleanLabel(tab.label);
           const isActive = activeTab === tab.id;
@@ -107,7 +121,9 @@ export default function MobileDashboardShell({ tabs, activeTab, onTabChange, tit
                 isActive ? "bg-white text-[#1a3a8f] shadow-xs" : "text-white/80 active:bg-white/10"
               }`}
             >
-              <Icon className={`w-4 h-4 mb-1 shrink-0 ${isActive ? "text-[#1a3a8f]" : "text-white"}`} />
+              <Icon
+                className={`w-4 h-4 mb-1 shrink-0 ${isActive ? "text-[#1a3a8f]" : "text-white"}`}
+              />
               <span className="block truncate max-w-full">{label}</span>
               {tab.badge !== undefined && tab.badge !== null && (
                 <span className="absolute top-1 right-2 px-1 py-0.2 text-[9px] font-black rounded-full bg-amber-400 text-slate-900 shadow-xs">
@@ -121,7 +137,9 @@ export default function MobileDashboardShell({ tabs, activeTab, onTabChange, tit
           <button
             onClick={() => setMoreOpen(true)}
             className={`min-h-14 min-w-0 flex-1 rounded-xl px-1 text-center text-[10px] font-extrabold transition cursor-pointer ${
-              activeIsInMore || moreOpen ? "bg-white text-[#1a3a8f] shadow-sm" : "text-white/80 active:bg-white/10"
+              activeIsInMore || moreOpen
+                ? "bg-white text-[#1a3a8f] shadow-sm"
+                : "text-white/80 active:bg-white/10"
             }`}
           >
             <span className="block text-base leading-none">•••</span>

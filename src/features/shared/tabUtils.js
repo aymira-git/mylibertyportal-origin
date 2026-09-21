@@ -30,7 +30,12 @@ export function getTabIcon(tab) {
   if (id === "progress" || label.includes("progress")) return ClipboardCheck;
   if (id === "students" || label.includes("student")) return GraduationCap;
   if (id === "classes" || label.includes("class")) return BookOpen;
-  if (id === "kiosk" || id === "attendance" || label.includes("attendance") || label.includes("kiosk")) {
+  if (
+    id === "kiosk" ||
+    id === "attendance" ||
+    label.includes("attendance") ||
+    label.includes("kiosk")
+  ) {
     return ScanLine;
   }
   if (id === "materials" || label.includes("material")) return FolderOpen;
@@ -69,7 +74,16 @@ export function getTabCategory(tab) {
 
   // Operations: Staff, Finance, Marketing, Applications, Invites, Tasks
   if (
-    ["directory", "staff", "finance", "applications", "invites", "tasks", "misc", "campaigns"].includes(id) ||
+    [
+      "directory",
+      "staff",
+      "finance",
+      "applications",
+      "invites",
+      "tasks",
+      "misc",
+      "campaigns",
+    ].includes(id) ||
     label.includes("staff") ||
     label.includes("finance") ||
     label.includes("application") ||
@@ -96,10 +110,10 @@ export function getTabCategory(tab) {
 const CATEGORY_ORDER = ["Main", "Academic", "Operations", "System"];
 
 export function groupTabsByCategory(tabs) {
-  const visible = tabs.filter(t => !t.hidden);
+  const visible = tabs.filter((t) => !t.hidden);
   const groups = new Map();
 
-  visible.forEach(tab => {
+  visible.forEach((tab) => {
     const cat = getTabCategory(tab);
     if (!groups.has(cat)) {
       groups.set(cat, []);
@@ -108,7 +122,7 @@ export function groupTabsByCategory(tabs) {
   });
 
   const sorted = [];
-  CATEGORY_ORDER.forEach(cat => {
+  CATEGORY_ORDER.forEach((cat) => {
     if (groups.has(cat)) {
       sorted.push([cat, groups.get(cat)]);
       groups.delete(cat);

@@ -45,9 +45,9 @@ export default class ErrorBoundary extends Component {
             {this.props.label ? `${this.props.label} hit a problem` : "Something went wrong"}
           </h3>
           <p className="text-slate-500 text-sm">
-            This part of the app ran into an unexpected error. Your other data is safe —
-            try reloading. If it keeps happening, let an admin know what you were doing
-            right before this appeared.
+            This part of the app ran into an unexpected error. Your other data is safe — try
+            reloading. If it keeps happening, let an admin know what you were doing right before
+            this appeared.
           </p>
           <div className="flex gap-2 justify-center pt-2">
             <button

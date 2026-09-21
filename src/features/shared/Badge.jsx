@@ -16,7 +16,9 @@ const TONE_STYLES = {
 
 export default function Badge({ tone = "gray", children }) {
   return (
-    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${TONE_STYLES[tone] || TONE_STYLES.gray}`}>
+    <span
+      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${TONE_STYLES[tone] || TONE_STYLES.gray}`}
+    >
       {children}
     </span>
   );

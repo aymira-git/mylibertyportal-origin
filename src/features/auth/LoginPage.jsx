@@ -15,7 +15,7 @@ import {
   CheckCircle2,
   AlertCircle,
   KeyRound,
-  UserPlus
+  UserPlus,
 } from "lucide-react";
 
 export default function LoginPage({ onLogin, loading }) {
@@ -40,7 +40,10 @@ export default function LoginPage({ onLogin, loading }) {
     setResetMessage({ text: "", type: "" });
     try {
       await sendPasswordResetEmail(auth, resetEmail);
-      setResetMessage({ text: "Success! Check your inbox for password reset instructions.", type: "success" });
+      setResetMessage({
+        text: "Success! Check your inbox for password reset instructions.",
+        type: "success",
+      });
       setTimeout(() => {
         setShowResetModal(false);
         setResetMessage({ text: "", type: "" });
@@ -65,7 +68,9 @@ export default function LoginPage({ onLogin, loading }) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Reset Password</h3>
-                <p className="text-xs text-slate-500 font-medium">We'll send a recovery link to your inbox</p>
+                <p className="text-xs text-slate-500 font-medium">
+                  We'll send a recovery link to your inbox
+                </p>
               </div>
             </div>
 
@@ -139,9 +144,15 @@ export default function LoginPage({ onLogin, loading }) {
             className="w-12 h-12 rounded-xl object-contain bg-white/10 p-1.5 backdrop-blur-sm border border-white/20 shadow-md"
           />
           <div>
-            <span className="text-xs uppercase tracking-widest text-indigo-200 font-bold">Academic Portal</span>
-            <h1 className="text-xl font-extrabold tracking-tight text-white leading-none">MY LIBERTY</h1>
-            <p className="text-[11px] font-medium text-indigo-200/90 tracking-wide mt-0.5">Fresh, Fun and Elegant</p>
+            <span className="text-xs uppercase tracking-widest text-indigo-200 font-bold">
+              Academic Portal
+            </span>
+            <h1 className="text-xl font-extrabold tracking-tight text-white leading-none">
+              MY LIBERTY
+            </h1>
+            <p className="text-[11px] font-medium text-indigo-200/90 tracking-wide mt-0.5">
+              Fresh, Fun and Elegant
+            </p>
           </div>
         </div>
 
@@ -156,7 +167,8 @@ export default function LoginPage({ onLogin, loading }) {
               Empowering global minds with structured excellence.
             </h2>
             <p className="text-indigo-100/80 text-base leading-relaxed font-normal">
-              Unified workspace connecting admissions, real-time student attendance, CEFR curriculum tracks, and staff directives.
+              Unified workspace connecting admissions, real-time student attendance, CEFR curriculum
+              tracks, and staff directives.
             </p>
           </div>
 
@@ -214,9 +226,13 @@ export default function LoginPage({ onLogin, loading }) {
               alt="My Liberty International English School"
               className="w-20 h-20 mx-auto drop-shadow-md rounded-2xl mb-1"
             />
-            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">MY LIBERTY</h2>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              MY LIBERTY
+            </h2>
             <p className="text-xs font-semibold text-[#1a3a8f]">Fresh, Fun and Elegant</p>
-            <p className="text-slate-500 text-[11px] font-medium">International English School Portal</p>
+            <p className="text-slate-500 text-[11px] font-medium">
+              International English School Portal
+            </p>
           </div>
 
           {/* Form Header */}
@@ -318,8 +334,12 @@ export default function LoginPage({ onLogin, loading }) {
                   <UserPlus className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">Are you a new student?</p>
-                  <p className="text-[11px] text-slate-500 truncate">Register online for upcoming batches</p>
+                  <p className="text-xs font-bold text-slate-800 truncate">
+                    Are you a new student?
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    Register online for upcoming batches
+                  </p>
                 </div>
               </div>
               <a
@@ -333,7 +353,8 @@ export default function LoginPage({ onLogin, loading }) {
 
           {/* Quick Notice for Staff Invitation */}
           <p className="text-center text-xs text-slate-400 font-medium">
-            Have an invitation link from administration? Open the link provided in your email to activate your account.
+            Have an invitation link from administration? Open the link provided in your email to
+            activate your account.
           </p>
 
           <div className="lg:hidden text-center pt-2">

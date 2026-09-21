@@ -1,5 +1,14 @@
 import { db } from "../../firebase";
-import { collection, getDocs, query, where, doc, setDoc, writeBatch, deleteField } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  setDoc,
+  writeBatch,
+  deleteField,
+} from "firebase/firestore";
 import { todayWita } from "../../utils/dateWita.js";
 
 /**
@@ -12,7 +21,7 @@ import { todayWita } from "../../utils/dateWita.js";
 export async function fetchPaymentHistory(studentId) {
   const q = query(collection(db, "payments"), where("studentId", "==", studentId));
   const snap = await getDocs(q);
-  const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   list.sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
   return list;
 }

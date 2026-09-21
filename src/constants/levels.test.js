@@ -77,6 +77,8 @@ describe("isCompatible", () => {
   });
 
   it("lets the range win over classLevel", () => {
-    expect(isCompatible("elite", { classLevel: "epic", minLevel: "warrior", maxLevel: "elite" })).toBe(true);
+    expect(
+      isCompatible("elite", { classLevel: "epic", minLevel: "warrior", maxLevel: "elite" })
+    ).toBe(true);
   });
 });

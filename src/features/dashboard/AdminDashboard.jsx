@@ -25,13 +25,31 @@ export default function AdminDashboard() {
   };
 
   const {
-    users, classes, applications, invites, todos,
-    editId, selectedStudent, setSelectedStudent,
-    formData, setFormData,
-    handleSave, handleEdit, handleAddStaff, handleAddStudent, handleDelete,
-    handleAddTodo, handleDeleteTodo, handleToggleTodo,
-    handleCreateInvite, handleDeleteInvite,
-    getStudentClasses, instructors, students, unenrolledStudents, pendingApplications,
+    users,
+    classes,
+    applications,
+    invites,
+    todos,
+    editId,
+    selectedStudent,
+    setSelectedStudent,
+    formData,
+    setFormData,
+    handleSave,
+    handleEdit,
+    handleAddStaff,
+    handleAddStudent,
+    handleDelete,
+    handleAddTodo,
+    handleDeleteTodo,
+    handleToggleTodo,
+    handleCreateInvite,
+    handleDeleteInvite,
+    getStudentClasses,
+    instructors,
+    students,
+    unenrolledStudents,
+    pendingApplications,
   } = useDashboardData({ setActiveTab: handleTabChange });
 
   const overviewTab = (
@@ -106,10 +124,17 @@ export default function AdminDashboard() {
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <h4 className="font-bold text-slate-800">Staff snapshot</h4>
           <p className="text-xs text-slate-500 mt-2 font-medium">
-            {users.filter(user => user.role !== "student" && (user.status || "active") === "active").length} active staff · {instructors.filter(i => (i.status || "active") === "active").length} active instructors
+            {
+              users.filter(
+                (user) => user.role !== "student" && (user.status || "active") === "active"
+              ).length
+            }{" "}
+            active staff · {instructors.filter((i) => (i.status || "active") === "active").length}{" "}
+            active instructors
           </p>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            {invites.filter(inv => !inv.used).length} pending invitations · {todos.filter(todo => todo.isPinned || todo.type === "deadline").length} pinned tasks
+            {invites.filter((inv) => !inv.used).length} pending invitations ·{" "}
+            {todos.filter((todo) => todo.isPinned || todo.type === "deadline").length} pinned tasks
           </p>
         </div>
       </div>
@@ -202,11 +227,15 @@ export default function AdminDashboard() {
         />
       ),
     },
-    { id: "reports", label: "Reports", component: <ReportsDashboard isAdminView={true} isFrontOffice={false} canEdit={true} /> },
+    {
+      id: "reports",
+      label: "Reports",
+      component: <ReportsDashboard isAdminView={true} isFrontOffice={false} canEdit={true} />,
+    },
     {
       id: "misc",
       label: "Tasks",
-      badge: todos.filter(t => !t.completed).length || null,
+      badge: todos.filter((t) => !t.completed).length || null,
       component: (
         <TasksPanel
           todos={todos}
@@ -222,9 +251,17 @@ export default function AdminDashboard() {
     // 👈 Not a nav destination — only reached via "Edit"/"Add staff" above,
     // which is why it's marked hidden instead of getting a sidebar button.
     {
-      id: "addUser", label: "Add / Edit User", hidden: true, component: (
-        <UserForm formData={formData} setFormData={setFormData} editId={editId} onSubmit={handleSave} />
-      )
+      id: "addUser",
+      label: "Add / Edit User",
+      hidden: true,
+      component: (
+        <UserForm
+          formData={formData}
+          setFormData={setFormData}
+          editId={editId}
+          onSubmit={handleSave}
+        />
+      ),
     },
   ];
 
@@ -235,7 +272,9 @@ export default function AdminDashboard() {
         activeTab={activeTab}
         onTabChange={handleTabChange}
         title="Admin Panel"
-        extraSidebarContent={<KioskSidebarButton onClick={() => setKioskOpen(true)} label="Attendance Kiosk" />}
+        extraSidebarContent={
+          <KioskSidebarButton onClick={() => setKioskOpen(true)} label="Attendance Kiosk" />
+        }
       />
 
       {/* Standalone Full-Screen Kiosk Station */}
@@ -247,10 +286,7 @@ export default function AdminDashboard() {
       />
 
       {/* ID Badge Modal */}
-      <BadgeModal
-        person={selectedStudent}
-        onClose={() => setSelectedStudent(null)}
-      />
+      <BadgeModal person={selectedStudent} onClose={() => setSelectedStudent(null)} />
     </div>
   );
 }

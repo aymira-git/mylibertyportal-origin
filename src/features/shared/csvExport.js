@@ -13,7 +13,7 @@ function csvEscape(value) {
 
 export function exportTableCSV(filename, headers, rows) {
   const allRows = [headers, ...rows];
-  const csvContent = allRows.map(row => row.map(csvEscape).join(",")).join("\r\n");
+  const csvContent = allRows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
   // Leading BOM so Excel/Google Sheets read UTF-8 (accented names, emoji) correctly.
   const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

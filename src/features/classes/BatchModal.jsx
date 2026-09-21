@@ -10,7 +10,7 @@ import {
   User,
   FileText,
   Upload,
-  Info
+  Info,
 } from "lucide-react";
 import {
   LEVELS,
@@ -19,7 +19,7 @@ import {
   LevelBadge,
   getStarText,
   useToast,
-  uploadFileToCloudinary
+  uploadFileToCloudinary,
 } from "../shared";
 import { createClass, updateClass } from "./classesRepository";
 
@@ -72,7 +72,17 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
       className: className || "(New Batch)",
     };
     return checkDraftConflicts(draft, existingClasses);
-  }, [batch?.id, classDay, startTime, endTime, instructorId, classRoom, status, className, existingClasses]);
+  }, [
+    batch?.id,
+    classDay,
+    startTime,
+    endTime,
+    instructorId,
+    classRoom,
+    status,
+    className,
+    existingClasses,
+  ]);
 
   const hasConflicts = conflicts.teacherConflicts.length > 0 || conflicts.roomConflicts.length > 0;
 
@@ -94,7 +104,10 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
 
       const selectedInstructor = instructors.find((i) => i.id === instructorId);
       const instructorName = selectedInstructor
-        ? selectedInstructor.displayName || selectedInstructor.name || selectedInstructor.email || ""
+        ? selectedInstructor.displayName ||
+          selectedInstructor.name ||
+          selectedInstructor.email ||
+          ""
         : "";
 
       const selectedSub = instructors.find((i) => i.id === substituteInstructorId);
@@ -196,7 +209,8 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               </p>
             ))}
             <p className="text-[10px] text-rose-600 font-medium pl-6 italic">
-              You can still save, but the timetable clash should be resolved to avoid on-site confusion.
+              You can still save, but the timetable clash should be resolved to avoid on-site
+              confusion.
             </p>
           </div>
         )}
@@ -257,7 +271,9 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Minimum Level</label>
+              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">
+                Minimum Level
+              </label>
               <select
                 value={minLevel}
                 onChange={(e) => setMinLevel(e.target.value)}
@@ -271,7 +287,9 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               </select>
             </div>
             <div>
-              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">Maximum Level</label>
+              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">
+                Maximum Level
+              </label>
               <select
                 value={maxLevel}
                 onChange={(e) => setMaxLevel(e.target.value)}
@@ -426,9 +444,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               onChange={(e) => setMaxCapacity(e.target.value)}
               className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
             />
-            <p className="text-[10px] text-slate-400">
-              Default is 15 students per batch.
-            </p>
+            <p className="text-[10px] text-slate-400">Default is 15 students per batch.</p>
           </div>
 
           <div className="space-y-1">
@@ -444,9 +460,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               onChange={(e) => setMinQuorum(e.target.value)}
               className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
             />
-            <p className="text-[10px] text-slate-400">
-              Alert if fewer than this many enrolled.
-            </p>
+            <p className="text-[10px] text-slate-400">Alert if fewer than this many enrolled.</p>
           </div>
 
           <div className="space-y-1">
@@ -539,7 +553,7 @@ export default function BatchModal({
   batch = null,
   instructors = [],
   existingClasses = [],
-  onSuccess
+  onSuccess,
 }) {
   if (!isOpen) return null;
 

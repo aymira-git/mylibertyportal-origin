@@ -16,9 +16,7 @@ export function ManagerOverview({
   currentUserId = null,
 }) {
   const totalBottlenecks =
-    pendingApplications.length +
-    unenrolledStudents.length +
-    classesWithIssues.length;
+    pendingApplications.length + unenrolledStudents.length + classesWithIssues.length;
 
   return (
     <div className="w-full space-y-6">
@@ -42,7 +40,9 @@ export function ManagerOverview({
               }`}
             >
               <span>{totalBottlenecks > 0 ? "⚡" : "✓"}</span>
-              <span>{totalBottlenecks > 0 ? `${totalBottlenecks} Action Required` : "Zero Bottlenecks"}</span>
+              <span>
+                {totalBottlenecks > 0 ? `${totalBottlenecks} Action Required` : "Zero Bottlenecks"}
+              </span>
             </span>
           </>
         }
@@ -199,7 +199,8 @@ export function ManagerOverview({
                           {stu.displayName || stu.firstName || "Student"}
                         </p>
                         <p className="text-[11px] text-slate-500">
-                          {stu.program || stu.branch || "General"} · Level: {stu.currentLevel || "Unset"}
+                          {stu.program || stu.branch || "General"} · Level:{" "}
+                          {stu.currentLevel || "Unset"}
                         </p>
                       </div>
                     ))}

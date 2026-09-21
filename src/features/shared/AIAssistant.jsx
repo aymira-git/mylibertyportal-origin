@@ -12,7 +12,8 @@ const MODES = {
   draft: {
     label: "Draft a Message",
     placeholder: "e.g. Tell parents that Saturday's class is moved to 10am due to a holiday",
-    instruction: "Write a polite, clear message based on the following request. Keep it concise and appropriate to send directly to parents or staff at a small English course business:",
+    instruction:
+      "Write a polite, clear message based on the following request. Keep it concise and appropriate to send directly to parents or staff at a small English course business:",
   },
   summarize: {
     label: "Summarize Notes",
@@ -38,7 +39,9 @@ export default function AIAssistant() {
 
     try {
       if (!AI_WORKER_URL) {
-        throw new Error("AI assistant isn't configured yet. Set VITE_AI_WORKER_URL in your .env file.");
+        throw new Error(
+          "AI assistant isn't configured yet. Set VITE_AI_WORKER_URL in your .env file."
+        );
       }
       const user = auth.currentUser;
       if (!user) {
@@ -86,9 +89,15 @@ export default function AIAssistant() {
         {Object.entries(MODES).map(([key, m]) => (
           <button
             key={key}
-            onClick={() => { setMode(key); setOutput(""); setError(""); }}
+            onClick={() => {
+              setMode(key);
+              setOutput("");
+              setError("");
+            }}
             className={`px-3 py-1.5 rounded-lg font-bold text-xs transition duration-150 ${
-              mode === key ? "bg-[#1a3a8f] text-white shadow-sm" : "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200"
+              mode === key
+                ? "bg-[#1a3a8f] text-white shadow-sm"
+                : "bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200"
             }`}
           >
             {m.label}
@@ -114,9 +123,7 @@ export default function AIAssistant() {
         </button>
       </form>
 
-      {error && (
-        <p className="text-red-600 font-semibold text-xs">Error: {error}</p>
-      )}
+      {error && <p className="text-red-600 font-semibold text-xs">Error: {error}</p>}
 
       {output && (
         <div className="bg-slate-50 border border-slate-150 rounded-xl p-4 space-y-3 transition">

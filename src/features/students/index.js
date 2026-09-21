@@ -9,5 +9,10 @@ export * from "./studentRosterBadges";
 export { default as UserForm } from "./UserForm";
 export { default as BadgeModal } from "./BadgeModal";
 export { default as StudentPhotoCapture } from "./StudentPhotoCapture";
-export { buildStudentRecord, isActiveStudent, STUDENT_STATUS_MAP, STUDENT_STATUS_OPTIONS } from "./studentRecord";
+export {
+  buildStudentRecord,
+  isActiveStudent,
+  STUDENT_STATUS_MAP,
+  STUDENT_STATUS_OPTIONS,
+} from "./studentRecord";
 export { createProgressReport, fetchInstructorProgressReports } from "./progressReportsRepository";

@@ -1,21 +1,33 @@
 import { useState, useMemo } from "react";
-import {
-  Pin,
-  AlertTriangle,
-  CheckCircle2,
-  Trash2,
-  Search,
-  Plus,
-  Square,
-} from "lucide-react";
+import { Pin, AlertTriangle, CheckCircle2, Trash2, Search, Plus, Square } from "lucide-react";
 import { useConfirm, useToast } from "../shared";
 
 const ROLE_OPTIONS = [
-  { value: "all", label: "All Academy Staff", color: "bg-slate-100 text-slate-700 border-slate-200" },
-  { value: "frontoffice", label: "Front Office", color: "bg-blue-100 text-blue-800 border-blue-200" },
-  { value: "marketing", label: "Marketing", color: "bg-purple-100 text-purple-800 border-purple-200" },
-  { value: "instructor", label: "Instructors", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  { value: "officeboy", label: "Office Boy / Facilities", color: "bg-amber-100 text-amber-800 border-amber-200" },
+  {
+    value: "all",
+    label: "All Academy Staff",
+    color: "bg-slate-100 text-slate-700 border-slate-200",
+  },
+  {
+    value: "frontoffice",
+    label: "Front Office",
+    color: "bg-blue-100 text-blue-800 border-blue-200",
+  },
+  {
+    value: "marketing",
+    label: "Marketing",
+    color: "bg-purple-100 text-purple-800 border-purple-200",
+  },
+  {
+    value: "instructor",
+    label: "Instructors",
+    color: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  },
+  {
+    value: "officeboy",
+    label: "Office Boy / Facilities",
+    color: "bg-amber-100 text-amber-800 border-amber-200",
+  },
 ];
 
 function getAssigneeBadge(assignee, assigneeType, assigneeName) {
@@ -29,7 +41,10 @@ function getAssigneeBadge(assignee, assigneeType, assigneeName) {
   if (match) {
     return { label: match.label, color: match.color };
   }
-  return { label: assigneeName || assignee || "Everyone", color: "bg-slate-100 text-slate-700 border-slate-200" };
+  return {
+    label: assigneeName || assignee || "Everyone",
+    color: "bg-slate-100 text-slate-700 border-slate-200",
+  };
 }
 
 function formatDueDate(dueDate) {
@@ -100,7 +115,9 @@ export default function TasksPanel({
   const staffMembers = useMemo(() => {
     return users
       .filter((u) => u.role && u.role !== "student" && (u.status || "active") === "active")
-      .sort((a, b) => (a.displayName || a.email || "").localeCompare(b.displayName || b.email || ""));
+      .sort((a, b) =>
+        (a.displayName || a.email || "").localeCompare(b.displayName || b.email || "")
+      );
   }, [users]);
 
   const handleSubmit = async (e) => {
@@ -237,7 +254,9 @@ export default function TasksPanel({
                       {t.type || "DIRECTIVE"}
                     </span>
                     {dueInfo && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-md border ${dueInfo.badgeColor}`}>
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-md border ${dueInfo.badgeColor}`}
+                      >
                         {dueInfo.label}
                       </span>
                     )}
@@ -248,7 +267,9 @@ export default function TasksPanel({
                   </p>
 
                   <div className="pt-2 border-t border-yellow-200/80 flex items-center justify-between text-[11px]">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${badge.color}`}>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded border ${badge.color}`}
+                    >
                       {badge.label}
                     </span>
 
@@ -541,7 +562,9 @@ export default function TasksPanel({
                           <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                             {t.type || "directive"}
                           </span>
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${badge.color}`}>
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${badge.color}`}
+                          >
                             {badge.label}
                           </span>
                           {t.priority === "urgent" && (
@@ -555,7 +578,9 @@ export default function TasksPanel({
                             </span>
                           )}
                           {dueInfo && !t.completed && (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${dueInfo.badgeColor}`}>
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${dueInfo.badgeColor}`}
+                            >
                               {dueInfo.label}
                             </span>
                           )}
@@ -568,7 +593,9 @@ export default function TasksPanel({
 
                         <p
                           className={`font-bold text-xs sm:text-sm leading-snug break-words ${
-                            t.completed ? "line-through text-slate-400 font-medium" : "text-slate-800"
+                            t.completed
+                              ? "line-through text-slate-400 font-medium"
+                              : "text-slate-800"
                           }`}
                         >
                           {t.text}
@@ -576,11 +603,14 @@ export default function TasksPanel({
 
                         <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-2 pt-0.5">
                           {t.createdByName && (
-                            <span>Issued by: <strong>{t.createdByName}</strong></span>
+                            <span>
+                              Issued by: <strong>{t.createdByName}</strong>
+                            </span>
                           )}
                           {t.createdAt && (
                             <span>
-                              · {new Date(t.createdAt).toLocaleDateString("en-US", {
+                              ·{" "}
+                              {new Date(t.createdAt).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",
                               })}

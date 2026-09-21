@@ -60,7 +60,14 @@ describe("matching keys", () => {
 
 describe("findDuplicates", () => {
   const app = { id: "app1", displayName: "Budi Santoso", phone: "081234567890", dob: "2010-05-03" };
-  const student = (over) => ({ id: "s1", role: "student", displayName: "Someone Else", phone: "", dob: "", ...over });
+  const student = (over) => ({
+    id: "s1",
+    role: "student",
+    displayName: "Someone Else",
+    phone: "",
+    dob: "",
+    ...over,
+  });
 
   it("returns empty results for no application", () => {
     expect(findDuplicates(null, [student()], [])).toEqual({ students: [], pendingTwins: [] });
@@ -69,16 +76,26 @@ describe("findDuplicates", () => {
   it("flags a student with the same phone number as a strong match", () => {
     const { students } = findDuplicates(app, [student({ phone: "+62 812-3456-7890" })]);
     expect(students).toHaveLength(1);
-    expect(students[0]).toMatchObject({ strength: "strong", reason: "Phone number matches existing student" });
+    expect(students[0]).toMatchObject({
+      strength: "strong",
+      reason: "Phone number matches existing student",
+    });
   });
 
   it("flags same name + same date of birth as strong", () => {
-    const { students } = findDuplicates(app, [student({ displayName: "Santoso Budi", dob: "03/05/2010" })]);
-    expect(students[0]).toMatchObject({ strength: "strong", reason: "Name and date of birth match existing student" });
+    const { students } = findDuplicates(app, [
+      student({ displayName: "Santoso Budi", dob: "03/05/2010" }),
+    ]);
+    expect(students[0]).toMatchObject({
+      strength: "strong",
+      reason: "Name and date of birth match existing student",
+    });
   });
 
   it("flags the same name alone as only possible", () => {
-    const { students } = findDuplicates(app, [student({ displayName: "budi santoso", dob: "1999-01-01" })]);
+    const { students } = findDuplicates(app, [
+      student({ displayName: "budi santoso", dob: "1999-01-01" }),
+    ]);
     expect(students[0].strength).toBe("possible");
   });
 
@@ -91,27 +108,48 @@ describe("findDuplicates", () => {
   });
 
   it("finds twins among other pending applications, but never the application itself", () => {
-    const twin = { id: "app2", status: "pending", displayName: "Budi Santoso", phone: "0812 3456 7890" };
+    const twin = {
+      id: "app2",
+      status: "pending",
+      displayName: "Budi Santoso",
+      phone: "0812 3456 7890",
+    };
     const { pendingTwins } = findDuplicates(app, [], [app, twin]);
     expect(pendingTwins).toHaveLength(1);
     expect(pendingTwins[0]).toMatchObject({ app: twin, strength: "strong" });
   });
 
   it("ignores applications that were already approved or rejected", () => {
-    const done = [{ id: "a2", status: "approved", displayName: "Budi Santoso" }, { id: "a3", status: "rejected", phone: "081234567890" }];
+    const done = [
+      { id: "a2", status: "approved", displayName: "Budi Santoso" },
+      { id: "a3", status: "rejected", phone: "081234567890" },
+    ];
     expect(findDuplicates(app, [], done).pendingTwins).toEqual([]);
   });
 
   it("does not match two blank phone numbers or two blank names", () => {
     const blank = { id: "app9", displayName: "", phone: "" };
-    expect(findDuplicates(blank, [student({ displayName: "", phone: "" })], [{ id: "x", displayName: "", phone: "" }])).toEqual({
-      students: [], pendingTwins: [],
+    expect(
+      findDuplicates(
+        blank,
+        [student({ displayName: "", phone: "" })],
+        [{ id: "x", displayName: "", phone: "" }]
+      )
+    ).toEqual({
+      students: [],
+      pendingTwins: [],
     });
   });
 });
 
 describe("buildApplicantWhatsAppUrl", () => {
-  const app = { displayName: " Budi ", phone: "081234567890", fatherPhone: "", motherPhone: "0899 8888 7777", program: "IELTS" };
+  const app = {
+    displayName: " Budi ",
+    phone: "081234567890",
+    fatherPhone: "",
+    motherPhone: "0899 8888 7777",
+    program: "IELTS",
+  };
 
   it("builds a link to the applicant with an encoded message", () => {
     const url = buildApplicantWhatsAppUrl({ target: "applicant", app });
@@ -123,29 +161,70 @@ describe("buildApplicantWhatsAppUrl", () => {
 
   it("uses the father's number, then the mother's, for the parent link", () => {
     expect(buildApplicantWhatsAppUrl({ target: "parent", app })).toContain("wa.me/6289988887777");
-    expect(buildApplicantWhatsAppUrl({ target: "parent", app: { ...app, fatherPhone: "081111111111" } })).toContain("wa.me/6281111111111");
+    expect(
+      buildApplicantWhatsAppUrl({ target: "parent", app: { ...app, fatherPhone: "081111111111" } })
+    ).toContain("wa.me/6281111111111");
   });
 
   it("returns null when there is no usable number, or no application", () => {
-    expect(buildApplicantWhatsAppUrl({ target: "applicant", app: { ...app, phone: "123" } })).toBeNull();
+    expect(
+      buildApplicantWhatsAppUrl({ target: "applicant", app: { ...app, phone: "123" } })
+    ).toBeNull();
     expect(buildApplicantWhatsAppUrl({ target: "parent", app: { displayName: "X" } })).toBeNull();
     expect(buildApplicantWhatsAppUrl({ target: "applicant", app: null })).toBeNull();
   });
 
   it("falls back to 'General Program' when no program is given", () => {
-    const url = buildApplicantWhatsAppUrl({ target: "applicant", app: { phone: "081234567890", displayName: "A" } });
+    const url = buildApplicantWhatsAppUrl({
+      target: "applicant",
+      app: { phone: "081234567890", displayName: "A" },
+    });
     expect(decodeURIComponent(url)).toContain("General Program");
   });
 });
 
 describe("filterApplications", () => {
   const apps = [
-    { id: "1", status: "pending", displayName: "Ani", branch: "Cabang Utama", program: "General", submittedAt: "2026-09-01T00:00:00Z", phone: "0811" },
-    { id: "2", status: "pending", displayName: "Budi", branch: "Cabang Timur", program: "IELTS", submittedAt: "2026-09-10T00:00:00Z", schoolOrJob: "SMA 1 Gorontalo" },
+    {
+      id: "1",
+      status: "pending",
+      displayName: "Ani",
+      branch: "Cabang Utama",
+      program: "General",
+      submittedAt: "2026-09-01T00:00:00Z",
+      phone: "0811",
+    },
+    {
+      id: "2",
+      status: "pending",
+      displayName: "Budi",
+      branch: "Cabang Timur",
+      program: "IELTS",
+      submittedAt: "2026-09-10T00:00:00Z",
+      schoolOrJob: "SMA 1 Gorontalo",
+    },
     { id: "3", displayName: "Citra", program: "general", submittedAt: "2026-09-05T00:00:00Z" }, // no status = pending
-    { id: "4", status: "approved", displayName: "Dedi", approvedAt: "2026-09-12T00:00:00Z", submittedAt: "2026-08-01T00:00:00Z" },
-    { id: "5", status: "approved", displayName: "Eka", approvedAt: "2026-09-15T00:00:00Z", submittedAt: "2026-08-02T00:00:00Z" },
-    { id: "6", status: "rejected", displayName: "Fani", rejectedAt: "2026-09-02T00:00:00Z", submittedAt: "2026-08-03T00:00:00Z" },
+    {
+      id: "4",
+      status: "approved",
+      displayName: "Dedi",
+      approvedAt: "2026-09-12T00:00:00Z",
+      submittedAt: "2026-08-01T00:00:00Z",
+    },
+    {
+      id: "5",
+      status: "approved",
+      displayName: "Eka",
+      approvedAt: "2026-09-15T00:00:00Z",
+      submittedAt: "2026-08-02T00:00:00Z",
+    },
+    {
+      id: "6",
+      status: "rejected",
+      displayName: "Fani",
+      rejectedAt: "2026-09-02T00:00:00Z",
+      submittedAt: "2026-08-03T00:00:00Z",
+    },
   ];
   const ids = (list) => list.map((a) => a.id);
 
@@ -186,7 +265,13 @@ describe("filterApplications", () => {
 
 describe("getDistinctValues", () => {
   it("returns sorted unique non-empty values for a field", () => {
-    const apps = [{ program: "IELTS" }, { program: " General " }, { program: "IELTS" }, { program: "" }, {}];
+    const apps = [
+      { program: "IELTS" },
+      { program: " General " },
+      { program: "IELTS" },
+      { program: "" },
+      {},
+    ];
     expect(getDistinctValues(apps, "program")).toEqual(["General", "IELTS"]);
   });
 });

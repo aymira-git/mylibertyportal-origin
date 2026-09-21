@@ -1,11 +1,7 @@
 import schoolLogo from "../../assets/school-logo.webp";
 import { formatIDR } from "./receiptMessages";
 
-export default function DigitalReceiptTab({
-  activeReceipt,
-  onSendWhatsApp,
-  onPrint,
-}) {
+export default function DigitalReceiptTab({ activeReceipt, onSendWhatsApp, onPrint }) {
   if (!activeReceipt) return null;
 
   return (
@@ -87,8 +83,12 @@ export default function DigitalReceiptTab({
             </div>
           )}
           <div className="flex justify-between items-center pt-3 border-t border-slate-200">
-            <span className="font-bold text-slate-700 uppercase tracking-wider text-xs">Total Paid:</span>
-            <span className="text-lg font-black text-[#1a3a8f]">{formatIDR(activeReceipt.amount)}</span>
+            <span className="font-bold text-slate-700 uppercase tracking-wider text-xs">
+              Total Paid:
+            </span>
+            <span className="text-lg font-black text-[#1a3a8f]">
+              {formatIDR(activeReceipt.amount)}
+            </span>
           </div>
         </div>
 

@@ -45,19 +45,12 @@ export const STAFF_STATUS_MAP = {
   },
 };
 
-export const TRACKED_STAFF_ROLES = [
-  "instructor",
-  "frontoffice",
-  "marketing",
-  "officeboy",
-];
+export const TRACKED_STAFF_ROLES = ["instructor", "frontoffice", "marketing", "officeboy"];
 
-export const STAFF_STATUS_OPTIONS = Object.entries(STAFF_STATUS_MAP).map(
-  ([value, conf]) => ({
-    value,
-    label: conf.label,
-  })
-);
+export const STAFF_STATUS_OPTIONS = Object.entries(STAFF_STATUS_MAP).map(([value, conf]) => ({
+  value,
+  label: conf.label,
+}));
 
 export const STANDARD_BRANCHES = ["Cabang Utama"];
 
@@ -150,9 +143,7 @@ export function filterStaffMembers({
   }
 
   if (branchFilter !== "all") {
-    list = list.filter(
-      (u) => (u.branch || "").toLowerCase() === branchFilter.toLowerCase()
-    );
+    list = list.filter((u) => (u.branch || "").toLowerCase() === branchFilter.toLowerCase());
   }
 
   const q = (search || "").trim().toLowerCase();
@@ -162,12 +153,7 @@ export function filterStaffMembers({
       const nickname = (u.nickname || "").toLowerCase();
       const email = (u.email || "").toLowerCase();
       const phone = (u.phone || "").toLowerCase();
-      return (
-        name.includes(q) ||
-        nickname.includes(q) ||
-        email.includes(q) ||
-        phone.includes(q)
-      );
+      return name.includes(q) || nickname.includes(q) || email.includes(q) || phone.includes(q);
     });
   }
 

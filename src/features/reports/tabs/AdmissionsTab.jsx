@@ -3,19 +3,10 @@ import { fetchAdmissionsReportData } from "../reportsRepository";
 import { getTodayWitaString, rangeToSince } from "../reportsUtils";
 import { getBatchAvailability } from "../../classes";
 import { exportTableCSV } from "../../shared";
-import {
-  TrendingUp,
-  School,
-  RefreshCw,
-  Search,
-  Users,
-} from "lucide-react";
+import { TrendingUp, School, RefreshCw, Search, Users } from "lucide-react";
 
 const AdmissionsTab = forwardRef(function AdmissionsTab(
-  {
-    branchFilter = "all",
-    rangeDays = 30,
-  },
+  { branchFilter = "all", rangeDays = 30 },
   ref
 ) {
   const [admissionsData, setAdmissionsData] = useState({ applications: [], classes: [] });
@@ -53,7 +44,9 @@ const AdmissionsTab = forwardRef(function AdmissionsTab(
 
     // Enrolled: approved applications whose studentId is enrolled in any class
     const enrolledIds = new Set(cls.flatMap((c) => c.studentIds || []));
-    const enrolled = apps.filter((a) => a.status === "approved" && a.studentId && enrolledIds.has(a.studentId)).length;
+    const enrolled = apps.filter(
+      (a) => a.status === "approved" && a.studentId && enrolledIds.has(a.studentId)
+    ).length;
 
     let totalCapacity = 0;
     let totalAvailableSeats = 0;
@@ -63,9 +56,10 @@ const AdmissionsTab = forwardRef(function AdmissionsTab(
       totalAvailableSeats += avail.seatsAvailable;
     });
 
-    const seatOccupancy = totalCapacity > 0
-      ? Math.round(((totalCapacity - totalAvailableSeats) / totalCapacity) * 100)
-      : 0;
+    const seatOccupancy =
+      totalCapacity > 0
+        ? Math.round(((totalCapacity - totalAvailableSeats) / totalCapacity) * 100)
+        : 0;
 
     return {
       totalInquiries: apps.length,
@@ -85,7 +79,13 @@ const AdmissionsTab = forwardRef(function AdmissionsTab(
   useImperativeHandle(ref, () => ({
     exportCSV: () => {
       const todayStr = getTodayWitaString();
-      const headers = ["Applicant Name", "Program Applied", "Campus Branch", "Status", "Submission Date"];
+      const headers = [
+        "Applicant Name",
+        "Program Applied",
+        "Campus Branch",
+        "Status",
+        "Submission Date",
+      ];
       const rows = (admissionsCalculated.filteredApps || []).map((a) => [
         a.fullName || a.studentName || "Prospective Student",
         a.program || a.courseType || "General English",
@@ -147,35 +147,45 @@ const AdmissionsTab = forwardRef(function AdmissionsTab(
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#1a3a8f]">
                 Total Inquiries
               </p>
-              <p className="text-2xl font-black text-[#1a3a8f] mt-1">{admissionsCalculated.totalInquiries}</p>
+              <p className="text-2xl font-black text-[#1a3a8f] mt-1">
+                {admissionsCalculated.totalInquiries}
+              </p>
               <p className="text-[10px] text-slate-500 font-medium">In selected horizon</p>
             </div>
             <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-100">
               <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
                 Pending Review
               </p>
-              <p className="text-2xl font-black text-amber-950 mt-1">{admissionsCalculated.pending}</p>
+              <p className="text-2xl font-black text-amber-950 mt-1">
+                {admissionsCalculated.pending}
+              </p>
               <p className="text-[10px] text-amber-700 font-medium">Under admissions review</p>
             </div>
             <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100">
               <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
                 Approved
               </p>
-              <p className="text-2xl font-black text-emerald-950 mt-1">{admissionsCalculated.approved}</p>
+              <p className="text-2xl font-black text-emerald-950 mt-1">
+                {admissionsCalculated.approved}
+              </p>
               <p className="text-[10px] text-emerald-700 font-medium">Ready for placement</p>
             </div>
             <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-100">
               <p className="text-[10px] font-bold uppercase tracking-wider text-blue-800">
                 Active Enrolled
               </p>
-              <p className="text-2xl font-black text-blue-950 mt-1">{admissionsCalculated.enrolled}</p>
+              <p className="text-2xl font-black text-blue-950 mt-1">
+                {admissionsCalculated.enrolled}
+              </p>
               <p className="text-[10px] text-blue-700 font-medium">Placed in cohorts</p>
             </div>
             <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-100">
               <p className="text-[10px] font-bold uppercase tracking-wider text-rose-800">
                 Rejected / Drop
               </p>
-              <p className="text-2xl font-black text-rose-950 mt-1">{admissionsCalculated.rejected}</p>
+              <p className="text-2xl font-black text-rose-950 mt-1">
+                {admissionsCalculated.rejected}
+              </p>
               <p className="text-[10px] text-rose-700 font-medium">Unsuitable / cancelled</p>
             </div>
           </div>
@@ -203,16 +213,28 @@ const AdmissionsTab = forwardRef(function AdmissionsTab(
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1">
               <div>
-                <span className="text-[10px] text-slate-400 font-bold block">Total Class Seats</span>
-                <span className="font-extrabold text-slate-800">{admissionsCalculated.totalCapacity} Seats</span>
+                <span className="text-[10px] text-slate-400 font-bold block">
+                  Total Class Seats
+                </span>
+                <span className="font-extrabold text-slate-800">
+                  {admissionsCalculated.totalCapacity} Seats
+                </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 font-bold block">Available Open Seats</span>
-                <span className="font-extrabold text-emerald-700">{admissionsCalculated.totalAvailableSeats} Available</span>
+                <span className="text-[10px] text-slate-400 font-bold block">
+                  Available Open Seats
+                </span>
+                <span className="font-extrabold text-emerald-700">
+                  {admissionsCalculated.totalAvailableSeats} Available
+                </span>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 font-bold block">Active Teaching Batches</span>
-                <span className="font-extrabold text-slate-800">{admissionsCalculated.classes.length} Batches</span>
+                <span className="text-[10px] text-slate-400 font-bold block">
+                  Active Teaching Batches
+                </span>
+                <span className="font-extrabold text-slate-800">
+                  {admissionsCalculated.classes.length} Batches
+                </span>
               </div>
             </div>
           </div>
@@ -249,9 +271,13 @@ const AdmissionsTab = forwardRef(function AdmissionsTab(
                     <div className="flex flex-wrap items-center gap-2 text-slate-400 text-[11px]">
                       <span>{a.phone || "No Phone"}</span>
                       <span>·</span>
-                      <span className="text-indigo-700 font-medium">{a.program || a.courseType || "General English"}</span>
+                      <span className="text-indigo-700 font-medium">
+                        {a.program || a.courseType || "General English"}
+                      </span>
                       <span>·</span>
-                      <span>{a.submittedAt ? new Date(a.submittedAt).toLocaleDateString() : "Recent"}</span>
+                      <span>
+                        {a.submittedAt ? new Date(a.submittedAt).toLocaleDateString() : "Recent"}
+                      </span>
                     </div>
                   </div>
 
@@ -261,8 +287,8 @@ const AdmissionsTab = forwardRef(function AdmissionsTab(
                         a.status === "approved"
                           ? "bg-emerald-100 text-emerald-800"
                           : a.status === "rejected"
-                          ? "bg-rose-100 text-rose-800"
-                          : "bg-amber-100 text-amber-800"
+                            ? "bg-rose-100 text-rose-800"
+                            : "bg-amber-100 text-amber-800"
                       }`}
                     >
                       {a.status || "pending"}

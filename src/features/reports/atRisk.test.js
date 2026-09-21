@@ -19,7 +19,15 @@ describe("isStudentAtRisk", () => {
 
   it("treats exactly 14 days as still OK, and 14 days + 1 second as at risk", () => {
     expect(isStudentAtRisk({ joinedDate: daysAgo(60), lastCheckIn: daysAgo(14) }, NOW)).toBe(false);
-    expect(isStudentAtRisk({ joinedDate: daysAgo(60), lastCheckIn: new Date(NOW - 14 * 86400000 - 1000).toISOString() }, NOW)).toBe(true);
+    expect(
+      isStudentAtRisk(
+        {
+          joinedDate: daysAgo(60),
+          lastCheckIn: new Date(NOW - 14 * 86400000 - 1000).toISOString(),
+        },
+        NOW
+      )
+    ).toBe(true);
   });
 
   it("does not flag a student who joined less than 14 days ago", () => {
@@ -35,13 +43,20 @@ describe("isStudentAtRisk", () => {
   });
 
   it("looks at the first attendance history entry when lastCheckIn is missing", () => {
-    expect(isStudentAtRisk({ joinedDate: daysAgo(90), history: [{ timestamp: daysAgo(2) }] }, NOW)).toBe(false);
-    expect(isStudentAtRisk({ joinedDate: daysAgo(90), history: [{ timestamp: daysAgo(40) }] }, NOW)).toBe(true);
+    expect(
+      isStudentAtRisk({ joinedDate: daysAgo(90), history: [{ timestamp: daysAgo(2) }] }, NOW)
+    ).toBe(false);
+    expect(
+      isStudentAtRisk({ joinedDate: daysAgo(90), history: [{ timestamp: daysAgo(40) }] }, NOW)
+    ).toBe(true);
   });
 
-  it.each(["on_leave", "graduated", "inactive"])("never flags a student whose status is %s", (status) => {
-    expect(isStudentAtRisk({ status, joinedDate: daysAgo(90) }, NOW)).toBe(false);
-  });
+  it.each(["on_leave", "graduated", "inactive"])(
+    "never flags a student whose status is %s",
+    (status) => {
+      expect(isStudentAtRisk({ status, joinedDate: daysAgo(90) }, NOW)).toBe(false);
+    }
+  );
 
   it("never flags an archived student", () => {
     expect(isStudentAtRisk({ isArchived: true, joinedDate: daysAgo(90) }, NOW)).toBe(false);

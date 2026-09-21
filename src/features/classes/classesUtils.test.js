@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDuration, getEnrollment, openWhatsAppParentChat } from "./classesUtils.js";
 
 describe("getEnrollment", () => {
-  const cls = { enrollments: [{ studentId: "s1", level: "elite" }, { studentId: "s2", level: "master" }] };
+  const cls = {
+    enrollments: [
+      { studentId: "s1", level: "elite" },
+      { studentId: "s2", level: "master" },
+    ],
+  };
 
   it("finds a student's enrollment record", () => {
     expect(getEnrollment(cls, "s2")).toEqual({ studentId: "s2", level: "master" });

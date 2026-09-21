@@ -1,13 +1,7 @@
 import { useState, useRef } from "react";
 import { useToast } from "../shared";
 import { uploadToCloudinary } from "../shared/cloudinaryUpload";
-import {
-  MessageCircle,
-  RotateCcw,
-  Download,
-  Image as ImageIcon,
-  Loader2
-} from "lucide-react";
+import { MessageCircle, RotateCcw, Download, Image as ImageIcon, Loader2 } from "lucide-react";
 
 export default function ClassPhotoShare() {
   const toast = useToast();
@@ -86,7 +80,9 @@ export default function ClassPhotoShare() {
         </div>
         <div className="text-left">
           <h3 className="font-extrabold text-slate-900 text-sm">Classroom Moment</h3>
-          <p className="text-[11px] text-slate-500 font-medium">Capture & redirect photo to WhatsApp</p>
+          <p className="text-[11px] text-slate-500 font-medium">
+            Capture & redirect photo to WhatsApp
+          </p>
         </div>
       </div>
 
@@ -95,7 +91,9 @@ export default function ClassPhotoShare() {
           <label className="border-2 border-dashed border-emerald-200 hover:border-[#25D366] bg-slate-50/60 hover:bg-emerald-50/30 p-6 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition group">
             <ImageIcon className="w-8 h-8 text-emerald-500 group-hover:scale-110 transition-transform mb-2" />
             <p className="text-xs font-extrabold text-slate-800">Snap Classroom Activity</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Camera access or device gallery upload</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              Camera access or device gallery upload
+            </p>
             <input
               ref={fileInputRef}
               type="file"
@@ -109,7 +107,11 @@ export default function ClassPhotoShare() {
       ) : (
         <div className="space-y-3">
           <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-inner">
-            <img src={photo.previewUrl} alt="Class activity" className="w-full max-h-64 object-cover" />
+            <img
+              src={photo.previewUrl}
+              alt="Class activity"
+              className="w-full max-h-64 object-cover"
+            />
             {uploading && (
               <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />

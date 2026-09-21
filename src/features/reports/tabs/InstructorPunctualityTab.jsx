@@ -4,17 +4,10 @@ import { fetchInstructorAnalyticsData } from "../reportsRepository";
 import { computeMonthlyPunctuality } from "../../attendance";
 import { uniqueClasses } from "../reportsUtils";
 import { exportTableCSV } from "../../shared";
-import {
-  UserCheck,
-  RefreshCw,
-  CheckCircle2,
-  AlertTriangle,
-} from "lucide-react";
+import { UserCheck, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 
 const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
-  {
-    isAdminView = false,
-  },
+  { isAdminView = false },
   ref
 ) {
   const now = new Date();
@@ -27,8 +20,11 @@ const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
     setAnalyticsLoading(true);
     try {
       const uid = auth.currentUser?.uid;
-      const { classes: rawClasses, shifts: rawShifts, instructors } =
-        await fetchInstructorAnalyticsData(isAdminView, uid);
+      const {
+        classes: rawClasses,
+        shifts: rawShifts,
+        instructors,
+      } = await fetchInstructorAnalyticsData(isAdminView, uid);
 
       const fetchedClasses = uniqueClasses(rawClasses);
       const fetchedShifts = rawShifts;
@@ -45,7 +41,9 @@ const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
         selectedYear,
         selectedMonth
       );
-      setAnalytics(results.sort((a, b) => (a.instructorName || "").localeCompare(b.instructorName || "")));
+      setAnalytics(
+        results.sort((a, b) => (a.instructorName || "").localeCompare(b.instructorName || ""))
+      );
     } catch (err) {
       console.error(err);
     } finally {
@@ -59,8 +57,18 @@ const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
 
   const monthNames = useMemo(
     () => [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December",
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
     ],
     []
   );
@@ -69,7 +77,14 @@ const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
   useImperativeHandle(ref, () => ({
     exportCSV: () => {
       const headers = [
-        "Instructor", "Punctuality %", "Scheduled", "Attended", "Late Arrivals", "Absences", "Avg Tardiness (min)", "Data Quality",
+        "Instructor",
+        "Punctuality %",
+        "Scheduled",
+        "Attended",
+        "Late Arrivals",
+        "Absences",
+        "Avg Tardiness (min)",
+        "Data Quality",
       ];
       const rows = analytics.map((a) => [
         a.instructorName,
@@ -81,7 +96,11 @@ const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
         a.avgMinutesLate,
         a.limitedAccuracy ? "Partial (Legacy)" : "Verified",
       ]);
-      exportTableCSV(`MYLIBERTY-Instructor-Punctuality-${monthNames[selectedMonth]}-${selectedYear}`, headers, rows);
+      exportTableCSV(
+        `MYLIBERTY-Instructor-Punctuality-${monthNames[selectedMonth]}-${selectedYear}`,
+        headers,
+        rows
+      );
     },
   }));
 
@@ -138,7 +157,9 @@ const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
       {analyticsLoading ? (
         <div className="p-12 text-center text-slate-400 text-xs italic flex items-center justify-center gap-2">
           <RefreshCw className="w-4 h-4 animate-spin text-[#1a3a8f]" />
-          <span>Computing readiness audit compliance for {monthNames[selectedMonth]} {selectedYear}...</span>
+          <span>
+            Computing readiness audit compliance for {monthNames[selectedMonth]} {selectedYear}...
+          </span>
         </div>
       ) : analytics.length === 0 ? (
         <div className="p-8 text-center text-slate-400 text-xs italic bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
@@ -176,11 +197,17 @@ const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
                           </span>
                         )}
                       </td>
-                      <td className="p-3.5 text-center font-semibold text-slate-700">{a.sessionsScheduled}</td>
-                      <td className="p-3.5 text-center font-semibold text-slate-700">{a.sessionsAttended}</td>
+                      <td className="p-3.5 text-center font-semibold text-slate-700">
+                        {a.sessionsScheduled}
+                      </td>
+                      <td className="p-3.5 text-center font-semibold text-slate-700">
+                        {a.sessionsAttended}
+                      </td>
                       <td className="p-3.5 text-center font-bold text-rose-600">{a.late}</td>
                       <td className="p-3.5 text-center font-bold text-slate-400">{a.absent}</td>
-                      <td className="p-3.5 text-center font-semibold text-slate-700">{a.avgMinutesLate}m</td>
+                      <td className="p-3.5 text-center font-semibold text-slate-700">
+                        {a.avgMinutesLate}m
+                      </td>
                       <td className="p-3.5 text-center">
                         <span className="font-black text-slate-900">
                           {rate === null ? "—" : `${rate}%`}
@@ -192,10 +219,10 @@ const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
                             rate === null
                               ? "bg-slate-100 text-slate-500"
                               : isExemplary
-                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                              : isSatisfactory
-                              ? "bg-blue-100 text-blue-800 border border-blue-200"
-                              : "bg-rose-100 text-rose-800 border border-rose-200"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                : isSatisfactory
+                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
+                                  : "bg-rose-100 text-rose-800 border border-rose-200"
                           }`}
                         >
                           {isExemplary ? (
@@ -207,10 +234,10 @@ const InstructorPunctualityTab = forwardRef(function InstructorPunctualityTab(
                             {rate === null
                               ? "No Data"
                               : isExemplary
-                              ? "Exemplary"
-                              : isSatisfactory
-                              ? "Satisfactory"
-                              : "Needs Review"}
+                                ? "Exemplary"
+                                : isSatisfactory
+                                  ? "Satisfactory"
+                                  : "Needs Review"}
                           </span>
                         </span>
                       </td>

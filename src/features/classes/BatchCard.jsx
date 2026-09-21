@@ -12,11 +12,7 @@ import {
   ArrowRightLeft,
   Plus,
 } from "lucide-react";
-import {
-  getEnrollment,
-  getDuration,
-  openWhatsAppParentChat,
-} from "./classesUtils";
+import { getEnrollment, getDuration, openWhatsAppParentChat } from "./classesUtils";
 import StudentPaymentBadge from "./StudentPaymentBadge";
 
 export default function BatchCard({
@@ -35,16 +31,13 @@ export default function BatchCard({
 }) {
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [addStudentId, setAddStudentId] = useState("");
-  const [addDateJoined, setAddDateJoined] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [addDateJoined, setAddDateJoined] = useState(new Date().toISOString().slice(0, 10));
 
   const studentCount = (cls.studentIds || []).length;
   const capacity = Number(cls.maxCapacity) || 15;
   const quorum = Number(cls.minQuorum) || 4;
   const isUnderQuorum =
-    studentCount < quorum &&
-    (cls.status === "upcoming" || cls.status === "open" || !cls.status);
+    studentCount < quorum && (cls.status === "upcoming" || cls.status === "open" || !cls.status);
 
   const handleEnrollSubmit = async (e) => {
     e.preventDefault();
@@ -109,8 +102,8 @@ export default function BatchCard({
           </div>
 
           <p className="text-[11px] text-slate-400 font-medium">
-            Start Date: {cls.classStartDate || "Recorded"} · {studentCount}/{capacity}{" "}
-            Students Enrolled · Min Quorum: {quorum}
+            Start Date: {cls.classStartDate || "Recorded"} · {studentCount}/{capacity} Students
+            Enrolled · Min Quorum: {quorum}
           </p>
         </div>
 
@@ -159,8 +152,8 @@ export default function BatchCard({
             studentCount >= capacity
               ? "bg-rose-500"
               : studentCount / capacity >= 0.75
-              ? "bg-amber-500"
-              : "bg-indigo-600"
+                ? "bg-amber-500"
+                : "bg-indigo-600"
           }`}
           style={{
             width: `${Math.min(100, Math.round((studentCount / capacity) * 100))}%`,
@@ -205,12 +198,7 @@ export default function BatchCard({
                   {parentPhone && (
                     <button
                       onClick={() =>
-                        openWhatsAppParentChat(
-                          parentPhone,
-                          student?.displayName,
-                          cls,
-                          toast
-                        )
+                        openWhatsAppParentChat(parentPhone, student?.displayName, cls, toast)
                       }
                       title={`Chat with parent (+${normalizeWhatsAppNumber(parentPhone)})`}
                       className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-lg transition flex items-center gap-1 border border-emerald-200"
@@ -224,11 +212,10 @@ export default function BatchCard({
                     <button
                       onClick={() =>
                         onTransferStudent({
-                          student:
-                            student || {
-                              id: studentId,
-                              displayName: "Enrolled Student",
-                            },
+                          student: student || {
+                            id: studentId,
+                            displayName: "Enrolled Student",
+                          },
                           sourceClass: cls,
                         })
                       }
@@ -281,8 +268,7 @@ export default function BatchCard({
             {unenrolledStudents.map((stud) => (
               <option key={stud.id} value={stud.id}>
                 {stud.displayName}
-                {stud.currentLevel &&
-                stud.currentLevel !== (cls.classLevel || "warrior")
+                {stud.currentLevel && stud.currentLevel !== (cls.classLevel || "warrior")
                   ? ` (currently ${stud.currentLevel})`
                   : ""}
               </option>

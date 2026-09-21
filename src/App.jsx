@@ -29,19 +29,24 @@ function LoadingFallback() {
 
 function getInitials(name) {
   if (!name) return "?";
-  return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("");
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
 }
 
 // ── IDLE TIMEOUT CONFIG ──
 const IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-const WARNING_TIME = 30 * 1000;      // 30 seconds
+const WARNING_TIME = 30 * 1000; // 30 seconds
 
 function App() {
   const toast = useToast();
   const [user, setUser] = useState(null);
   const [role, setRole] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [nickname, setNickname] = useState(""); 
+  const [nickname, setNickname] = useState("");
   const [photoURL, setPhotoURL] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -79,7 +84,7 @@ function App() {
       setIdleWarning(false);
       clearTimeout(warningTimer);
       clearTimeout(logoutTimer);
-      
+
       warningTimer = setTimeout(() => setIdleWarning(true), IDLE_TIMEOUT - WARNING_TIME);
       logoutTimer = setTimeout(() => {
         handleLogout();
@@ -88,35 +93,41 @@ function App() {
 
     // Events to watch for activity
     const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
-    events.forEach(e => document.addEventListener(e, resetTimers));
-    
+    events.forEach((e) => document.addEventListener(e, resetTimers));
+
     resetTimers(); // Initial start
 
     return () => {
-      events.forEach(e => document.removeEventListener(e, resetTimers));
+      events.forEach((e) => document.removeEventListener(e, resetTimers));
       clearTimeout(warningTimer);
       clearTimeout(logoutTimer);
     };
   }, [user, handleLogout]);
 
-  const refreshProfile = useCallback(async (uid) => {
-    const userDoc = await getDoc(doc(db, "users", uid));
-    if (userDoc.exists()) {
-      const data = userDoc.data();
-      const status = data.status || "active";
-      if (status === "resigned" || status === "terminated") {
-        await handleLogout();
-        toast("Your account has been deactivated. Please contact academy administration.", "error");
-        return false;
+  const refreshProfile = useCallback(
+    async (uid) => {
+      const userDoc = await getDoc(doc(db, "users", uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        const status = data.status || "active";
+        if (status === "resigned" || status === "terminated") {
+          await handleLogout();
+          toast(
+            "Your account has been deactivated. Please contact academy administration.",
+            "error"
+          );
+          return false;
+        }
+        setRole(data.role || "student");
+        setDisplayName(data.displayName || "");
+        setNickname(data.nickname || data.displayName || "");
+        setPhotoURL(data.photoURL || "");
+        return true;
       }
-      setRole(data.role || "student");
-      setDisplayName(data.displayName || "");
-      setNickname(data.nickname || data.displayName || ""); 
-      setPhotoURL(data.photoURL || "");
       return true;
-    }
-    return true;
-  }, [toast, handleLogout]);
+    },
+    [toast, handleLogout]
+  );
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -129,7 +140,9 @@ function App() {
           }
         } catch (err) {
           console.error("Failed to load user profile:", err);
-          setProfileError(err.message || "Failed to load user profile. Please check your network connection.");
+          setProfileError(
+            err.message || "Failed to load user profile. Please check your network connection."
+          );
           setUser(currentUser);
         }
       } else {
@@ -189,8 +202,8 @@ function App() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-    } catch (err) { 
-      toast("Login Error: " + err.message, "error"); 
+    } catch (err) {
+      toast("Login Error: " + err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -278,21 +291,37 @@ function App() {
             {/* Top Right: User Profile Button & Sign Out */}
             <div className="flex items-center gap-3">
               <InstallButton variant="pill" showText={true} />
-              <button onClick={() => setProfileOpen(true)} className="flex items-center gap-2.5 text-left group min-w-0">
+              <button
+                onClick={() => setProfileOpen(true)}
+                className="flex items-center gap-2.5 text-left group min-w-0"
+              >
                 {photoURL ? (
-                  <img src={photoURL} alt="Profile" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border group-hover:ring-2 ring-[#1a3a8f] shrink-0" />
+                  <img
+                    src={photoURL}
+                    alt="Profile"
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border group-hover:ring-2 ring-[#1a3a8f] shrink-0"
+                  />
                 ) : (
                   <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1a3a8f] text-white flex items-center justify-center font-bold text-xs sm:text-sm group-hover:ring-2 ring-offset-1 ring-[#1a3a8f] shrink-0">
                     {getInitials(nickname || displayName)}
                   </div>
                 )}
                 <div className="hidden sm:block min-w-0">
-                  <h3 className="font-bold text-gray-800 text-xs sm:text-sm truncate max-w-[140px] md:max-w-[200px]">{nickname || displayName || user.email}</h3>
-                  <span className="text-[9px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded uppercase">{role}</span>
+                  <h3 className="font-bold text-gray-800 text-xs sm:text-sm truncate max-w-[140px] md:max-w-[200px]">
+                    {nickname || displayName || user.email}
+                  </h3>
+                  <span className="text-[9px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded uppercase">
+                    {role}
+                  </span>
                 </div>
               </button>
               <div className="h-6 w-px bg-slate-200 hidden sm:block" />
-              <button onClick={handleLogout} className="text-xs text-[#1a3a8f] hover:underline font-bold shrink-0 cursor-pointer">Logout</button>
+              <button
+                onClick={handleLogout}
+                className="text-xs text-[#1a3a8f] hover:underline font-bold shrink-0 cursor-pointer"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
@@ -323,7 +352,11 @@ function App() {
               aria-label="Open user profile"
             >
               {photoURL ? (
-                <img src={photoURL} alt="Profile" className="w-7 h-7 rounded-full object-cover border border-slate-200" />
+                <img
+                  src={photoURL}
+                  alt="Profile"
+                  className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                />
               ) : (
                 <div className="w-7 h-7 rounded-full bg-[#1a3a8f] text-white flex items-center justify-center font-extrabold text-[10px] shadow-2xs">
                   {getInitials(nickname || displayName)}
@@ -338,24 +371,38 @@ function App() {
               only the matching one is ever fetched for a given user */}
           <Suspense fallback={<LoadingFallback />}>
             {role === "admin" && (
-              <ErrorBoundary label="Admin dashboard"><AdminDashboard /></ErrorBoundary>
+              <ErrorBoundary label="Admin dashboard">
+                <AdminDashboard />
+              </ErrorBoundary>
             )}
             {role === "manager" && (
-              <ErrorBoundary label="Manager dashboard"><ManagerDashboard /></ErrorBoundary>
+              <ErrorBoundary label="Manager dashboard">
+                <ManagerDashboard />
+              </ErrorBoundary>
             )}
             {role === "instructor" && (
-              <ErrorBoundary label="Instructor dashboard"><InstructorDashboard /></ErrorBoundary>
+              <ErrorBoundary label="Instructor dashboard">
+                <InstructorDashboard />
+              </ErrorBoundary>
             )}
             {role === "frontoffice" && (
-              <ErrorBoundary label="Front Office dashboard"><FrontOfficeDashboard /></ErrorBoundary>
+              <ErrorBoundary label="Front Office dashboard">
+                <FrontOfficeDashboard />
+              </ErrorBoundary>
             )}
             {role === "marketing" && (
-              <ErrorBoundary label="Marketing dashboard"><MarketingDashboard /></ErrorBoundary>
+              <ErrorBoundary label="Marketing dashboard">
+                <MarketingDashboard />
+              </ErrorBoundary>
             )}
             {role === "officeboy" && (
-              <ErrorBoundary label="Office Boy dashboard"><OfficeBoyDashboard /></ErrorBoundary>
+              <ErrorBoundary label="Office Boy dashboard">
+                <OfficeBoyDashboard />
+              </ErrorBoundary>
             )}
-            {!["admin", "manager", "instructor", "marketing", "frontoffice", "officeboy"].includes(role) && (
+            {!["admin", "manager", "instructor", "marketing", "frontoffice", "officeboy"].includes(
+              role
+            ) && (
               <div className="bg-white p-6 rounded-xl border text-center text-gray-500 text-sm max-w-md mx-auto">
                 This account doesn't have dashboard access. Please contact your administrator.
               </div>
@@ -403,9 +450,14 @@ function App() {
           <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center border-2 border-amber-400 animate-pulse">
             <p className="text-4xl mb-4">💤</p>
             <h2 className="text-xl font-black text-slate-800">Are you still there?</h2>
-            <p className="text-slate-500 text-sm mt-2 mb-6 font-medium">You've been idle for a while. For security, you will be logged out in 30 seconds.</p>
-            <button 
-              onClick={() => { setIdleWarning(false); window.dispatchEvent(new Event("mousedown")); }} 
+            <p className="text-slate-500 text-sm mt-2 mb-6 font-medium">
+              You've been idle for a while. For security, you will be logged out in 30 seconds.
+            </p>
+            <button
+              onClick={() => {
+                setIdleWarning(false);
+                window.dispatchEvent(new Event("mousedown"));
+              }}
               className="w-full bg-[#1a3a8f] text-white p-3.5 rounded-xl font-bold hover:bg-[#122b6e] transition shadow-lg"
             >
               Yes, I'm still working!

@@ -1,12 +1,4 @@
-import {
-  BookOpen,
-  Plus,
-  ArrowRight,
-  Calendar,
-  MapPin,
-  Edit2,
-  UserPlus,
-} from "lucide-react";
+import { BookOpen, Plus, ArrowRight, Calendar, MapPin, Edit2, UserPlus } from "lucide-react";
 import { LevelBadge } from "../shared";
 import BatchStatusPill from "./BatchStatusPill";
 
@@ -116,9 +108,7 @@ export default function BatchesOverviewWidget({
                     <span>{batch.classRoom || "Main Campus"}</span>
                   </span>
                   <span>·</span>
-                  <span className="text-slate-600 font-semibold">
-                    {batch.instructorName}
-                  </span>
+                  <span className="text-slate-600 font-semibold">{batch.instructorName}</span>
                 </div>
               </div>
 
@@ -134,8 +124,8 @@ export default function BatchesOverviewWidget({
                         batch.seatsAvailable === 0
                           ? "bg-rose-500"
                           : batch.seatsAvailable <= 3
-                          ? "bg-amber-500"
-                          : "bg-emerald-500"
+                            ? "bg-amber-500"
+                            : "bg-emerald-500"
                       }`}
                       style={{ width: `${batch.occupancyRate}%` }}
                     />

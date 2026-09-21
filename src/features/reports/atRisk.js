@@ -25,7 +25,8 @@ export function isStudentAtRisk(student, referenceTime = Date.now()) {
   const isActive = (student.status || "active") === "active" && !student.isArchived;
   if (!isActive) return false;
 
-  const nowMs = typeof referenceTime === "number" ? referenceTime : new Date(referenceTime).getTime();
+  const nowMs =
+    typeof referenceTime === "number" ? referenceTime : new Date(referenceTime).getTime();
   const thresholdMs = nowMs - AT_RISK_THRESHOLD_DAYS * 86400000;
 
   // Must have joined over 14 days ago (if joinedDate is known)

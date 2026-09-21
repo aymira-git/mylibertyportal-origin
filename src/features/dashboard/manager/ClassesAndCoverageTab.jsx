@@ -12,7 +12,10 @@ export function ClassesAndCoverageTab({ classes, users, currentUserId }) {
     const map = new Map();
     users.forEach((u) => {
       if (u.role === "instructor" || u.role === "admin") {
-        map.set(u.id, u.displayName || `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email);
+        map.set(
+          u.id,
+          u.displayName || `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email
+        );
       }
     });
     return map;
@@ -24,7 +27,9 @@ export function ClassesAndCoverageTab({ classes, users, currentUserId }) {
       const hasRoom = Boolean(c.classRoom && c.classRoom !== "N/A" && c.classRoom.trim() !== "");
       return {
         ...c,
-        instructorName: c.instructorId ? instructorMap.get(c.instructorId) || "Unknown Staff" : null,
+        instructorName: c.instructorId
+          ? instructorMap.get(c.instructorId) || "Unknown Staff"
+          : null,
         hasInstructor,
         hasRoom,
         studentCount: c.studentIds?.length || 0,
@@ -141,7 +146,9 @@ export function ClassesAndCoverageTab({ classes, users, currentUserId }) {
                 <p className="text-2xl font-black text-slate-800 mt-1">{totalClasses}</p>
               </div>
               <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
-                <p className="text-[10px] font-bold uppercase text-emerald-700">Instructor Coverage</p>
+                <p className="text-[10px] font-bold uppercase text-emerald-700">
+                  Instructor Coverage
+                </p>
                 <p className="text-2xl font-black text-emerald-800 mt-1">
                   {totalClasses > 0 ? Math.round((staffedClasses / totalClasses) * 100) : 0}%
                 </p>
@@ -215,7 +222,9 @@ export function ClassesAndCoverageTab({ classes, users, currentUserId }) {
                       <tr key={cls.id} className="hover:bg-slate-50/80 transition">
                         <td className="p-3.5">
                           <p className="font-bold text-slate-800 text-sm">{cls.className}</p>
-                          <span className="text-[10px] text-slate-400">ID: {cls.id.slice(0, 8)}...</span>
+                          <span className="text-[10px] text-slate-400">
+                            ID: {cls.id.slice(0, 8)}...
+                          </span>
                         </td>
                         <td className="p-3.5">
                           <LevelBadge level={cls.classLevel || "warrior"} />
@@ -224,7 +233,9 @@ export function ClassesAndCoverageTab({ classes, users, currentUserId }) {
                           {cls.hasInstructor ? (
                             <div className="flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                              <span className="font-semibold text-slate-700">{cls.instructorName}</span>
+                              <span className="font-semibold text-slate-700">
+                                {cls.instructorName}
+                              </span>
                             </div>
                           ) : (
                             <span className="inline-flex items-center gap-1 font-bold text-[10px] uppercase bg-rose-100 text-rose-800 px-2 py-0.5 rounded border border-rose-200">
@@ -234,7 +245,8 @@ export function ClassesAndCoverageTab({ classes, users, currentUserId }) {
                         </td>
                         <td className="p-3.5">
                           <p className="font-medium text-slate-700">
-                            {cls.schedule || `${cls.classDay || "Days unset"} @ ${cls.startTime || "--"} - ${cls.endTime || "--"}`}
+                            {cls.schedule ||
+                              `${cls.classDay || "Days unset"} @ ${cls.startTime || "--"} - ${cls.endTime || "--"}`}
                           </p>
                         </td>
                         <td className="p-3.5">

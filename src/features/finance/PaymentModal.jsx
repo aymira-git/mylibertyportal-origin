@@ -11,10 +11,7 @@ import {
   useToast,
   useConfirm,
 } from "../shared";
-import {
-  normalizeWhatsAppNumber,
-  buildWhatsAppReceiptMessage,
-} from "./receiptMessages";
+import { normalizeWhatsAppNumber, buildWhatsAppReceiptMessage } from "./receiptMessages";
 import { fetchPaymentHistory, recordPayment, markPaymentPending } from "./paymentsRepository";
 import RecordPaymentTab from "./RecordPaymentTab";
 import PaymentHistoryTab from "./PaymentHistoryTab";
@@ -32,7 +29,8 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const existingHealth = getPaymentHealthStatus(student.paidUntil);
-  const hasFutureCoverage = existingHealth.status === "active" || existingHealth.status === "due_soon";
+  const hasFutureCoverage =
+    existingHealth.status === "active" || existingHealth.status === "due_soon";
   const parsedPaidUntil = student.paidUntil ? parseISO(student.paidUntil) : null;
   const isValidPaidUntil = parsedPaidUntil && isValid(parsedPaidUntil);
   const nextDayAfterExpiry = isValidPaidUntil
@@ -40,7 +38,10 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
     : todayStr;
 
   const [selectedPlan, setSelectedPlan] = useState(() => {
-    if (student.paymentPlan && (PAYMENT_PLANS[student.paymentPlan] || student.paymentPlan === "custom")) {
+    if (
+      student.paymentPlan &&
+      (PAYMENT_PLANS[student.paymentPlan] || student.paymentPlan === "custom")
+    ) {
       return student.paymentPlan;
     }
     return "monthly";
@@ -50,9 +51,12 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
   const [customStartDate, setCustomStartDate] = useState(todayStr);
   const [customEndDate, setCustomEndDate] = useState("");
 
-  const effectiveStartDate = selectedPlan === "custom"
-    ? customStartDate
-    : (hasFutureCoverage && startDateMode === "extend" ? nextDayAfterExpiry : todayStr);
+  const effectiveStartDate =
+    selectedPlan === "custom"
+      ? customStartDate
+      : hasFutureCoverage && startDateMode === "extend"
+        ? nextDayAfterExpiry
+        : todayStr;
 
   const pricing = useMemo(() => {
     return calculatePlanPricing(selectedPlan, DEFAULT_BASE_MONTHLY_RATE);
@@ -84,7 +88,7 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
   const handleStartDateModeChange = (mode) => {
     setStartDateMode(mode);
     if (selectedPlan !== "custom") {
-      const start = (mode === "extend" && hasFutureCoverage) ? nextDayAfterExpiry : todayStr;
+      const start = mode === "extend" && hasFutureCoverage ? nextDayAfterExpiry : todayStr;
       setPeriod(calculateCoveragePeriod(start, pricing.months));
     }
   };
@@ -122,7 +126,10 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
   const handleRecordPayment = async (e) => {
     e.preventDefault();
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      toast("Cannot record payment while offline. Please connect to the internet to prevent database discrepancies.", "error");
+      toast(
+        "Cannot record payment while offline. Please connect to the internet to prevent database discrepancies.",
+        "error"
+      );
       return;
     }
     if (!amount || amount <= 0) {
@@ -200,7 +207,12 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
       toast("Cannot update payment status while offline. Please connect to the internet.", "error");
       return;
     }
-    if (!(await confirm(`Mark ${student.displayName}'s payment status as Pending for the next period?`))) return;
+    if (
+      !(await confirm(
+        `Mark ${student.displayName}'s payment status as Pending for the next period?`
+      ))
+    )
+      return;
     try {
       await markPaymentPending(student.id);
       if (onPaymentUpdated) onPaymentUpdated();
@@ -217,7 +229,10 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
     const message = buildWhatsAppReceiptMessage(rcp);
 
     if (!formatted) {
-      toast("No valid phone number found for parent or student. Please update contact information first.", "error");
+      toast(
+        "No valid phone number found for parent or student. Please update contact information first.",
+        "error"
+      );
       return;
     }
 
@@ -232,7 +247,6 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 pt-safe pb-safe overflow-y-auto overscroll-contain">
       <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[90vh]">
-        
         {/* Modal Header */}
         <div className="bg-[#1a3a8f] text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -241,7 +255,9 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
             </div>
             <div>
               <h2 className="text-base font-bold leading-tight">Student Payment Center</h2>
-              <p className="text-xs text-white/80">{student.displayName} (ID: {student.id})</p>
+              <p className="text-xs text-white/80">
+                {student.displayName} (ID: {student.id})
+              </p>
             </div>
           </div>
           <button
@@ -351,7 +367,6 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated }) {
             Close
           </button>
         </div>
-
       </div>
     </div>
   );

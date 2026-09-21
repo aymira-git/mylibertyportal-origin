@@ -88,7 +88,9 @@ export default function StudentRosterMobileList({
                         ))}
                       </select>
                     ) : (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge.tone}`}
+                      >
                         {statusBadge.label}
                       </span>
                     )}
@@ -144,10 +146,14 @@ export default function StudentRosterMobileList({
                   <p className="text-[10px] text-slate-500 font-medium whitespace-nowrap">
                     Until {s.paidUntil}
                     {health.remainingDays !== null && health.status === "due_soon" && (
-                      <span className="text-amber-600 font-semibold ml-1">({health.remainingDays}d)</span>
+                      <span className="text-amber-600 font-semibold ml-1">
+                        ({health.remainingDays}d)
+                      </span>
                     )}
                     {health.remainingDays !== null && health.status === "expired" && (
-                      <span className="text-rose-600 font-semibold ml-1">({Math.abs(health.remainingDays)}d ago)</span>
+                      <span className="text-rose-600 font-semibold ml-1">
+                        ({Math.abs(health.remainingDays)}d ago)
+                      </span>
                     )}
                   </p>
                 ) : s.lastPaymentPeriod ? (
@@ -180,11 +186,15 @@ export default function StudentRosterMobileList({
                 <span className="block text-[10px] font-bold text-slate-400 uppercase">Parent</span>
                 <span className="font-semibold text-slate-800">{s.parentName || "—"}</span>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <p className="text-[11px] text-slate-500 truncate">{s.parentPhone || "No contact"}</p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {s.parentPhone || "No contact"}
+                  </p>
                   {s.parentPhone && (
                     <button
                       type="button"
-                      onClick={() => openWhatsAppParentChat(s.parentPhone, s.parentName, s.displayName)}
+                      onClick={() =>
+                        openWhatsAppParentChat(s.parentPhone, s.parentName, s.displayName)
+                      }
                       title="Chat with parent on WhatsApp"
                       className="p-1 rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition shrink-0 cursor-pointer"
                     >
@@ -194,14 +204,18 @@ export default function StudentRosterMobileList({
                 </div>
               </div>
               <div>
-                <span className="block text-[10px] font-bold text-slate-400 uppercase">Education / Joined</span>
+                <span className="block text-[10px] font-bold text-slate-400 uppercase">
+                  Education / Joined
+                </span>
                 <span className="font-semibold text-slate-800 truncate block">
                   {s.educationLevel || s.schoolOrJob || "—"}
                 </span>
                 <p className="text-[11px] text-slate-500">{s.effectiveJoinedDate || "—"}</p>
               </div>
               <div className="col-span-2 bg-slate-50/80 p-2.5 rounded-xl">
-                <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Enrolled Class</span>
+                <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                  Enrolled Class
+                </span>
                 {studentClasses.length === 0 ? (
                   !readOnly ? (
                     <button

@@ -9,7 +9,7 @@ import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from "fireb
 export async function fetchMaterialsFor(uid) {
   const q = query(collection(db, "materials"), where("createdBy", "==", uid));
   const snap = await getDocs(q);
-  const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   return list;
 }

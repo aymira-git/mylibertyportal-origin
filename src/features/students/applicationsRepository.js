@@ -58,7 +58,7 @@ export async function approveApplication({
     }
 
     // 3. Determine final academic level (batch level wins if class chosen)
-    const finalLevel = classId && classData?.classLevel ? classData.classLevel : (level || "warrior");
+    const finalLevel = classId && classData?.classLevel ? classData.classLevel : level || "warrior";
     const today = todayWita();
     const now = new Date().toISOString();
 

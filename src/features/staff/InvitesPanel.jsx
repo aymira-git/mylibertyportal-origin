@@ -32,7 +32,11 @@ const ROLE_BADGES = {
 
 function getExpiryInfo(expiresAt) {
   if (!expiresAt) {
-    return { label: "No expiry", tone: "bg-slate-50 text-slate-500 border-slate-200", isExpired: false };
+    return {
+      label: "No expiry",
+      tone: "bg-slate-50 text-slate-500 border-slate-200",
+      isExpired: false,
+    };
   }
   const expMillis = Number(expiresAt) || new Date(expiresAt).getTime();
   const diffMillis = expMillis - Date.now();
@@ -42,9 +46,17 @@ function getExpiryInfo(expiresAt) {
   }
   const diffDays = Math.ceil(diffMillis / (1000 * 60 * 60 * 24));
   if (diffDays <= 1) {
-    return { label: "Expires today", tone: "bg-amber-50 text-amber-700 border-amber-200", isExpired: false };
+    return {
+      label: "Expires today",
+      tone: "bg-amber-50 text-amber-700 border-amber-200",
+      isExpired: false,
+    };
   }
-  return { label: `Expires in ${diffDays}d`, tone: "bg-emerald-50 text-emerald-700 border-emerald-200", isExpired: false };
+  return {
+    label: `Expires in ${diffDays}d`,
+    tone: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    isExpired: false,
+  };
 }
 
 function buildWhatsAppInviteMessage(invite, origin) {
@@ -57,12 +69,7 @@ function buildWhatsAppInviteMessage(invite, origin) {
   );
 }
 
-export default function InvitesPanel({
-  invites = [],
-  users = [],
-  onCreateInvite,
-  onDeleteInvite,
-}) {
+export default function InvitesPanel({ invites = [], users = [], onCreateInvite, onDeleteInvite }) {
   const toast = useToast();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("instructor");
@@ -145,13 +152,17 @@ export default function InvitesPanel({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Generate secure 7-day onboarding links for new instructors, managers, and operational staff.
+            Generate secure 7-day onboarding links for new instructors, managers, and operational
+            staff.
           </p>
         </div>
       </div>
 
       {/* Creation Form */}
-      <form onSubmit={handleSubmit} className="bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/80 space-y-3">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/80 space-y-3"
+      >
         <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
           <UserPlus className="w-3.5 h-3.5 text-[#1a3a8f]" />
           <span>Generate New Invitation</span>
@@ -215,7 +226,9 @@ export default function InvitesPanel({
           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-2.5 rounded-xl flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
             <span>
-              <strong>Note:</strong> An account with this email is already registered as <strong>{existingUser.displayName || existingUser.email}</strong> ({existingUser.role}). If they re-register, Firebase Auth will require their account to be cleared first.
+              <strong>Note:</strong> An account with this email is already registered as{" "}
+              <strong>{existingUser.displayName || existingUser.email}</strong> ({existingUser.role}
+              ). If they re-register, Firebase Auth will require their account to be cleared first.
             </span>
           </div>
         )}
@@ -224,7 +237,8 @@ export default function InvitesPanel({
           <div className="bg-blue-50 border border-blue-200 text-blue-800 text-xs p-2.5 rounded-xl flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-blue-600" />
             <span>
-              <strong>Note:</strong> An active pending invitation already exists for this email. Generating another link will create an additional token.
+              <strong>Note:</strong> An active pending invitation already exists for this email.
+              Generating another link will create an additional token.
             </span>
           </div>
         )}
@@ -300,10 +314,14 @@ export default function InvitesPanel({
                       <p className="font-extrabold text-slate-900 text-xs sm:text-sm truncate">
                         {inv.email}
                       </p>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${roleConfig.tone}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${roleConfig.tone}`}
+                      >
                         {roleConfig.label}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${expiry.tone}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${expiry.tone}`}
+                      >
                         {expiry.label}
                       </span>
                     </div>

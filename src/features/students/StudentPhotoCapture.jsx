@@ -57,20 +57,24 @@ export default function StudentPhotoCapture({ photoURL, onPhotoChange }) {
     stopCamera();
 
     // Convert canvas to blob & upload
-    canvas.toBlob(async (blob) => {
-      if (!blob) return;
-      setUploading(true);
-      try {
-        const file = new File([blob], `student-snap-${Date.now()}.jpg`, { type: "image/jpeg" });
-        const url = await uploadToCloudinary(file);
-        onPhotoChange(url);
-      } catch (err) {
-        console.error("Photo upload failed:", err);
-        alert("Failed to upload photo: " + (err.message || "Unknown error"));
-      } finally {
-        setUploading(false);
-      }
-    }, "image/jpeg", 0.9);
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) return;
+        setUploading(true);
+        try {
+          const file = new File([blob], `student-snap-${Date.now()}.jpg`, { type: "image/jpeg" });
+          const url = await uploadToCloudinary(file);
+          onPhotoChange(url);
+        } catch (err) {
+          console.error("Photo upload failed:", err);
+          alert("Failed to upload photo: " + (err.message || "Unknown error"));
+        } finally {
+          setUploading(false);
+        }
+      },
+      "image/jpeg",
+      0.9
+    );
   };
 
   const handleFileChange = async (e) => {

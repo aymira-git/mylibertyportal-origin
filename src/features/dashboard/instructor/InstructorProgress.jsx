@@ -63,7 +63,10 @@ export default function InstructorProgress() {
           <Info className="w-4 h-4 text-amber-600" />
           <span>No Assigned Teaching Classes</span>
         </div>
-        <p>No active cohorts are assigned to your instructor profile. Please contact the front office or academic coordinator to assign classes.</p>
+        <p>
+          No active cohorts are assigned to your instructor profile. Please contact the front office
+          or academic coordinator to assign classes.
+        </p>
       </div>
     );
   }
@@ -127,7 +130,9 @@ export default function InstructorProgress() {
           <GraduationCap className="w-8 h-8 text-slate-300 mx-auto" />
           <p className="font-bold text-slate-700 text-sm">No Recorded Evaluations Yet</p>
           <p className="text-xs text-slate-400">
-            {searchFilter ? "No evaluations match your search query." : "Evaluations submitted through the form will appear here with full rubric breakdown."}
+            {searchFilter
+              ? "No evaluations match your search query."
+              : "Evaluations submitted through the form will appear here with full rubric breakdown."}
           </p>
         </div>
       ) : (
@@ -140,22 +145,29 @@ export default function InstructorProgress() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-extrabold text-slate-900 text-base">{report.studentName || "Student"}</p>
+                    <p className="font-extrabold text-slate-900 text-base">
+                      {report.studentName || "Student"}
+                    </p>
                     {report.level && <LevelBadge level={report.level} />}
                     <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
                       {report.className}
                     </span>
                   </div>
                   <p className="text-slate-400 text-xs font-medium">
-                    Evaluated: {report.examDate ? new Date(report.examDate).toLocaleDateString() : "Recent"}
+                    Evaluated:{" "}
+                    {report.examDate ? new Date(report.examDate).toLocaleDateString() : "Recent"}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 px-3.5 py-1.5 rounded-2xl self-start sm:self-auto">
                   <Award className="w-4 h-4 text-[#1a3a8f]" />
                   <div>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block leading-none">Score</span>
-                    <span className="text-sm font-black text-[#1a3a8f]">{report.overallScore || "—"} / 100</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block leading-none">
+                      Score
+                    </span>
+                    <span className="text-sm font-black text-[#1a3a8f]">
+                      {report.overallScore || "—"} / 100
+                    </span>
                   </div>
                 </div>
               </div>
@@ -164,25 +176,35 @@ export default function InstructorProgress() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-xs">
                 <div className="bg-slate-50 p-2 rounded-xl">
                   <span className="text-[10px] text-slate-400 font-bold block">Pronunciation</span>
-                  <span className="font-extrabold text-slate-800">{report.pronunciationScore ?? "—"}</span>
+                  <span className="font-extrabold text-slate-800">
+                    {report.pronunciationScore ?? "—"}
+                  </span>
                 </div>
                 <div className="bg-slate-50 p-2 rounded-xl">
                   <span className="text-[10px] text-slate-400 font-bold block">Fluency</span>
-                  <span className="font-extrabold text-slate-800">{report.fluencyScore ?? "—"}</span>
+                  <span className="font-extrabold text-slate-800">
+                    {report.fluencyScore ?? "—"}
+                  </span>
                 </div>
                 <div className="bg-slate-50 p-2 rounded-xl">
                   <span className="text-[10px] text-slate-400 font-bold block">Vocabulary</span>
-                  <span className="font-extrabold text-slate-800">{report.vocabularyScore ?? "—"}</span>
+                  <span className="font-extrabold text-slate-800">
+                    {report.vocabularyScore ?? "—"}
+                  </span>
                 </div>
                 <div className="bg-slate-50 p-2 rounded-xl">
                   <span className="text-[10px] text-slate-400 font-bold block">Comprehension</span>
-                  <span className="font-extrabold text-slate-800">{report.comprehensionScore ?? "—"}</span>
+                  <span className="font-extrabold text-slate-800">
+                    {report.comprehensionScore ?? "—"}
+                  </span>
                 </div>
               </div>
 
               {report.notes && (
                 <div className="p-3 bg-slate-50/60 rounded-xl text-xs text-slate-600 font-medium">
-                  <span className="font-bold text-slate-500 block mb-0.5">Instructor Feedback:</span>
+                  <span className="font-bold text-slate-500 block mb-0.5">
+                    Instructor Feedback:
+                  </span>
                   <p>{report.notes}</p>
                 </div>
               )}

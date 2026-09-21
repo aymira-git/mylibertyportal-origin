@@ -4,10 +4,7 @@ import { ScanLine, Sparkles } from "lucide-react";
  * Standardized sidebar launcher button for Attendance Kiosk.
  * Rendered at the top of the sidebar via extraSidebarContent in DashboardShell.
  */
-export default function KioskSidebarButton({
-  onClick,
-  label = "Attendance Kiosk",
-}) {
+export default function KioskSidebarButton({ onClick, label = "Attendance Kiosk" }) {
   return (
     <button
       onClick={onClick}

@@ -7,15 +7,14 @@ const LEAVE_TYPES = [
   { id: "sakit", label: "Sakit (Sick Leave)", desc: "Requires medical/doctor note" },
   { id: "izin", label: "Izin (Permitted Absence)", desc: "Personal or family emergency" },
   { id: "cuti", label: "Cuti (Annual / Scheduled Leave)", desc: "Pre-approved vacation/break" },
-  { id: "dinas_luar", label: "Dinas Luar (Official Duty)", desc: "Off-site course competition/event" },
+  {
+    id: "dinas_luar",
+    label: "Dinas Luar (Official Duty)",
+    desc: "Off-site course competition/event",
+  },
 ];
 
-export default function StaffLeaveModal({
-  staff = [],
-  actor,
-  onClose,
-  onSuccess,
-}) {
+export default function StaffLeaveModal({ staff = [], actor, onClose, onSuccess }) {
   const toast = useToast();
   const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -74,9 +73,7 @@ export default function StaffLeaveModal({
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 text-base">
-                Log Staff Absence / Leave
-              </h3>
+              <h3 className="font-extrabold text-slate-900 text-base">Log Staff Absence / Leave</h3>
               <p className="text-xs text-slate-500 font-medium">
                 Official absence recording (Sakit, Izin, Cuti, Dinas Luar)
               </p>
@@ -138,9 +135,7 @@ export default function StaffLeaveModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="font-bold text-slate-700 uppercase text-[10px]">
-                Start Date *
-              </label>
+              <label className="font-bold text-slate-700 uppercase text-[10px]">Start Date *</label>
               <input
                 type="date"
                 value={startDate}
@@ -151,9 +146,7 @@ export default function StaffLeaveModal({
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-slate-700 uppercase text-[10px]">
-                End Date *
-              </label>
+              <label className="font-bold text-slate-700 uppercase text-[10px]">End Date *</label>
               <input
                 type="date"
                 value={endDate}
@@ -165,9 +158,7 @@ export default function StaffLeaveModal({
           </div>
 
           <div className="space-y-1">
-            <label className="font-bold text-slate-700 uppercase text-[10px]">
-              Day Portion
-            </label>
+            <label className="font-bold text-slate-700 uppercase text-[10px]">Day Portion</label>
             <div className="flex gap-2">
               {[
                 { id: "full", label: "Full Day" },
@@ -206,7 +197,8 @@ export default function StaffLeaveModal({
           <div className="flex items-center gap-1.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 text-[11px] text-slate-500">
             <AlertCircle className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
             <span>
-              Approved leave exempts instructors from unexcused absence calculations in monthly reports.
+              Approved leave exempts instructors from unexcused absence calculations in monthly
+              reports.
             </span>
           </div>
 

@@ -43,7 +43,8 @@ export default function IosInstallModal({ isOpen, onClose }) {
             </div>
             <div>
               <p className="font-bold text-slate-900 flex items-center gap-1.5">
-                Select &quot;Add to Home Screen&quot; <PlusSquare className="w-3.5 h-3.5 text-[#1a3a8f] inline" />
+                Select &quot;Add to Home Screen&quot;{" "}
+                <PlusSquare className="w-3.5 h-3.5 text-[#1a3a8f] inline" />
               </p>
               <p className="text-slate-500 text-[11px] mt-0.5">
                 Scroll down the action list to find the option.

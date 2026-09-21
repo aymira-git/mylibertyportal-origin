@@ -37,8 +37,11 @@ export function StaffDirectivesTab({
               <span>Firestore Rules Deployment Required for Live Cloud Sync</span>
             </div>
             <p className="leading-relaxed">
-              Your live Firebase project currently restricts Manager access on the <code>todos</code> collection.
-              To enable cloud-synced directives across all devices, deploy the updated rules with <code>firebase deploy --only firestore:rules</code> or update the <code>/todos</code> rule in your Firebase Console. Local directives work during your current session.
+              Your live Firebase project currently restricts Manager access on the{" "}
+              <code>todos</code> collection. To enable cloud-synced directives across all devices,
+              deploy the updated rules with <code>firebase deploy --only firestore:rules</code> or
+              update the <code>/todos</code> rule in your Firebase Console. Local directives work
+              during your current session.
             </p>
           </div>
         )}

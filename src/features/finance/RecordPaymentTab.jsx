@@ -48,10 +48,10 @@ export default function RecordPaymentTab({
                 existingHealth.status === "active"
                   ? "bg-emerald-100 text-emerald-800"
                   : existingHealth.status === "due_soon"
-                  ? "bg-amber-100 text-amber-800"
-                  : existingHealth.status === "expired"
-                  ? "bg-rose-100 text-rose-800"
-                  : "bg-slate-200 text-slate-700"
+                    ? "bg-amber-100 text-amber-800"
+                    : existingHealth.status === "expired"
+                      ? "bg-rose-100 text-rose-800"
+                      : "bg-slate-200 text-slate-700"
               }`}
             >
               {existingHealth.label}
@@ -61,7 +61,11 @@ export default function RecordPaymentTab({
                 Valid through: <strong>{student.paidUntil}</strong>
                 {existingHealth.remainingDays !== null && (
                   <span className="ml-1 text-slate-400 text-[10px]">
-                    ({existingHealth.remainingDays > 0 ? `${existingHealth.remainingDays}d left` : "Expired"})
+                    (
+                    {existingHealth.remainingDays > 0
+                      ? `${existingHealth.remainingDays}d left`
+                      : "Expired"}
+                    )
                   </span>
                 )}
               </span>
@@ -116,9 +120,7 @@ export default function RecordPaymentTab({
                 {p.discountPercent > 0 && (
                   <span
                     className={`text-[9px] px-1 py-0.2 rounded font-black mt-0.5 ${
-                      isSelected
-                        ? "bg-amber-400 text-slate-950"
-                        : "bg-amber-100 text-amber-800"
+                      isSelected ? "bg-amber-400 text-slate-950" : "bg-amber-100 text-amber-800"
                     }`}
                   >
                     Save {p.discountPercent}%
@@ -148,9 +150,7 @@ export default function RecordPaymentTab({
             </span>
             <span
               className={`text-[9px] px-1 py-0.2 rounded font-black mt-0.5 ${
-                selectedPlan === "custom"
-                  ? "bg-white/20 text-white"
-                  : "bg-slate-100 text-slate-500"
+                selectedPlan === "custom" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
               }`}
             >
               Flexible
@@ -215,9 +215,7 @@ export default function RecordPaymentTab({
             </span>
           </div>
           <div className="text-right">
-            <span className="text-slate-400 font-bold block text-[10px] uppercase">
-              Expires On
-            </span>
+            <span className="text-slate-400 font-bold block text-[10px] uppercase">Expires On</span>
             <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200 text-xs">
               {calculateExpiryDate(effectiveStartDate, pricing.months)}
             </span>
@@ -265,7 +263,8 @@ export default function RecordPaymentTab({
               className="w-full p-2.5 border rounded-xl font-semibold text-slate-800 bg-white"
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              Leave blank if this is an ad-hoc payment without automatic expiry tracking (student shows &ldquo;No Plan Set&rdquo; on roster).
+              Leave blank if this is an ad-hoc payment without automatic expiry tracking (student
+              shows &ldquo;No Plan Set&rdquo; on roster).
             </p>
           </div>
         </div>
@@ -279,7 +278,8 @@ export default function RecordPaymentTab({
           </label>
           {selectedPlan !== "custom" && pricing.discountAmount > 0 && (
             <span className="text-[11px] text-emerald-700 font-bold">
-              Includes {pricing.discountPercent}% bundle discount ({formatIDR(pricing.discountAmount)})
+              Includes {pricing.discountPercent}% bundle discount (
+              {formatIDR(pricing.discountAmount)})
             </span>
           )}
         </div>
@@ -375,7 +375,8 @@ export default function RecordPaymentTab({
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs font-semibold flex items-center gap-2">
           <span>⚠️</span>
           <span>
-            Offline Mode: Payment processing is paused to protect database records. Reconnect to internet to save.
+            Offline Mode: Payment processing is paused to protect database records. Reconnect to
+            internet to save.
           </span>
         </div>
       )}

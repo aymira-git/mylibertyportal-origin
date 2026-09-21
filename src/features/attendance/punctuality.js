@@ -8,13 +8,20 @@ const EARLY_CUTOFF_MINUTES = 15;
 
 // Maps common day names and abbreviations to JS Date.getDay() numbers.
 const DAY_NAME_TO_NUM = {
-  "mon": 1, "monday": 1,
-  "tue": 2, "tuesday": 2,
-  "wed": 3, "wednesday": 3,
-  "thu": 4, "thursday": 4,
-  "fri": 5, "friday": 5,
-  "sat": 6, "saturday": 6,
-  "sun": 0, "sunday": 0,
+  mon: 1,
+  monday: 1,
+  tue: 2,
+  tuesday: 2,
+  wed: 3,
+  wednesday: 3,
+  thu: 4,
+  thursday: 4,
+  fri: 5,
+  friday: 5,
+  sat: 6,
+  saturday: 6,
+  sun: 0,
+  sunday: 0,
 };
 
 // Known canonical patterns from the class frequency selector
@@ -25,7 +32,7 @@ const KNOWN_CLASS_DAYS = {
   "sat only": [6],
   "sun only": [0],
   "fri only": [5],
-  "everyday": [6, 0, 1, 2, 3, 4], // School week: Saturday to Thursday (Friday is off)
+  everyday: [6, 0, 1, 2, 3, 4], // School week: Saturday to Thursday (Friday is off)
 };
 
 /**
@@ -54,9 +61,11 @@ function parseClassDays(dayString) {
   // Split by common delimiters: /, ,, or spaces
   const parts = clean.split(/[/,]/);
   const nums = parts
-    .map(p => p.trim().replace(/\s+only$/i, ""))
-    .map(p => (DAY_NAME_TO_NUM[p] !== undefined ? DAY_NAME_TO_NUM[p] : DAY_NAME_TO_NUM[p.slice(0, 3)]))
-    .filter(n => n !== undefined);
+    .map((p) => p.trim().replace(/\s+only$/i, ""))
+    .map((p) =>
+      DAY_NAME_TO_NUM[p] !== undefined ? DAY_NAME_TO_NUM[p] : DAY_NAME_TO_NUM[p.slice(0, 3)]
+    )
+    .filter((n) => n !== undefined);
 
   return nums.length > 0 ? Array.from(new Set(nums)) : null;
 }
@@ -64,7 +73,7 @@ function parseClassDays(dayString) {
 // Which of an instructor's classes fall on today's weekday in WITA.
 export function getTodaysClasses(classes) {
   const todayWeekday = getTodayWitaWeekday();
-  return classes.filter(cls => {
+  return classes.filter((cls) => {
     const activeDays = parseClassDays(cls.classDay);
     // If it's a Private class, we always show it in the Kiosk so the
     // instructor can select it regardless of the weekday.
@@ -76,12 +85,18 @@ export function getTodaysClasses(classes) {
 // Computes on-time/late status for a clock-in happening RIGHT NOW.
 export function getInstantPunctuality(classRecord, clockInDate) {
   if (!classRecord?.startTime || !validateHHmm(classRecord.startTime)) {
-    return { status: "Unscheduled", scheduledStart: null, requiredArrival: null, minutesEarlyOrLate: null };
+    return {
+      status: "Unscheduled",
+      scheduledStart: null,
+      requiredArrival: null,
+      minutesEarlyOrLate: null,
+    };
   }
   const [hours, minutes] = classRecord.startTime.split(":").map(Number);
   const w = new Date(clockInDate.getTime() + WITA_OFFSET_MS);
   const scheduledStartUtcMs =
-    Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate(), hours, minutes, 0, 0) - WITA_OFFSET_MS;
+    Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate(), hours, minutes, 0, 0) -
+    WITA_OFFSET_MS;
   const scheduledStart = new Date(scheduledStartUtcMs);
   const requiredArrival = new Date(scheduledStart.getTime() - EARLY_CUTOFF_MINUTES * 60000);
   const minutesEarlyOrLate = Math.round((scheduledStart - clockInDate) / 60000);
@@ -104,24 +119,46 @@ function getDatesInMonthForWeekdays(year, month, weekdays) {
 }
 
 function sameCalendarDay(a, b) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 
-function findClosestShift(shifts, classId, sessionDate, scheduledStart, usedShiftIds, allowLegacyFallback) {
-  const taggedSameDay = shifts.filter(s => s.classId === classId
-    && s.clockIn
-    && sameCalendarDay(new Date(s.clockIn), sessionDate)
-    && !usedShiftIds.has(s.id));
-  const legacySameDay = allowLegacyFallback ? shifts.filter(s => !s.classId
-    && s.clockIn
-    && sameCalendarDay(new Date(s.clockIn), sessionDate)
-    && !usedShiftIds.has(s.id)) : [];
+function findClosestShift(
+  shifts,
+  classId,
+  sessionDate,
+  scheduledStart,
+  usedShiftIds,
+  allowLegacyFallback
+) {
+  const taggedSameDay = shifts.filter(
+    (s) =>
+      s.classId === classId &&
+      s.clockIn &&
+      sameCalendarDay(new Date(s.clockIn), sessionDate) &&
+      !usedShiftIds.has(s.id)
+  );
+  const legacySameDay = allowLegacyFallback
+    ? shifts.filter(
+        (s) =>
+          !s.classId &&
+          s.clockIn &&
+          sameCalendarDay(new Date(s.clockIn), sessionDate) &&
+          !usedShiftIds.has(s.id)
+      )
+    : [];
 
   const candidates = taggedSameDay.length > 0 ? taggedSameDay : legacySameDay;
   if (candidates.length === 0) return null;
 
   const closest = candidates.reduce((closestShift, s) =>
-    Math.abs(new Date(s.clockIn) - scheduledStart) < Math.abs(new Date(closestShift.clockIn) - scheduledStart) ? s : closestShift
+    Math.abs(new Date(s.clockIn) - scheduledStart) <
+    Math.abs(new Date(closestShift.clockIn) - scheduledStart)
+      ? s
+      : closestShift
   );
   usedShiftIds.add(closest.id);
   return closest;
@@ -136,30 +173,33 @@ export function computeMonthlyPunctuality(classes, shifts, instructorsById, year
   const usedShiftIds = new Set();
 
   // Support for both recurring scheduled classes and "Private" lessons.
-  const allTrackableClasses = classes.filter(c => c.startTime && validateHHmm(c.startTime));
+  const allTrackableClasses = classes.filter((c) => c.startTime && validateHHmm(c.startTime));
 
   for (const cls of allTrackableClasses) {
     const weekdays = parseClassDays(cls.classDay);
-    const instructorShifts = shifts.filter(s => s.userId === cls.instructorId);
-    
-    // For Private classes, we don't generate "Scheduled" sessions because 
-    // their dates are random. We only count the sessions they actually 
+    const instructorShifts = shifts.filter((s) => s.userId === cls.instructorId);
+
+    // For Private classes, we don't generate "Scheduled" sessions because
+    // their dates are random. We only count the sessions they actually
     // attended (the shifts they logged).
     if (!weekdays) {
       if (!statsByInstructor[cls.instructorId]) {
-        statsByInstructor[cls.instructorId] = initInstructorStats(cls.instructorId, instructorsById);
+        statsByInstructor[cls.instructorId] = initInstructorStats(
+          cls.instructorId,
+          instructorsById
+        );
       }
       const stats = statsByInstructor[cls.instructorId];
-      
-      const privateShifts = instructorShifts.filter(s => s.classId === cls.id && s.clockIn);
+
+      const privateShifts = instructorShifts.filter((s) => s.classId === cls.id && s.clockIn);
       for (const shift of privateShifts) {
         const d = new Date(shift.clockIn);
         if (d.getFullYear() !== year || d.getMonth() !== month) continue;
-        
+
         stats.sessionsScheduled += 1;
         stats.sessionsAttended += 1;
-        
-        // Punctuality for Private is tricky; we assume if they clocked in, 
+
+        // Punctuality for Private is tricky; we assume if they clocked in,
         // they were "On Time" unless you start adding scheduled dates for private.
         // For now, we flag it as Limited Accuracy.
         stats.onTime += 1;
@@ -168,22 +208,31 @@ export function computeMonthlyPunctuality(classes, shifts, instructorsById, year
       continue;
     }
 
-    const hasAmbiguousLegacyDay = allTrackableClasses.some(otherClass => otherClass !== cls
-      && otherClass.instructorId === cls.instructorId
-      && parseClassDays(otherClass.classDay)?.some(weekday => weekdays.includes(weekday)));
+    const hasAmbiguousLegacyDay = allTrackableClasses.some(
+      (otherClass) =>
+        otherClass !== cls &&
+        otherClass.instructorId === cls.instructorId &&
+        parseClassDays(otherClass.classDay)?.some((weekday) => weekdays.includes(weekday))
+    );
 
-    const taggedShifts = instructorShifts.filter(s => s.classId === cls.id && s.clockIn);
-    const legacyShiftsOnPattern = instructorShifts.filter(s => !s.classId && s.clockIn && weekdays.includes(new Date(s.clockIn).getDay()));
+    const taggedShifts = instructorShifts.filter((s) => s.classId === cls.id && s.clockIn);
+    const legacyShiftsOnPattern = instructorShifts.filter(
+      (s) => !s.classId && s.clockIn && weekdays.includes(new Date(s.clockIn).getDay())
+    );
     const earliestKnownShift = [...taggedShifts, ...legacyShiftsOnPattern]
-      .map(shift => new Date(shift.clockIn))
+      .map((shift) => new Date(shift.clockIn))
       .sort((a, b) => a - b)[0];
-      
+
     const classStart = cls.classStartDate
       ? new Date(`${cls.classStartDate}T00:00:00`)
       : earliestKnownShift || null;
-      
-    const sessionDates = getDatesInMonthForWeekdays(year, month, weekdays)
-      .filter(sessionDate => !classStart || sessionDate >= new Date(classStart.getFullYear(), classStart.getMonth(), classStart.getDate()));
+
+    const sessionDates = getDatesInMonthForWeekdays(year, month, weekdays).filter(
+      (sessionDate) =>
+        !classStart ||
+        sessionDate >=
+          new Date(classStart.getFullYear(), classStart.getMonth(), classStart.getDate())
+    );
     const [hours, minutes] = cls.startTime.split(":").map(Number);
 
     if (!statsByInstructor[cls.instructorId]) {
@@ -198,7 +247,14 @@ export function computeMonthlyPunctuality(classes, shifts, instructorsById, year
       if (scheduledStart > now) continue;
 
       stats.sessionsScheduled += 1;
-      const matchedShift = findClosestShift(instructorShifts, cls.id, sessionDate, scheduledStart, usedShiftIds, !hasAmbiguousLegacyDay);
+      const matchedShift = findClosestShift(
+        instructorShifts,
+        cls.id,
+        sessionDate,
+        scheduledStart,
+        usedShiftIds,
+        !hasAmbiguousLegacyDay
+      );
 
       if (!matchedShift) {
         stats.absent += 1;
@@ -230,10 +286,12 @@ export function computeMonthlyPunctuality(classes, shifts, instructorsById, year
     }
   }
 
-  return Object.values(statsByInstructor).map(s => ({
+  return Object.values(statsByInstructor).map((s) => ({
     ...s,
-    punctualityRate: s.sessionsScheduled > 0 ? Math.round((s.onTime / s.sessionsScheduled) * 100) : null,
-    avgMinutesLate: s.lateSessionCount > 0 ? Math.round(s.totalMinutesLate / s.lateSessionCount) : 0,
+    punctualityRate:
+      s.sessionsScheduled > 0 ? Math.round((s.onTime / s.sessionsScheduled) * 100) : null,
+    avgMinutesLate:
+      s.lateSessionCount > 0 ? Math.round(s.totalMinutesLate / s.lateSessionCount) : 0,
   }));
 }
 

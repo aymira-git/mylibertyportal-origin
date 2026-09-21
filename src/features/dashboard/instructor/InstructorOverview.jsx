@@ -25,8 +25,14 @@ export default function InstructorOverview({
   onSelectClass,
   allClasses = [],
 }) {
-  const enrolledIds = useMemo(() => new Set(classes.flatMap((cls) => cls.studentIds || [])), [classes]);
-  const enrolledStudents = useMemo(() => students.filter((student) => enrolledIds.has(student.id)), [students, enrolledIds]);
+  const enrolledIds = useMemo(
+    () => new Set(classes.flatMap((cls) => cls.studentIds || [])),
+    [classes]
+  );
+  const enrolledStudents = useMemo(
+    () => students.filter((student) => enrolledIds.has(student.id)),
+    [students, enrolledIds]
+  );
   const worksheets = useMemo(() => classes.filter((cls) => cls.worksheetUrl), [classes]);
 
   return (
@@ -121,7 +127,8 @@ export default function InstructorOverview({
             <Info className="w-8 h-8 text-slate-300 mx-auto" />
             <p className="font-bold text-slate-700 text-sm">No Cohorts Assigned</p>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              You do not have any active teaching batches assigned to your profile yet. Please contact administration for class scheduling.
+              You do not have any active teaching batches assigned to your profile yet. Please
+              contact administration for class scheduling.
             </p>
           </div>
         ) : (
@@ -136,7 +143,9 @@ export default function InstructorOverview({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h5 className="font-black text-slate-900 text-base truncate">{cls.className}</h5>
+                        <h5 className="font-black text-slate-900 text-base truncate">
+                          {cls.className}
+                        </h5>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-500 text-xs font-medium mt-1">
                         <span className="flex items-center gap-1">
@@ -151,9 +160,7 @@ export default function InstructorOverview({
                       </div>
                     </div>
 
-                    {cls.classLevel && (
-                      <LevelBadge level={cls.classLevel} />
-                    )}
+                    {cls.classLevel && <LevelBadge level={cls.classLevel} />}
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">

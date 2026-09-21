@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useToast, WelcomeBanner } from "../shared";
-import { CheckSquare, Sparkles, AlertTriangle, Clock, ChevronDown, ChevronRight, Undo2 } from "lucide-react";
+import {
+  CheckSquare,
+  Sparkles,
+  AlertTriangle,
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  Undo2,
+} from "lucide-react";
 import { useStaffDirectives } from "../staff";
 
 function formatDueDate(dueDate) {
@@ -90,7 +98,9 @@ export default function OfficeBoyDashboard() {
         <div className="bg-slate-50 p-10 rounded-2xl border border-dashed border-slate-300 text-center">
           <p className="text-3xl mb-2">✨</p>
           <p className="text-sm font-bold text-slate-600">All caught up! No tasks right now.</p>
-          <p className="text-xs text-slate-400 mt-1">Check back later or check in with the front desk.</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Check back later or check in with the front desk.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -122,15 +132,15 @@ export default function OfficeBoyDashboard() {
                       </span>
                     )}
                     {dueInfo && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${dueInfo.badgeColor}`}>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${dueInfo.badgeColor}`}
+                      >
                         <Clock className="w-3 h-3 inline mr-1" />
                         {dueInfo.label}
                       </span>
                     )}
                     {task.assignee === "all" && (
-                      <span className="text-[10px] font-semibold text-slate-400">
-                        (All Staff)
-                      </span>
+                      <span className="text-[10px] font-semibold text-slate-400">(All Staff)</span>
                     )}
                   </div>
                   <p className="font-bold text-slate-800 text-base leading-snug break-words">
@@ -160,7 +170,11 @@ export default function OfficeBoyDashboard() {
             onClick={() => setShowCompleted(!showCompleted)}
             className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-600 transition px-1"
           >
-            {showCompleted ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            {showCompleted ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
             <span>Completed Tasks ({completedDirectives.length})</span>
           </button>
 

@@ -160,12 +160,29 @@ export default function ApplicationPlacementModal({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5 text-slate-600 text-[11px] pt-1">
-                <p>DOB: <span className="font-semibold text-slate-800">{formatDobAndAge(app.dob)}</span></p>
-                <p>Phone: <span className="font-semibold text-slate-800">{app.phone || "No phone"}</span></p>
-                <p>Parents: <span className="font-semibold text-slate-800">{app.fatherPhone || app.motherPhone || app.fatherName || app.motherName || "—"}</span></p>
-                <p>Program: <span className="font-semibold text-slate-800">{app.program || "General"}</span></p>
+                <p>
+                  DOB:{" "}
+                  <span className="font-semibold text-slate-800">{formatDobAndAge(app.dob)}</span>
+                </p>
+                <p>
+                  Phone:{" "}
+                  <span className="font-semibold text-slate-800">{app.phone || "No phone"}</span>
+                </p>
+                <p>
+                  Parents:{" "}
+                  <span className="font-semibold text-slate-800">
+                    {app.fatherPhone || app.motherPhone || app.fatherName || app.motherName || "—"}
+                  </span>
+                </p>
+                <p>
+                  Program:{" "}
+                  <span className="font-semibold text-slate-800">{app.program || "General"}</span>
+                </p>
                 {app.schoolOrJob && (
-                  <p className="sm:col-span-2">School/Job: <span className="font-semibold text-slate-800">{app.schoolOrJob}</span></p>
+                  <p className="sm:col-span-2">
+                    School/Job:{" "}
+                    <span className="font-semibold text-slate-800">{app.schoolOrJob}</span>
+                  </p>
                 )}
               </div>
             </div>
@@ -173,9 +190,15 @@ export default function ApplicationPlacementModal({
 
           {/* Section 2: Duplicate Warnings */}
           {(hasStrongMatch || possibleMatches.length > 0) && (
-            <div className={`p-4 rounded-2xl border space-y-2.5 ${hasStrongMatch ? "bg-amber-50/80 border-amber-200 text-amber-900" : "bg-blue-50/60 border-blue-200 text-blue-900"}`}>
+            <div
+              className={`p-4 rounded-2xl border space-y-2.5 ${hasStrongMatch ? "bg-amber-50/80 border-amber-200 text-amber-900" : "bg-blue-50/60 border-blue-200 text-blue-900"}`}
+            >
               <div className="flex items-center gap-2 font-black text-xs">
-                {hasStrongMatch ? <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-blue-600 shrink-0" />}
+                {hasStrongMatch ? (
+                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-blue-600 shrink-0" />
+                )}
                 <span>
                   {hasStrongMatch
                     ? "Strong Existing Record Match Detected"
@@ -185,7 +208,10 @@ export default function ApplicationPlacementModal({
 
               <div className="space-y-1.5 text-[11px]">
                 {duplicates.students?.map((match, idx) => (
-                  <div key={`stu-${idx}`} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/80 border border-amber-200/60">
+                  <div
+                    key={`stu-${idx}`}
+                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/80 border border-amber-200/60"
+                  >
                     <div>
                       <span className="font-bold text-slate-900">{match.student.displayName}</span>
                       <span className="text-slate-500 ml-1.5">({match.reason})</span>
@@ -197,7 +223,10 @@ export default function ApplicationPlacementModal({
                 ))}
 
                 {duplicates.pendingTwins?.map((match, idx) => (
-                  <div key={`twin-${idx}`} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/80 border border-amber-200/60">
+                  <div
+                    key={`twin-${idx}`}
+                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/80 border border-amber-200/60"
+                  >
                     <div>
                       <span className="font-bold text-slate-900">{match.app.displayName}</span>
                       <span className="text-slate-500 ml-1.5">(Twin pending application)</span>
@@ -217,7 +246,10 @@ export default function ApplicationPlacementModal({
                     onChange={(e) => setOverrideDuplicate(e.target.checked)}
                     className="mt-0.5 rounded text-[#1a3a8f] focus:ring-[#1a3a8f]"
                   />
-                  <span>I checked this applicant. This is a genuinely new student, not an accidental duplicate.</span>
+                  <span>
+                    I checked this applicant. This is a genuinely new student, not an accidental
+                    duplicate.
+                  </span>
                 </label>
               )}
             </div>
@@ -280,13 +312,16 @@ export default function ApplicationPlacementModal({
                 const compat = isCompatible(selectedLevel, cls);
                 return (
                   <option key={cls.id} value={cls.id}>
-                    {compat ? "✓ " : ""}{cls.className} · {cls.classLevel?.toUpperCase() || "WARRIOR"} · {cls.classSchedule || "Flexible"} ({avail.studentCount}/{avail.capacity} seats)
+                    {compat ? "✓ " : ""}
+                    {cls.className} · {cls.classLevel?.toUpperCase() || "WARRIOR"} ·{" "}
+                    {cls.classSchedule || "Flexible"} ({avail.studentCount}/{avail.capacity} seats)
                   </option>
                 );
               })}
             </select>
             <p className="text-[10px] text-slate-400 font-medium">
-              Only batches with open seats and active enrollment status are selectable. Batches matching the candidate level are listed first.
+              Only batches with open seats and active enrollment status are selectable. Batches
+              matching the candidate level are listed first.
             </p>
           </div>
 
@@ -303,7 +338,8 @@ export default function ApplicationPlacementModal({
             >
               {PAYMENT_PLAN_LIST.map((plan) => (
                 <option key={plan.id} value={plan.id}>
-                  {plan.label} ({plan.termName}){plan.discountPercent > 0 ? ` — Save ${plan.discountPercent}%` : ""}
+                  {plan.label} ({plan.termName})
+                  {plan.discountPercent > 0 ? ` — Save ${plan.discountPercent}%` : ""}
                 </option>
               ))}
             </select>
@@ -340,9 +376,7 @@ export default function ApplicationPlacementModal({
               ) : (
                 <Check className="w-4 h-4" />
               )}
-              <span>
-                {selectedClassId ? "Confirm Admission & Enroll" : "Confirm Admission"}
-              </span>
+              <span>{selectedClassId ? "Confirm Admission & Enroll" : "Confirm Admission"}</span>
             </button>
           </div>
         </form>

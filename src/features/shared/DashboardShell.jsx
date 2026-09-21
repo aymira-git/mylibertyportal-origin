@@ -57,11 +57,7 @@ export default function DashboardShell({
                 </p>
               </div>
             )}
-            {extraSidebarContent && (
-              <div className="mt-1">
-                {extraSidebarContent}
-              </div>
-            )}
+            {extraSidebarContent && <div className="mt-1">{extraSidebarContent}</div>}
           </div>
 
           {/* Grouped Navigation */}
@@ -130,9 +126,7 @@ export default function DashboardShell({
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 min-w-0 w-full">
-          {active?.component}
-        </main>
+        <main className="flex-1 min-w-0 w-full">{active?.component}</main>
       </div>
     </>
   );

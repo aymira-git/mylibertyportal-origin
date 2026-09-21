@@ -8,13 +8,7 @@ import { AvailableBatches } from "../classes";
 import { useStaffDirectives, StaffDirectivesWidget } from "../staff";
 import { getRegistrationUrl } from "../../constants/externalLinks";
 
-function MarketingOverview({
-  leadCount,
-  loading,
-  classes,
-  openSeats,
-  onNavigate,
-}) {
+function MarketingOverview({ leadCount, loading, classes, openSeats, onNavigate }) {
   const toast = useToast();
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -95,7 +89,8 @@ function MarketingOverview({
         </div>
 
         <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200/80 text-xs text-emerald-800 font-medium">
-          💡 <strong>Tip for Outreach:</strong> You can copy pre-formatted WhatsApp promotional blurbs directly for any open batch in the <strong>Available Batches</strong> tab or below!
+          💡 <strong>Tip for Outreach:</strong> You can copy pre-formatted WhatsApp promotional
+          blurbs directly for any open batch in the <strong>Available Batches</strong> tab or below!
         </div>
       </div>
 
@@ -105,7 +100,8 @@ function MarketingOverview({
           Staff Attendance Verification
         </h4>
         <p className="text-xs text-slate-500 leading-relaxed font-medium">
-          Your daily shifts are tracked through the front desk reception scanner. Clock in upon arrival and clock out before leaving.
+          Your daily shifts are tracked through the front desk reception scanner. Clock in upon
+          arrival and clock out before leaving.
         </p>
       </div>
 
@@ -139,7 +135,9 @@ export default function MarketingDashboard() {
     const unsubApplications = onSnapshot(
       collection(db, "applications"),
       (snap) => {
-        const pending = snap.docs.filter((d) => (d.data().status || "pending") === "pending").length;
+        const pending = snap.docs.filter(
+          (d) => (d.data().status || "pending") === "pending"
+        ).length;
         setLeadCount(pending);
         setLoading(false);
       },
@@ -209,11 +207,7 @@ export default function MarketingDashboard() {
       badge: openSeats > 0 ? `${openSeats} open` : null,
       component: (
         <div className="w-full">
-          <AvailableBatches
-            classes={classes}
-            canEdit={false}
-            role="marketing"
-          />
+          <AvailableBatches classes={classes} canEdit={false} role="marketing" />
         </div>
       ),
     },

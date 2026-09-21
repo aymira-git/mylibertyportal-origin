@@ -9,7 +9,10 @@ import {
 
 const authMock = vi.hoisted(() => ({ createUserWithEmailAndPassword: vi.fn() }));
 
-vi.mock("firebase/firestore", async () => (await import("../../test/firestoreFake.js")).firestoreModule);
+vi.mock(
+  "firebase/firestore",
+  async () => (await import("../../test/firestoreFake.js")).firestoreModule
+);
 vi.mock("firebase/auth", () => authMock);
 vi.mock("../../firebase", () => ({
   db: {},
@@ -35,17 +38,33 @@ describe("updateStaffStatus", () => {
 describe("checkStaffHasAttendanceHistory", () => {
   it("reports shift and leave history separately", async () => {
     fake.seed("shifts", [{ id: "s1", userId: "u1" }]);
-    expect(await checkStaffHasAttendanceHistory("u1")).toEqual({ hasShifts: true, hasLeave: false, error: null });
+    expect(await checkStaffHasAttendanceHistory("u1")).toEqual({
+      hasShifts: true,
+      hasLeave: false,
+      error: null,
+    });
     fake.seed("staffLeave", [{ id: "l1", userId: "u2" }]);
-    expect(await checkStaffHasAttendanceHistory("u2")).toEqual({ hasShifts: false, hasLeave: true, error: null });
+    expect(await checkStaffHasAttendanceHistory("u2")).toEqual({
+      hasShifts: false,
+      hasLeave: true,
+      error: null,
+    });
   });
 
   it("reports no history for a brand-new staff member", async () => {
-    expect(await checkStaffHasAttendanceHistory("u3")).toEqual({ hasShifts: false, hasLeave: false, error: null });
+    expect(await checkStaffHasAttendanceHistory("u3")).toEqual({
+      hasShifts: false,
+      hasLeave: false,
+      error: null,
+    });
   });
 
   it("handles a missing uid", async () => {
-    expect(await checkStaffHasAttendanceHistory("")).toEqual({ hasShifts: false, hasLeave: false, error: null });
+    expect(await checkStaffHasAttendanceHistory("")).toEqual({
+      hasShifts: false,
+      hasLeave: false,
+      error: null,
+    });
   });
 
   // The flags are false on failure; safety depends on callers checking `error`.
@@ -63,7 +82,12 @@ describe("checkStudentHasHistory", () => {
     fake.seed("payments", [{ id: "p", studentId: "s1" }]);
     fake.seed("attendance", [{ id: "a", userId: "s1" }]);
     fake.seed("progressReports", []);
-    expect(await checkStudentHasHistory("s1")).toEqual({ hasPayments: true, hasAttendance: true, hasReports: false, error: null });
+    expect(await checkStudentHasHistory("s1")).toEqual({
+      hasPayments: true,
+      hasAttendance: true,
+      hasReports: false,
+      error: null,
+    });
   });
 
   it("returns the error message on a failed lookup", async () => {
@@ -78,12 +102,21 @@ describe("createStaffAccount", () => {
     authMock.createUserWithEmailAndPassword.mockResolvedValueOnce({ user: { uid: "new-uid" } });
     const uid = await createStaffAccount("a@b.id", "pw123456", { role: "instructor" });
     expect(uid).toBe("new-uid");
-    expect(authMock.createUserWithEmailAndPassword).toHaveBeenCalledWith({ secondary: true }, "a@b.id", "pw123456");
-    expect(fake.find("users/new-uid")).toMatchObject({ data: { role: "instructor" }, opts: { merge: true } });
+    expect(authMock.createUserWithEmailAndPassword).toHaveBeenCalledWith(
+      { secondary: true },
+      "a@b.id",
+      "pw123456"
+    );
+    expect(fake.find("users/new-uid")).toMatchObject({
+      data: { role: "instructor" },
+      opts: { merge: true },
+    });
   });
 
   it("does not write a profile if the sign-in account cannot be created", async () => {
-    authMock.createUserWithEmailAndPassword.mockRejectedValueOnce(new Error("email-already-in-use"));
+    authMock.createUserWithEmailAndPassword.mockRejectedValueOnce(
+      new Error("email-already-in-use")
+    );
     await expect(createStaffAccount("a@b.id", "pw", {})).rejects.toThrow("email-already-in-use");
     expect(fake.ops).toHaveLength(0);
   });

@@ -1,21 +1,8 @@
 import { useState, useMemo, Fragment } from "react";
-import {
-  LevelBadge,
-  LEVELS,
-  LEVEL_KEYS,
-  exportTableCSV,
-} from "../shared";
-import {
-  setClassGroupLevel,
-  syncStudentsCurrentLevel,
-} from "./classesRepository";
+import { LevelBadge, LEVELS, LEVEL_KEYS, exportTableCSV } from "../shared";
+import { setClassGroupLevel, syncStudentsCurrentLevel } from "./classesRepository";
 import BatchCard from "./BatchCard";
-import {
-  Search,
-  Download,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+import { Search, Download, ChevronDown, ChevronRight } from "lucide-react";
 
 export default function CohortRosterTable({
   classes = [],
@@ -105,15 +92,13 @@ export default function CohortRosterTable({
           return s === "open" || s === "in_progress" || s === "upcoming";
         }
         if (statusFilter === "under_quorum") {
-          return (
-            (s === "open" || s === "in_progress" || s === "upcoming") &&
-            studentCount < quorum
-          );
+          return (s === "open" || s === "in_progress" || s === "upcoming") && studentCount < quorum;
         }
         if (statusFilter === "filling_fast_full") {
           return (
             (s === "open" || s === "in_progress" || s === "upcoming") &&
-            (studentCount >= capacity || (capacity - studentCount <= 3 && capacity - studentCount > 0))
+            (studentCount >= capacity ||
+              (capacity - studentCount <= 3 && capacity - studentCount > 0))
           );
         }
         if (statusFilter === "archived") {
@@ -138,9 +123,7 @@ export default function CohortRosterTable({
   const handleSetGroupLevel = async (group, level) => {
     try {
       await setClassGroupLevel(group.items, level);
-      const studentIds = [
-        ...new Set(group.items.flatMap((cls) => cls.studentIds || [])),
-      ];
+      const studentIds = [...new Set(group.items.flatMap((cls) => cls.studentIds || []))];
       await syncStudentsCurrentLevel(studentIds, level);
       setEditingLevelKey(null);
       if (toast) toast("Cohort level updated!", "success");
@@ -213,13 +196,7 @@ export default function CohortRosterTable({
 
         <button
           onClick={() => {
-            const headers = [
-              "Class Name",
-              "Level",
-              "Instructor",
-              "Schedule",
-              "Students",
-            ];
+            const headers = ["Class Name", "Level", "Instructor", "Schedule", "Students"];
             const rows = classGroups.map((group) => {
               const teacher = users.find((u) => u.id === group.instructorId);
               const totalStudents = group.items.reduce(
@@ -342,18 +319,14 @@ export default function CohortRosterTable({
                           Set Level
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-400 font-medium">
-                          Unset
-                        </span>
+                        <span className="text-[11px] text-slate-400 font-medium">Unset</span>
                       )}
                     </td>
 
                     <td className="p-3.5 font-bold text-slate-700">
                       {teacher ? teacher.displayName : "Unassigned"}
                     </td>
-                    <td className="p-3.5 font-semibold text-slate-600">
-                      {group.schedule}
-                    </td>
+                    <td className="p-3.5 font-semibold text-slate-600">{group.schedule}</td>
                     <td className="p-3.5">
                       <span className="px-2 py-0.5 rounded-full bg-slate-100 font-extrabold text-slate-800 text-[11px]">
                         {totalStudents} Enrolled
@@ -378,10 +351,7 @@ export default function CohortRosterTable({
 
                   {isExpanded && (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="p-4 bg-slate-50/70 border-b border-slate-200"
-                      >
+                      <td colSpan={6} className="p-4 bg-slate-50/70 border-b border-slate-200">
                         <div className="space-y-3">
                           {group.items.map((cls) => (
                             <BatchCard
@@ -410,10 +380,7 @@ export default function CohortRosterTable({
 
             {filteredGroups.length === 0 && (
               <tr>
-                <td
-                  colSpan={6}
-                  className="p-8 text-center text-slate-400 text-xs font-medium"
-                >
+                <td colSpan={6} className="p-8 text-center text-slate-400 text-xs font-medium">
                   No matching class cohorts found.
                 </td>
               </tr>
@@ -437,14 +404,9 @@ export default function CohortRosterTable({
               key={group.key}
               className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-2xs"
             >
-              <div
-                onClick={() => toggleGroup(group.key)}
-                className="cursor-pointer space-y-2"
-              >
+              <div onClick={() => toggleGroup(group.key)} className="cursor-pointer space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-extrabold text-slate-900 text-sm">
-                    {group.className}
-                  </h4>
+                  <h4 className="font-extrabold text-slate-900 text-sm">{group.className}</h4>
                   <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-[#1a3a8f] font-extrabold text-[10px]">
                     {totalStudents} students
                   </span>
@@ -459,16 +421,12 @@ export default function CohortRosterTable({
                   {group.classLevel ? (
                     <LevelBadge level={group.classLevel} />
                   ) : (
-                    <span className="text-xs font-bold text-amber-700">
-                      Level Unset
-                    </span>
+                    <span className="text-xs font-bold text-amber-700">Level Unset</span>
                   )}
                   <span className="text-xs font-bold text-indigo-700 flex items-center gap-1">
                     {isExpanded ? "Hide Details" : "Manage Batches"}
                     <ChevronRight
-                      className={`w-3 h-3 transition-transform ${
-                        isExpanded ? "rotate-90" : ""
-                      }`}
+                      className={`w-3 h-3 transition-transform ${isExpanded ? "rotate-90" : ""}`}
                     />
                   </span>
                 </div>

@@ -1,11 +1,6 @@
 import { useState, useEffect } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import {
-  isShiftStale,
-  autoCloseShift,
-  getTodaysClasses,
-  getInstantPunctuality
-} from ".";
+import { isShiftStale, autoCloseShift, getTodaysClasses, getInstantPunctuality } from ".";
 import {
   fetchUserById,
   fetchOpenShiftFor,
@@ -28,10 +23,14 @@ import {
   Calendar,
   X,
   Volume2,
-  ShieldCheck
+  ShieldCheck,
 } from "lucide-react";
 
-export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly = false, staffOnly = false }) {
+export default function Kiosk({
+  title = "Reception Kiosk Station",
+  studentsOnly = false,
+  staffOnly = false,
+}) {
   const [kioskScanning, setKioskScanning] = useState(false);
   const [pendingClockIn, setPendingClockIn] = useState(null);
   const [pendingTransition, setPendingTransition] = useState(null);
@@ -91,7 +90,12 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
         `Clocked in for ${selectedClass.className} (${punctuality.status})${isLeave ? " - Note: Marked on Leave" : ""}`,
         name
       );
-      setLastScanned({ name, role: pendingClockIn.userData.role, time: new Date(), type: "Clock In" });
+      setLastScanned({
+        name,
+        role: pendingClockIn.userData.role,
+        time: new Date(),
+        type: "Clock In",
+      });
     } catch (err) {
       showStatus("Clock-in Error", "error", err.message);
     }
@@ -122,7 +126,12 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
         `Transitioned to ${nextClass.className} (${punctuality.status})`,
         name
       );
-      setLastScanned({ name, role: pendingTransition.userData.role, time: new Date(), type: "Switched" });
+      setLastScanned({
+        name,
+        role: pendingTransition.userData.role,
+        time: new Date(),
+        type: "Switched",
+      });
     } catch (err) {
       showStatus("Transition Error", "error", err.message);
     } finally {
@@ -137,7 +146,12 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
       await clockOutShift(pendingTransition.openShift.id);
       const name = pendingTransition.userData.displayName;
       showStatus(`Clocked Out`, "success", "Shift completed and archived.", name);
-      setLastScanned({ name, role: pendingTransition.userData.role, time: new Date(), type: "Clock Out" });
+      setLastScanned({
+        name,
+        role: pendingTransition.userData.role,
+        time: new Date(),
+        type: "Clock Out",
+      });
     } catch (err) {
       showStatus("Clock-out Error", "error", err.message);
     } finally {
@@ -161,11 +175,19 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
         try {
           const rawId = typeof uid === "string" ? uid.trim() : "";
           if (!rawId || rawId.includes("/") || rawId.length < 5) {
-            return showStatus("Invalid Pass", "error", "The scanned QR code is not a recognized MY LIBERTY badge.");
+            return showStatus(
+              "Invalid Pass",
+              "error",
+              "The scanned QR code is not a recognized MY LIBERTY badge."
+            );
           }
           const userData = await fetchUserById(rawId);
           if (!userData) {
-            return showStatus("Invalid Pass", "error", "No user profile found matching this QR badge.");
+            return showStatus(
+              "Invalid Pass",
+              "error",
+              "No user profile found matching this QR badge."
+            );
           }
 
           if (studentsOnly && userData.role !== "student") {
@@ -219,7 +241,7 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
               name: userData.displayName,
               role: "student",
               time: new Date(),
-              type: "Check-in"
+              type: "Check-in",
             });
           } else {
             const staffStatus = userData.status || "active";
@@ -281,7 +303,7 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
                   name: userData.displayName,
                   role: userData.role,
                   time: new Date(),
-                  type: "Clock In"
+                  type: "Clock In",
                 });
               }
             } else {
@@ -303,7 +325,7 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
                   name: userData.displayName,
                   role: userData.role,
                   time: new Date(),
-                  type: "Clock Out"
+                  type: "Clock Out",
                 });
               }
             }
@@ -377,11 +399,15 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
 
             <div>
               {status.personName && (
-                <h4 className="text-xl font-extrabold text-white tracking-tight">{status.personName}</h4>
+                <h4 className="text-xl font-extrabold text-white tracking-tight">
+                  {status.personName}
+                </h4>
               )}
               <h5 className="text-lg font-bold text-white/90 mt-1">{status.message}</h5>
               {status.detail && (
-                <p className="text-xs text-white/70 mt-1.5 leading-relaxed font-medium">{status.detail}</p>
+                <p className="text-xs text-white/70 mt-1.5 leading-relaxed font-medium">
+                  {status.detail}
+                </p>
               )}
             </div>
 
@@ -417,7 +443,8 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
               <div>
                 <p className="text-sm font-bold text-slate-800">Ready to Scan Credentials</p>
                 <p className="text-xs text-slate-500 max-w-xs mt-1 leading-normal">
-                  Tap below to open the camera, then hold your student or staff QR code in front of the lens.
+                  Tap below to open the camera, then hold your student or staff QR code in front of
+                  the lens.
                 </p>
               </div>
             </div>
@@ -494,8 +521,11 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
 
             <div>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Welcome, <span className="font-bold text-slate-900">{pendingClockIn.userData.displayName}</span>! Select
-                the class cohort you are teaching right now:
+                Welcome,{" "}
+                <span className="font-bold text-slate-900">
+                  {pendingClockIn.userData.displayName}
+                </span>
+                ! Select the class cohort you are teaching right now:
               </p>
             </div>
 
@@ -558,8 +588,10 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
             <div>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
                 Active shift:{" "}
-                <span className="font-bold text-[#1a3a8f]">{pendingTransition.openShift.className}</span>.
-                Switch to another scheduled class or clock out for today.
+                <span className="font-bold text-[#1a3a8f]">
+                  {pendingTransition.openShift.className}
+                </span>
+                . Switch to another scheduled class or clock out for today.
               </p>
             </div>
 

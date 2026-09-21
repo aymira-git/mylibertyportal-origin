@@ -1,5 +1,13 @@
 import { db } from "../../firebase";
-import { collection, addDoc, deleteDoc, doc, updateDoc, arrayUnion, writeBatch } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+  arrayUnion,
+  writeBatch,
+} from "firebase/firestore";
 import { getBatchAvailability } from "./batchAvailability";
 import { todayWita } from "../../utils/dateWita.js";
 
@@ -22,9 +30,7 @@ import { todayWita } from "../../utils/dateWita.js";
 // failed write doesn't block the class-side change that already succeeded.
 export function syncStudentsCurrentLevel(studentIds, level) {
   return Promise.all(
-    studentIds.map(id =>
-      updateDoc(doc(db, "users", id), { currentLevel: level }).catch(() => {})
-    )
+    studentIds.map((id) => updateDoc(doc(db, "users", id), { currentLevel: level }).catch(() => {}))
   );
 }
 
@@ -50,19 +56,21 @@ export function addStudentToClass(classId, { studentId, dateJoined, level }) {
 
 export function removeStudentFromClass(cls, studentId) {
   return updateDoc(doc(db, "classes", cls.id), {
-    studentIds: (cls.studentIds || []).filter(id => id !== studentId),
-    enrollments: (cls.enrollments || []).filter(e => e.studentId !== studentId),
+    studentIds: (cls.studentIds || []).filter((id) => id !== studentId),
+    enrollments: (cls.enrollments || []).filter((e) => e.studentId !== studentId),
     updatedAt: new Date().toISOString(),
   });
 }
 
 export function setClassGroupLevel(classItems, level) {
-  return Promise.all(classItems.map(cls =>
-    updateDoc(doc(db, "classes", cls.id), {
-      classLevel: level,
-      enrollments: (cls.enrollments || []).map(en => ({ ...en, level })),
-    })
-  ));
+  return Promise.all(
+    classItems.map((cls) =>
+      updateDoc(doc(db, "classes", cls.id), {
+        classLevel: level,
+        enrollments: (cls.enrollments || []).map((en) => ({ ...en, level })),
+      })
+    )
+  );
 }
 
 /**
@@ -83,7 +91,11 @@ export async function transferStudentBetweenClasses({
     throw new Error("Cannot transfer a student to the same class.");
   }
 
-  if (sourceClass && Array.isArray(sourceClass.studentIds) && !sourceClass.studentIds.includes(studentId)) {
+  if (
+    sourceClass &&
+    Array.isArray(sourceClass.studentIds) &&
+    !sourceClass.studentIds.includes(studentId)
+  ) {
     throw new Error("Student is not enrolled in the source class.");
   }
 
@@ -96,8 +108,10 @@ export async function transferStudentBetweenClasses({
 
   // 1. Remove student from source class
   const sourceRef = doc(db, "classes", sourceClass.id);
-  const updatedSourceStudentIds = (sourceClass.studentIds || []).filter(id => id !== studentId);
-  const updatedSourceEnrollments = (sourceClass.enrollments || []).filter(e => e.studentId !== studentId);
+  const updatedSourceStudentIds = (sourceClass.studentIds || []).filter((id) => id !== studentId);
+  const updatedSourceEnrollments = (sourceClass.enrollments || []).filter(
+    (e) => e.studentId !== studentId
+  );
   batch.update(sourceRef, {
     studentIds: updatedSourceStudentIds,
     enrollments: updatedSourceEnrollments,

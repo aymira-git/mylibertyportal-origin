@@ -64,7 +64,9 @@ export default function WelcomeBanner({
             <span className="text-[10px] font-black uppercase tracking-[0.14em] bg-white/10 text-indigo-200 px-2.5 py-0.5 rounded-full border border-white/15">
               {portalLabel}
             </span>
-            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${roleBadgeColor}`}>
+            <span
+              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${roleBadgeColor}`}
+            >
               {roleLabel}
             </span>
             {extraPills}
@@ -78,7 +80,9 @@ export default function WelcomeBanner({
         </div>
 
         <div className="bg-white/10 backdrop-blur-xs border border-white/15 px-4 py-2.5 rounded-2xl text-right shrink-0 self-start sm:self-auto">
-          <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Today&apos;s Date</p>
+          <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">
+            Today&apos;s Date
+          </p>
           <p className="text-xs font-black text-white">{todayStr}</p>
         </div>
       </div>
@@ -90,12 +94,12 @@ export default function WelcomeBanner({
             stats.length === 1
               ? "grid-cols-1"
               : stats.length === 2
-              ? "grid-cols-2"
-              : stats.length === 3
-              ? "grid-cols-2 sm:grid-cols-3"
-              : stats.length === 4
-              ? "grid-cols-2 lg:grid-cols-4"
-              : "grid-cols-2 sm:grid-cols-3"
+                ? "grid-cols-2"
+                : stats.length === 3
+                  ? "grid-cols-2 sm:grid-cols-3"
+                  : stats.length === 4
+                    ? "grid-cols-2 lg:grid-cols-4"
+                    : "grid-cols-2 sm:grid-cols-3"
           }`}
         >
           {stats.map((stat, idx) => {

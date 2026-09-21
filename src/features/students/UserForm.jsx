@@ -22,7 +22,7 @@ import { STAFF_STATUS_OPTIONS, STANDARD_BRANCHES } from "../staff/staffUtils";
 
 export default function UserForm({ formData, setFormData, editId, onSubmit }) {
   const isSelf = Boolean(editId && auth.currentUser && editId === auth.currentUser.uid);
-  const field = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
+  const field = (key, value) => setFormData((prev) => ({ ...prev, [key]: value }));
   const isStudent = formData.role === "student";
 
   const setAcademicLevel = (level) => {
@@ -42,8 +42,12 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
         <div>
           <h3 className="font-bold text-slate-800 text-lg">
             {isStudent
-              ? (editId ? "Edit Student Profile" : "Student Registration")
-              : (editId ? "Edit Staff Profile" : "Automated Staff Account Creation")}
+              ? editId
+                ? "Edit Student Profile"
+                : "Student Registration"
+              : editId
+                ? "Edit Staff Profile"
+                : "Automated Staff Account Creation"}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             {isStudent
@@ -63,7 +67,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
               <label className="text-[10px] font-bold text-slate-500 uppercase">Role:</label>
               <select
                 value={formData.role}
-                onChange={e => field("role", e.target.value)}
+                onChange={(e) => field("role", e.target.value)}
                 className="p-2 border rounded-xl bg-white font-bold text-xs"
               >
                 <option value="instructor">Instructor</option>
@@ -96,31 +100,37 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Name (Nama Lengkap)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Full Name (Nama Lengkap)
+                </label>
                 <input
                   type="text"
                   placeholder="Full Name"
                   value={formData.displayName || ""}
-                  onChange={e => field("displayName", e.target.value)}
+                  onChange={(e) => field("displayName", e.target.value)}
                   className="w-full p-2.5 border rounded-xl font-semibold"
                   required
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nickname (Nama Panggilan)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Nickname (Nama Panggilan)
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Alex"
                   value={formData.nickname || ""}
-                  onChange={e => field("nickname", e.target.value)}
+                  onChange={(e) => field("nickname", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Gender (Jenis Kelamin)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Gender (Jenis Kelamin)
+                </label>
                 <select
                   value={formData.gender || "male"}
-                  onChange={e => field("gender", e.target.value)}
+                  onChange={(e) => field("gender", e.target.value)}
                   className="w-full p-2.5 border rounded-xl bg-white font-medium"
                 >
                   <option value="male">Laki-laki (Male)</option>
@@ -128,51 +138,61 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Place of Birth (Tempat Lahir)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Place of Birth (Tempat Lahir)
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Jakarta"
                   value={formData.placeOfBirth || ""}
-                  onChange={e => field("placeOfBirth", e.target.value)}
+                  onChange={(e) => field("placeOfBirth", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date of Birth (Tanggal Lahir)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Date of Birth (Tanggal Lahir)
+                </label>
                 <input
                   type="date"
                   value={formData.dob || ""}
-                  onChange={e => field("dob", e.target.value)}
+                  onChange={(e) => field("dob", e.target.value)}
                   className="w-full p-2.5 border rounded-xl bg-white"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Religion (Agama)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Religion (Agama)
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Islam / Kristen / Hindu / Buddha"
                   value={formData.religion || ""}
-                  onChange={e => field("religion", e.target.value)}
+                  onChange={(e) => field("religion", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phone / WhatsApp Pendaftar</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Phone / WhatsApp Pendaftar
+                </label>
                 <input
                   type="tel"
                   placeholder="0812..."
                   value={formData.phone || ""}
-                  onChange={e => field("phone", e.target.value)}
+                  onChange={(e) => field("phone", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Full Address (Alamat Lengkap)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Full Address (Alamat Lengkap)
+                </label>
                 <textarea
                   rows={2}
                   placeholder="Street, District, City..."
                   value={formData.address || ""}
-                  onChange={e => field("address", e.target.value)}
+                  onChange={(e) => field("address", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
@@ -195,7 +215,8 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                     Fluency Tier &amp; Placement Level *
                   </label>
                   <p className="text-[11px] text-slate-500">
-                    Determines eligible batches and cohort placement. Select a quick tier shortcut or pick the exact track.
+                    Determines eligible batches and cohort placement. Select a quick tier shortcut
+                    or pick the exact track.
                   </p>
                 </div>
                 {formData.currentLevel && (
@@ -227,8 +248,10 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                     >
                       <span className="text-sm font-black">{tier.starText}</span>
                       <span className="text-xs font-extrabold">{tier.label}</span>
-                      <span className={`text-[10px] ${isSelected ? "text-indigo-200" : "text-slate-500"}`}>
-                        {tier.levels.map(l => LEVELS[l]?.label).join(" / ")}
+                      <span
+                        className={`text-[10px] ${isSelected ? "text-indigo-200" : "text-slate-500"}`}
+                      >
+                        {tier.levels.map((l) => LEVELS[l]?.label).join(" / ")}
                       </span>
                     </button>
                   );
@@ -247,7 +270,8 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 >
                   {LEVEL_LIST.map((lvl) => (
                     <option key={lvl.id} value={lvl.id}>
-                      {lvl.label} ({lvl.starText || "⭐".repeat(lvl.stars)} {TIERS[lvl.tier]?.label})
+                      {lvl.label} ({lvl.starText || "⭐".repeat(lvl.stars)} {TIERS[lvl.tier]?.label}
+                      )
                     </option>
                   ))}
                 </select>
@@ -256,14 +280,18 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Branch (Pilihan Cabang)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Branch (Pilihan Cabang)
+                </label>
                 <select
                   value={formData.branch || "Cabang Utama"}
-                  onChange={e => field("branch", e.target.value)}
+                  onChange={(e) => field("branch", e.target.value)}
                   className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs"
                 >
-                  {STANDARD_BRANCHES.map(b => (
-                    <option key={b} value={b}>{b}</option>
+                  {STANDARD_BRANCHES.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
                   ))}
                   {formData.branch && !STANDARD_BRANCHES.includes(formData.branch) && (
                     <option value={formData.branch}>{formData.branch}</option>
@@ -271,51 +299,61 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Program</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Program
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. English for Teens / VIP"
                   value={formData.program || ""}
-                  onChange={e => field("program", e.target.value)}
+                  onChange={(e) => field("program", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Class Type (Jenis Kelas)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Class Type (Jenis Kelas)
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Reguler / Private"
                   value={formData.classType || ""}
-                  onChange={e => field("classType", e.target.value)}
+                  onChange={(e) => field("classType", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Joined Date (Tanggal Bergabung)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Joined Date (Tanggal Bergabung)
+                </label>
                 <input
                   type="date"
                   value={formData.joinedDate || ""}
-                  onChange={e => field("joinedDate", e.target.value)}
+                  onChange={(e) => field("joinedDate", e.target.value)}
                   className="w-full p-2.5 border rounded-xl bg-white font-semibold"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">School / Company (Sekolah/Pekerjaan)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  School / Company (Sekolah/Pekerjaan)
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. SMA Negeri 1 / Universitas"
                   value={formData.schoolOrJob || ""}
-                  onChange={e => field("schoolOrJob", e.target.value)}
+                  onChange={(e) => field("schoolOrJob", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Grade / Semester (Kelas/Semester)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Grade / Semester (Kelas/Semester)
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Kelas 10 / Semester 4"
                   value={formData.classOrSemester || ""}
-                  onChange={e => field("classOrSemester", e.target.value)}
+                  onChange={(e) => field("classOrSemester", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
@@ -326,7 +364,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                   </label>
                   <select
                     value={formData.status || "active"}
-                    onChange={e => field("status", e.target.value)}
+                    onChange={(e) => field("status", e.target.value)}
                     className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs capitalize text-slate-800 focus:border-[#1a3a8f] outline-none"
                   >
                     <option value="active">🟢 Active (Currently Enrolled &amp; Attending)</option>
@@ -341,14 +379,15 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                   </label>
                   <select
                     value={formData.paymentPlan || "monthly"}
-                    onChange={e => field("paymentPlan", e.target.value)}
+                    onChange={(e) => field("paymentPlan", e.target.value)}
                     className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs capitalize text-slate-800 focus:border-[#1a3a8f] outline-none"
                   >
                     {PAYMENT_PLAN_KEYS.map((pKey) => {
                       const p = PAYMENT_PLANS[pKey];
                       return (
                         <option key={pKey} value={pKey}>
-                          {p.label} ({p.termName}){p.discountPercent > 0 ? ` — Save ${p.discountPercent}%` : ""}
+                          {p.label} ({p.termName})
+                          {p.discountPercent > 0 ? ` — Save ${p.discountPercent}%` : ""}
                         </option>
                       );
                     })}
@@ -369,34 +408,42 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Father Box */}
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-                <p className="text-[11px] font-bold text-slate-700 uppercase">Father's Information (Data Ayah)</p>
+                <p className="text-[11px] font-bold text-slate-700 uppercase">
+                  Father's Information (Data Ayah)
+                </p>
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Name (Nama Ayah)</label>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                    Name (Nama Ayah)
+                  </label>
                   <input
                     type="text"
                     placeholder="Father's Name"
                     value={formData.fatherName || ""}
-                    onChange={e => field("fatherName", e.target.value)}
+                    onChange={(e) => field("fatherName", e.target.value)}
                     className="w-full p-2 border rounded-lg bg-white text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Occupation (Pekerjaan Ayah)</label>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                    Occupation (Pekerjaan Ayah)
+                  </label>
                   <input
                     type="text"
                     placeholder="Occupation"
                     value={formData.fatherJob || ""}
-                    onChange={e => field("fatherJob", e.target.value)}
+                    onChange={(e) => field("fatherJob", e.target.value)}
                     className="w-full p-2 border rounded-lg bg-white text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">WhatsApp Phone (No HP Ayah)</label>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                    WhatsApp Phone (No HP Ayah)
+                  </label>
                   <input
                     type="tel"
                     placeholder="08..."
                     value={formData.fatherPhone || ""}
-                    onChange={e => field("fatherPhone", e.target.value)}
+                    onChange={(e) => field("fatherPhone", e.target.value)}
                     className="w-full p-2 border rounded-lg bg-white text-xs"
                   />
                 </div>
@@ -404,34 +451,42 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
 
               {/* Mother Box */}
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-                <p className="text-[11px] font-bold text-slate-700 uppercase">Mother's Information (Data Ibu)</p>
+                <p className="text-[11px] font-bold text-slate-700 uppercase">
+                  Mother's Information (Data Ibu)
+                </p>
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Name (Nama Ibu)</label>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                    Name (Nama Ibu)
+                  </label>
                   <input
                     type="text"
                     placeholder="Mother's Name"
                     value={formData.motherName || ""}
-                    onChange={e => field("motherName", e.target.value)}
+                    onChange={(e) => field("motherName", e.target.value)}
                     className="w-full p-2 border rounded-lg bg-white text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">Occupation (Pekerjaan Ibu)</label>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                    Occupation (Pekerjaan Ibu)
+                  </label>
                   <input
                     type="text"
                     placeholder="Occupation"
                     value={formData.motherJob || ""}
-                    onChange={e => field("motherJob", e.target.value)}
+                    onChange={(e) => field("motherJob", e.target.value)}
                     className="w-full p-2 border rounded-lg bg-white text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">WhatsApp Phone (No HP Ibu)</label>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-0.5">
+                    WhatsApp Phone (No HP Ibu)
+                  </label>
                   <input
                     type="tel"
                     placeholder="08..."
                     value={formData.motherPhone || ""}
-                    onChange={e => field("motherPhone", e.target.value)}
+                    onChange={(e) => field("motherPhone", e.target.value)}
                     className="w-full p-2 border rounded-lg bg-white text-xs"
                   />
                 </div>
@@ -448,20 +503,24 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Information Source (Dari Mana Tahu MyLiberty)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Information Source (Dari Mana Tahu MyLiberty)
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Instagram, Teman, Brosur"
                   value={formData.referralSource || ""}
-                  onChange={e => field("referralSource", e.target.value)}
+                  onChange={(e) => field("referralSource", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fluency Tier (Evaluated)</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Fluency Tier (Evaluated)
+                </label>
                 <select
                   value={String(getStars(formData.currentLevel) || "1")}
-                  onChange={e => {
+                  onChange={(e) => {
                     const val = e.target.value;
                     if (val === "1") setAcademicLevel("warrior");
                     else if (val === "2") setAcademicLevel("master");
@@ -475,12 +534,14 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 </select>
               </div>
               <div className="md:col-span-3">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Notes / Evaluation</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Notes / Evaluation
+                </label>
                 <textarea
                   rows={3}
                   placeholder="Internal notes, special considerations, or student progress..."
                   value={formData.notes || ""}
-                  onChange={e => field("notes", e.target.value)}
+                  onChange={(e) => field("notes", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
               </div>
@@ -500,43 +561,51 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">First Name</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                First Name
+              </label>
               <input
                 type="text"
                 placeholder="First Name"
                 value={formData.firstName || ""}
-                onChange={e => field("firstName", e.target.value)}
+                onChange={(e) => field("firstName", e.target.value)}
                 className="w-full p-2.5 border rounded-xl"
                 required
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Last Name</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Last Name
+              </label>
               <input
                 type="text"
                 placeholder="Last Name"
                 value={formData.lastName || ""}
-                onChange={e => field("lastName", e.target.value)}
+                onChange={(e) => field("lastName", e.target.value)}
                 className="w-full p-2.5 border rounded-xl"
                 required
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nickname</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Nickname
+              </label>
               <input
                 type="text"
                 placeholder="Nickname"
                 value={formData.nickname || ""}
-                onChange={e => field("nickname", e.target.value)}
+                onChange={(e) => field("nickname", e.target.value)}
                 className="w-full p-2.5 border rounded-xl"
                 required
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Gender</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Gender
+              </label>
               <select
                 value={formData.gender || "male"}
-                onChange={e => field("gender", e.target.value)}
+                onChange={(e) => field("gender", e.target.value)}
                 className="w-full p-2.5 border rounded-xl bg-white font-bold"
               >
                 <option value="male">Male</option>
@@ -544,30 +613,36 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phone Number</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Phone Number
+              </label>
               <input
                 type="tel"
                 placeholder="Phone Number"
                 value={formData.phone || ""}
-                onChange={e => field("phone", e.target.value)}
+                onChange={(e) => field("phone", e.target.value)}
                 className="w-full p-2.5 border rounded-xl"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date of Birth</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Date of Birth
+              </label>
               <input
                 type="date"
                 value={formData.dob || ""}
-                onChange={e => field("dob", e.target.value)}
+                onChange={(e) => field("dob", e.target.value)}
                 className="w-full p-2.5 border rounded-xl bg-white"
                 required
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Education Level</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Education Level
+              </label>
               <select
                 value={formData.educationLevel || "Universitas"}
-                onChange={e => field("educationLevel", e.target.value)}
+                onChange={(e) => field("educationLevel", e.target.value)}
                 className="w-full p-2.5 border rounded-xl bg-white font-bold"
               >
                 <option value="SMA/SMK">SMA/SMK</option>
@@ -576,14 +651,18 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Branch (Cabang)</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Branch (Cabang)
+              </label>
               <select
                 value={formData.branch || "Cabang Utama"}
-                onChange={e => field("branch", e.target.value)}
+                onChange={(e) => field("branch", e.target.value)}
                 className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs"
               >
-                {STANDARD_BRANCHES.map(b => (
-                  <option key={b} value={b}>{b}</option>
+                {STANDARD_BRANCHES.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
                 ))}
                 {formData.branch && !STANDARD_BRANCHES.includes(formData.branch) && (
                   <option value={formData.branch}>{formData.branch}</option>
@@ -592,18 +671,23 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                Employment Status {isSelf && <span className="text-amber-600 font-semibold">(Protected Self-Account)</span>}
+                Employment Status{" "}
+                {isSelf && (
+                  <span className="text-amber-600 font-semibold">(Protected Self-Account)</span>
+                )}
               </label>
               <select
                 value={formData.status || "active"}
                 disabled={isSelf}
-                onChange={e => field("status", e.target.value)}
+                onChange={(e) => field("status", e.target.value)}
                 className={`w-full p-2.5 border rounded-xl font-bold text-xs ${
                   isSelf ? "bg-slate-100 text-slate-500 cursor-not-allowed" : "bg-white"
                 }`}
-                title={isSelf ? "You cannot modify your own administrative status while logged in" : ""}
+                title={
+                  isSelf ? "You cannot modify your own administrative status while logged in" : ""
+                }
               >
-                {STAFF_STATUS_OPTIONS.map(opt => (
+                {STAFF_STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -611,13 +695,15 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Email Address</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Email Address
+              </label>
               <input
                 type="email"
                 placeholder="staff@myliberty.com"
                 autoComplete="off"
                 value={formData.email || ""}
-                onChange={e => field("email", e.target.value)}
+                onChange={(e) => field("email", e.target.value)}
                 className="w-full p-2.5 border rounded-xl"
                 required
                 disabled={!!editId}
@@ -625,13 +711,15 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
             </div>
             {!editId && (
               <div className="md:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Initial Password</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Initial Password
+                </label>
                 <input
                   type="password"
                   placeholder="Temporary Password (min 6 characters)"
                   autoComplete="new-password"
                   value={formData.password || ""}
-                  onChange={e => field("password", e.target.value)}
+                  onChange={(e) => field("password", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                   required
                 />

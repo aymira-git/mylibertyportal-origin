@@ -3,7 +3,13 @@ import { auth } from "../../firebase";
 import { useDashboardData } from "./useDashboardData";
 import { AIAssistant, DashboardShell, WelcomeBanner, useToast } from "../shared";
 import { ReportsDashboard } from "../reports";
-import { StudentApplications, StudentRoster, UserForm, BadgeModal, isActiveStudent } from "../students";
+import {
+  StudentApplications,
+  StudentRoster,
+  UserForm,
+  BadgeModal,
+  isActiveStudent,
+} from "../students";
 import { KioskModal, KioskSidebarButton } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { TasksPanel } from "../staff";
@@ -17,7 +23,7 @@ import {
   UserPlus,
   GraduationCap,
   BookOpen,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 
 export default function FrontOfficeDashboard() {
@@ -34,12 +40,27 @@ export default function FrontOfficeDashboard() {
   const toast = useToast();
 
   const {
-    users, classes, applications, todos,
-    editId, selectedStudent, setSelectedStudent,
-    formData, setFormData,
-    handleSave, handleEdit, handleAddStudent, handleDelete,
-    handleAddTodo, handleDeleteTodo, handleToggleTodo,
-    getStudentClasses, instructors, students, unenrolledStudents, pendingApplications,
+    users,
+    classes,
+    applications,
+    todos,
+    editId,
+    selectedStudent,
+    setSelectedStudent,
+    formData,
+    setFormData,
+    handleSave,
+    handleEdit,
+    handleAddStudent,
+    handleDelete,
+    handleAddTodo,
+    handleDeleteTodo,
+    handleToggleTodo,
+    getStudentClasses,
+    instructors,
+    students,
+    unenrolledStudents,
+    pendingApplications,
   } = useDashboardData({ restrictedRead: true, setActiveTab });
 
   const sendWhatsAppInvite = (phone) => {
@@ -52,7 +73,9 @@ export default function FrontOfficeDashboard() {
     }
 
     const regUrl = window.location.origin + "/register";
-    const message = encodeURIComponent(`Hello! Greetings from My Liberty school. 🌟 Please complete your student registration here: ${regUrl}`);
+    const message = encodeURIComponent(
+      `Hello! Greetings from My Liberty school. 🌟 Please complete your student registration here: ${regUrl}`
+    );
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
     setWaPhone("");
   };
@@ -97,7 +120,9 @@ export default function FrontOfficeDashboard() {
             <MessageCircle className="w-4 h-4 text-emerald-600" />
             <span>Walk-in Student Registration</span>
           </div>
-          <p className="text-xs text-slate-500 font-medium">Send an application form link directly to a parent&apos;s WhatsApp.</p>
+          <p className="text-xs text-slate-500 font-medium">
+            Send an application form link directly to a parent&apos;s WhatsApp.
+          </p>
           <div className="flex gap-2 pt-1">
             <input
               type="tel"
@@ -219,11 +244,15 @@ export default function FrontOfficeDashboard() {
         />
       ),
     },
-    { id: "reports", label: "Reports", component: <ReportsDashboard isAdminView={false} isFrontOffice={true} /> },
+    {
+      id: "reports",
+      label: "Reports",
+      component: <ReportsDashboard isAdminView={false} isFrontOffice={true} />,
+    },
     {
       id: "misc",
       label: "Tasks",
-      badge: todos.filter(t => !t.completed).length || null,
+      badge: todos.filter((t) => !t.completed).length || null,
       component: (
         <TasksPanel
           todos={todos}
@@ -242,9 +271,17 @@ export default function FrontOfficeDashboard() {
     // read-only badge whenever formData.role === "student" (add OR edit), so
     // this can never expose the staff-role picker or create staff accounts.
     {
-      id: "addUser", label: editId ? "Edit Student" : "Add Student", hidden: true, component: (
-        <UserForm formData={formData} setFormData={setFormData} editId={editId} onSubmit={handleSave} />
-      )
+      id: "addUser",
+      label: editId ? "Edit Student" : "Add Student",
+      hidden: true,
+      component: (
+        <UserForm
+          formData={formData}
+          setFormData={setFormData}
+          editId={editId}
+          onSubmit={handleSave}
+        />
+      ),
     },
   ];
 
@@ -255,7 +292,9 @@ export default function FrontOfficeDashboard() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         title="Front Office"
-        extraSidebarContent={<KioskSidebarButton onClick={() => setKioskOpen(true)} label="Reception Kiosk" />}
+        extraSidebarContent={
+          <KioskSidebarButton onClick={() => setKioskOpen(true)} label="Reception Kiosk" />
+        }
       />
 
       {/* Standalone Full-Screen Kiosk Station */}
@@ -267,10 +306,7 @@ export default function FrontOfficeDashboard() {
       />
 
       {/* ID Badge Modal */}
-      <BadgeModal
-        person={selectedStudent}
-        onClose={() => setSelectedStudent(null)}
-      />
+      <BadgeModal person={selectedStudent} onClose={() => setSelectedStudent(null)} />
     </div>
   );
 }

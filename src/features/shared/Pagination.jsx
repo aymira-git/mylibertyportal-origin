@@ -7,7 +7,15 @@
  * either overflows or ends up with tap targets too small to hit reliably.
  * Two large buttons and a position readout work at any list length.
  */
-export default function Pagination({ page, totalPages, setPage, from, to, total, label = "records" }) {
+export default function Pagination({
+  page,
+  totalPages,
+  setPage,
+  from,
+  to,
+  total,
+  label = "records",
+}) {
   if (totalPages <= 1) return null;
 
   return (

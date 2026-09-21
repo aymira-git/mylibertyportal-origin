@@ -28,7 +28,7 @@ export function getDobKey(dob) {
   if (!dob) return "";
   const groups = String(dob).match(/\d+/g);
   if (!groups || groups.length < 3) return "";
-  const nums = groups.slice(0, 3).map(g => parseInt(g, 10));
+  const nums = groups.slice(0, 3).map((g) => parseInt(g, 10));
   nums.sort((a, b) => a - b);
   return nums.join("-");
 }
@@ -51,7 +51,12 @@ export function findDuplicates(app, students = [], applications = []) {
 
     const phoneMatch = Boolean(appPhoneKey && sPhoneKey && appPhoneKey === sPhoneKey);
     const nameDobMatch = Boolean(
-      appNameKey && sNameKey && appDobKey && sDobKey && appNameKey === sNameKey && appDobKey === sDobKey
+      appNameKey &&
+      sNameKey &&
+      appDobKey &&
+      sDobKey &&
+      appNameKey === sNameKey &&
+      appDobKey === sDobKey
     );
     const nameMatchOnly = Boolean(appNameKey && sNameKey && appNameKey === sNameKey);
 
@@ -82,7 +87,12 @@ export function findDuplicates(app, students = [], applications = []) {
 
     const phoneMatch = Boolean(appPhoneKey && oPhoneKey && appPhoneKey === oPhoneKey);
     const nameDobMatch = Boolean(
-      appNameKey && oNameKey && appDobKey && oDobKey && appNameKey === oNameKey && appDobKey === oDobKey
+      appNameKey &&
+      oNameKey &&
+      appDobKey &&
+      oDobKey &&
+      appNameKey === oNameKey &&
+      appDobKey === oDobKey
     );
     const nameMatchOnly = Boolean(appNameKey && oNameKey && appNameKey === oNameKey);
 
@@ -108,22 +118,30 @@ export function findDuplicates(app, students = [], applications = []) {
 
 export function buildApplicantWhatsAppUrl({ target, app }) {
   if (!app) return null;
-  const rawNumber = target === "parent" ? (app.fatherPhone || app.motherPhone || "") : (app.phone || "");
+  const rawNumber =
+    target === "parent" ? app.fatherPhone || app.motherPhone || "" : app.phone || "";
   const normalized = normalizeWhatsAppNumber(rawNumber);
   if (!normalized || normalized.length < 9) return null;
 
   const name = (app.displayName || "").trim();
   const program = (app.program || "General Program").trim();
 
-  const message = target === "parent"
-    ? `Halo Bapak/Ibu, orang tua dari ${name}! Terima kasih telah mendaftarkan ${name} di My Liberty English Academy (${program}). Kami dari tim Admissions ingin mengonfirmasi jadwal placement test dan informasi kelas. Apakah saat ini waktu yang tepat untuk berdiskusi?`
-    : `Halo Kak ${name}! Terima kasih telah mendaftar di My Liberty English Academy (${program}). Kami dari tim Admissions ingin mengonfirmasi jadwal placement test dan informasi kelas Anda. Apakah saat ini waktu yang tepat untuk berdiskusi?`;
+  const message =
+    target === "parent"
+      ? `Halo Bapak/Ibu, orang tua dari ${name}! Terima kasih telah mendaftarkan ${name} di My Liberty English Academy (${program}). Kami dari tim Admissions ingin mengonfirmasi jadwal placement test dan informasi kelas. Apakah saat ini waktu yang tepat untuk berdiskusi?`
+      : `Halo Kak ${name}! Terima kasih telah mendaftar di My Liberty English Academy (${program}). Kami dari tim Admissions ingin mengonfirmasi jadwal placement test dan informasi kelas Anda. Apakah saat ini waktu yang tepat untuk berdiskusi?`;
 
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
 }
 
-export function filterApplications({ apps = [], view = "pending", search = "", branch = "all", program = "all" }) {
-  let list = apps.filter(app => {
+export function filterApplications({
+  apps = [],
+  view = "pending",
+  search = "",
+  branch = "all",
+  program = "all",
+}) {
+  let list = apps.filter((app) => {
     if (view === "pending") {
       return isPending(app);
     }
@@ -137,22 +155,28 @@ export function filterApplications({ apps = [], view = "pending", search = "", b
   });
 
   if (branch && branch !== "all") {
-    list = list.filter(a => (a.branch || "").toLowerCase() === branch.toLowerCase());
+    list = list.filter((a) => (a.branch || "").toLowerCase() === branch.toLowerCase());
   }
 
   if (program && program !== "all") {
-    list = list.filter(a => (a.program || "").toLowerCase() === program.toLowerCase());
+    list = list.filter((a) => (a.program || "").toLowerCase() === program.toLowerCase());
   }
 
   const q = (search || "").trim().toLowerCase();
   if (q) {
-    list = list.filter(a => {
+    list = list.filter((a) => {
       const name = (a.displayName || "").toLowerCase();
       const phone = (a.phone || "").toLowerCase();
       const fPhone = (a.fatherPhone || "").toLowerCase();
       const mPhone = (a.motherPhone || "").toLowerCase();
       const school = (a.schoolOrJob || "").toLowerCase();
-      return name.includes(q) || phone.includes(q) || fPhone.includes(q) || mPhone.includes(q) || school.includes(q);
+      return (
+        name.includes(q) ||
+        phone.includes(q) ||
+        fPhone.includes(q) ||
+        mPhone.includes(q) ||
+        school.includes(q)
+      );
     });
   }
 

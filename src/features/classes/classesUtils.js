@@ -8,10 +8,7 @@ export const getDuration = (dateJoined) => {
   const joined = new Date(`${dateJoined}T00:00:00`);
   if (Number.isNaN(joined.getTime())) return "Not recorded";
   const now = new Date();
-  let months =
-    (now.getFullYear() - joined.getFullYear()) * 12 +
-    now.getMonth() -
-    joined.getMonth();
+  let months = (now.getFullYear() - joined.getFullYear()) * 12 + now.getMonth() - joined.getMonth();
   if (now.getDate() < joined.getDate()) months -= 1;
   if (months < 1) return "Joined this month";
   const years = Math.floor(months / 12);

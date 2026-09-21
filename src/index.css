@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --heading: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   font-family: var(--sans);
@@ -20,7 +20,12 @@ body {
   background-color: #f8fafc;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--heading);
 }
 
@@ -37,12 +42,18 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-tap-highlight-color: transparent;
 }
 
-button, a, select, input, [role="button"] {
+button,
+a,
+select,
+input,
+[role="button"] {
   touch-action: manipulation;
 }
 
 /* Navigation control selection protection (staff data like names/phones remain selectable) */
-nav, [role="tablist"], [role="navigation"] {
+nav,
+[role="tablist"],
+[role="navigation"] {
   -webkit-touch-callout: none;
   user-select: none;
 }
@@ -76,18 +87,32 @@ nav, [role="tablist"], [role="navigation"] {
 
 /* Core overlay and sheet animations */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes zoomIn95 {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes slideInFromBottom {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .animate-in {
@@ -109,7 +134,10 @@ nav, [role="tablist"], [role="navigation"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-in, .fade-in, .zoom-in-95, .slide-in-from-bottom {
+  .animate-in,
+  .fade-in,
+  .zoom-in-95,
+  .slide-in-from-bottom {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }

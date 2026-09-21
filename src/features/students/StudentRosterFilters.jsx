@@ -39,7 +39,11 @@ export default function StudentRosterFilters({
           {[
             { id: "active", label: "Active", count: statusCounts.active },
             { id: "on_leave", label: "On Leave", count: statusCounts.onLeave },
-            { id: "inactive_graduated", label: "Inactive / Graduated", count: statusCounts.inactiveGrad },
+            {
+              id: "inactive_graduated",
+              label: "Inactive / Graduated",
+              count: statusCounts.inactiveGrad,
+            },
             { id: "all", label: "All Records", count: statusCounts.total },
           ].map((tab) => {
             const isSelected = statusFilter === tab.id;
@@ -76,7 +80,8 @@ export default function StudentRosterFilters({
             {
               id: "unassigned",
               label: `⚠️ Unassigned (${actionCounts.unassigned})`,
-              tone: actionCounts.unassigned > 0 ? "text-amber-700 bg-amber-50 border-amber-200" : "",
+              tone:
+                actionCounts.unassigned > 0 ? "text-amber-700 bg-amber-50 border-amber-200" : "",
             },
             {
               id: "due_or_expired",

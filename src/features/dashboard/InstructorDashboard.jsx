@@ -109,10 +109,7 @@ export default function InstructorDashboard() {
         onTabChange={setActiveTab}
         title="Instructor Portal"
         extraSidebarContent={
-          <KioskSidebarButton
-            onClick={() => setKioskOpen(true)}
-            label="Attendance & Kiosk"
-          />
+          <KioskSidebarButton onClick={() => setKioskOpen(true)} label="Attendance & Kiosk" />
         }
       />
 

@@ -1,10 +1,6 @@
 {
   "name": "MYLIBERTY Portal",
   "description": "MY LIBERTY International English School staff & student management portal — attendance, classes, progress reports, and more",
-  "requestFramePermissions": [
-    "camera"
-  ],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,12 +1,6 @@
 import { useState } from "react";
 import schoolLogo from "../../assets/school-logo.webp";
-import {
-  Sparkles,
-  ArrowLeft,
-  HelpCircle,
-  Loader2,
-  ExternalLink
-} from "lucide-react";
+import { Sparkles, ArrowLeft, HelpCircle, Loader2, ExternalLink } from "lucide-react";
 import { REGISTRATION_GOOGLE_FORM_URL } from "../../constants/externalLinks";
 
 const GOOGLE_FORM_EMBED_URL = REGISTRATION_GOOGLE_FORM_URL;
@@ -29,7 +23,9 @@ export default function RegistrationPage() {
               <h1 className="text-base font-extrabold text-[#1a3a8f] leading-none tracking-tight">
                 MY LIBERTY
               </h1>
-              <p className="text-[11px] font-bold text-[#1a3a8f]/80 mt-0.5">Fresh, Fun and Elegant</p>
+              <p className="text-[11px] font-bold text-[#1a3a8f]/80 mt-0.5">
+                Fresh, Fun and Elegant
+              </p>
               <p className="text-[10px] text-slate-500 font-medium">International English School</p>
             </div>
           </div>
@@ -58,7 +54,8 @@ export default function RegistrationPage() {
             Start Your Journey with MY LIBERTY
           </h2>
           <p className="text-slate-500 text-sm sm:text-base leading-relaxed font-normal">
-            Complete the official registration form below to apply for our international English language programs, Cambridge CEFR assessment tracks, and intensive cohorts.
+            Complete the official registration form below to apply for our international English
+            language programs, Cambridge CEFR assessment tracks, and intensive cohorts.
           </p>
         </div>
 
@@ -124,8 +121,12 @@ export default function RegistrationPage() {
           {iframeLoading && (
             <div className="p-12 text-center flex flex-col items-center justify-center gap-3 bg-white min-h-[300px]">
               <Loader2 className="w-8 h-8 text-[#1a3a8f] animate-spin" />
-              <p className="text-xs font-bold text-slate-600">Loading student registration form...</p>
-              <p className="text-[11px] text-slate-400">Please wait a moment while the secure form initializes.</p>
+              <p className="text-xs font-bold text-slate-600">
+                Loading student registration form...
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Please wait a moment while the secure form initializes.
+              </p>
             </div>
           )}
 
@@ -153,7 +154,8 @@ export default function RegistrationPage() {
             </div>
             <h4 className="text-lg font-bold text-white">Have questions before submitting?</h4>
             <p className="text-xs text-indigo-200/80 max-w-md">
-              Visit our front office desk or contact our admissions coordinator during school hours for placement consultation.
+              Visit our front office desk or contact our admissions coordinator during school hours
+              for placement consultation.
             </p>
           </div>
 

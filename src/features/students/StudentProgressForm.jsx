@@ -8,14 +8,26 @@ import {
   Award,
   ChevronRight,
   TrendingUp,
-  FileCheck2
+  FileCheck2,
 } from "lucide-react";
 import { LevelBadge, LEVEL_KEYS, LEVELS } from "../shared";
 const SCORE_FIELDS = [
-  { field: "pronunciation", label: "Pronunciation", desc: "Clarity, phonemes, and accent neutrality" },
+  {
+    field: "pronunciation",
+    label: "Pronunciation",
+    desc: "Clarity, phonemes, and accent neutrality",
+  },
   { field: "fluency", label: "Fluency", desc: "Speaking pace, flow, and absence of hesitation" },
-  { field: "vocabulary", label: "Vocabulary", desc: "Lexical range, idiomatic phrasing, word choice" },
-  { field: "comprehension", label: "Comprehension", desc: "Context grasp, active listening, response speed" }
+  {
+    field: "vocabulary",
+    label: "Vocabulary",
+    desc: "Lexical range, idiomatic phrasing, word choice",
+  },
+  {
+    field: "comprehension",
+    label: "Comprehension",
+    desc: "Context grasp, active listening, response speed",
+  },
 ];
 
 export default function StudentProgressForm({ classes, students, onSaved }) {
@@ -23,20 +35,30 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
   const [studentId, setStudentId] = useState("");
   const [examDate, setExamDate] = useState(new Date().toISOString().slice(0, 10));
   const [level, setLevel] = useState("warrior");
-  const [scores, setScores] = useState({ pronunciation: "", fluency: "", vocabulary: "", comprehension: "" });
+  const [scores, setScores] = useState({
+    pronunciation: "",
+    fluency: "",
+    vocabulary: "",
+    comprehension: "",
+  });
   const [notes, setNotes] = useState("");
   const [markPromotion, setMarkPromotion] = useState(true);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState({ message: "", type: "" });
 
   const selectedClass = classes.find((cls) => cls.id === classId);
-  const classStudents = students.filter((student) => (selectedClass?.studentIds || []).includes(student.id));
+  const classStudents = students.filter((student) =>
+    (selectedClass?.studentIds || []).includes(student.id)
+  );
   const selectedStudent = classStudents.find((student) => student.id === studentId);
 
-  const numericScores = SCORE_FIELDS.map((s) => Number(scores[s.field])).filter((score) => Number.isFinite(score) && score > 0);
-  const overallScore = numericScores.length === SCORE_FIELDS.length
-    ? Math.round(numericScores.reduce((total, score) => total + score, 0) / SCORE_FIELDS.length)
-    : null;
+  const numericScores = SCORE_FIELDS.map((s) => Number(scores[s.field])).filter(
+    (score) => Number.isFinite(score) && score > 0
+  );
+  const overallScore =
+    numericScores.length === SCORE_FIELDS.length
+      ? Math.round(numericScores.reduce((total, score) => total + score, 0) / SCORE_FIELDS.length)
+      : null;
   const isEligibleForPromotion = overallScore !== null && overallScore >= 70;
 
   const handleClassChange = (event) => {
@@ -83,7 +105,7 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
       setNotes("");
       setFeedback({
         message: `Evaluation submitted successfully for ${selectedStudent.displayName}! Overall Band: ${overallScore}%${isEligibleForPromotion && markPromotion ? " (Flagged for level promotion)" : ""}`,
-        type: "success"
+        type: "success",
       });
       onSaved?.();
     } catch (error) {
@@ -102,8 +124,12 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
             <GraduationCap className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-extrabold text-slate-900 text-lg">Academic Progress & Assessment</h3>
-            <p className="text-xs text-slate-500 font-medium">Record CEFR benchmarks, skill proficiency, and pedagogical feedback</p>
+            <h3 className="font-extrabold text-slate-900 text-lg">
+              Academic Progress & Assessment
+            </h3>
+            <p className="text-xs text-slate-500 font-medium">
+              Record CEFR benchmarks, skill proficiency, and pedagogical feedback
+            </p>
           </div>
         </div>
 
@@ -111,7 +137,9 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
           <div className="flex items-center gap-2.5 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100/80 px-4 py-2 rounded-2xl">
             <Award className="w-5 h-5 text-[#1a3a8f]" />
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Projected Score</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Projected Score
+              </p>
               <p className="text-base font-extrabold text-[#1a3a8f]">{overallScore} / 100</p>
             </div>
           </div>
@@ -169,7 +197,9 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
                 disabled={!classId}
                 required
               >
-                <option value="">{classId ? "Select student to evaluate..." : "Select a class first"}</option>
+                <option value="">
+                  {classId ? "Select student to evaluate..." : "Select a class first"}
+                </option>
                 {classStudents.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.displayName} ({s.id.slice(0, 8)})
@@ -224,7 +254,9 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
               <TrendingUp className="w-4 h-4 text-[#1a3a8f]" />
               <span>Proficiency Benchmarks (10 – 100 Scale)</span>
             </h4>
-            <span className="text-[11px] text-slate-400 font-medium">Standard passing mark: 70+</span>
+            <span className="text-[11px] text-slate-400 font-medium">
+              Standard passing mark: 70+
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -240,12 +272,16 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-extrabold text-slate-800 text-xs">{label}</p>
-                      <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">{desc}</p>
+                      <p className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
+                        {desc}
+                      </p>
                     </div>
                     {val > 0 && (
                       <span
                         className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                          isPassing ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                          isPassing
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
                         }`}
                       >
                         {isPassing ? "Pass" : "Review"}
@@ -268,7 +304,13 @@ export default function StudentProgressForm({ classes, students, onSaved }) {
                     <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
                       <div
                         className={`h-full transition-all duration-300 rounded-full ${
-                          val >= 80 ? "bg-emerald-500" : val >= 70 ? "bg-[#1a3a8f]" : val > 0 ? "bg-amber-500" : "w-0"
+                          val >= 80
+                            ? "bg-emerald-500"
+                            : val >= 70
+                              ? "bg-[#1a3a8f]"
+                              : val > 0
+                                ? "bg-amber-500"
+                                : "w-0"
                         }`}
                         style={{ width: `${Math.min(100, Math.max(0, val))}%` }}
                       />

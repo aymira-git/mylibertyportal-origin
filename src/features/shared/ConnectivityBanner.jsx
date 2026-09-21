@@ -11,16 +11,15 @@ export default function ConnectivityBanner() {
       role="status"
       aria-live="polite"
       className={`w-full py-2 px-4 text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-300 z-50 shadow-xs ${
-        !isOnline
-          ? "bg-amber-600 text-white"
-          : "bg-emerald-600 text-white animate-fade-in"
+        !isOnline ? "bg-amber-600 text-white" : "bg-emerald-600 text-white animate-fade-in"
       }`}
     >
       {!isOnline ? (
         <>
           <WifiOff className="w-4 h-4 shrink-0 animate-pulse" />
           <span className="text-center">
-            <strong>Offline Mode</strong> — Live database updates and payment processing are paused to prevent discrepancies.
+            <strong>Offline Mode</strong> — Live database updates and payment processing are paused
+            to prevent discrepancies.
           </span>
         </>
       ) : (

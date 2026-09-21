@@ -159,7 +159,9 @@ export default function StaffDirectivesWidget({
                       </p>
                       <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-3 pt-1">
                         {item.createdByName && (
-                          <span>From: <strong>{item.createdByName}</strong></span>
+                          <span>
+                            From: <strong>{item.createdByName}</strong>
+                          </span>
                         )}
                         {item.createdAt && (
                           <span>
@@ -249,7 +251,9 @@ export default function StaffDirectivesWidget({
                   </p>
                   <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-3 pt-0.5">
                     {item.createdByName && (
-                      <span>Issued by: <strong>{item.createdByName}</strong></span>
+                      <span>
+                        Issued by: <strong>{item.createdByName}</strong>
+                      </span>
                     )}
                     {item.createdAt && (
                       <span>
@@ -308,12 +312,16 @@ export default function StaffDirectivesWidget({
                       <p className="text-[10px] text-slate-400 mt-0.5">
                         Completed by {item.completedByName || "Staff"}
                         {item.completedAt && (
-                          <> · {new Date(item.completedAt).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}</>
+                          <>
+                            {" "}
+                            ·{" "}
+                            {new Date(item.completedAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </>
                         )}
                       </p>
                     </div>

@@ -10,9 +10,9 @@ export function MyTeachingCohortsView({ myClasses, users }) {
         </div>
         <h4 className="font-extrabold text-slate-800 text-base">No Teaching Cohorts Assigned</h4>
         <p className="text-xs text-slate-500 max-w-md mx-auto font-medium">
-          You are currently not designated as the lead instructor for any active class batches.
-          When an administrator assigns you to a batch in batch configuration, it will appear here
-          with its student roster, room schedule, and course syllabus.
+          You are currently not designated as the lead instructor for any active class batches. When
+          an administrator assigns you to a batch in batch configuration, it will appear here with
+          its student roster, room schedule, and course syllabus.
         </p>
       </div>
     );
@@ -32,7 +32,8 @@ export function MyTeachingCohortsView({ myClasses, users }) {
             </span>
           </div>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Classes and student groups where you lead instruction, progress monitoring, and evaluations.
+            Classes and student groups where you lead instruction, progress monitoring, and
+            evaluations.
           </p>
         </div>
 

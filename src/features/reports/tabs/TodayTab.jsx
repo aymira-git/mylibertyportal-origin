@@ -3,13 +3,7 @@ import { fetchTodayScansData } from "../reportsRepository";
 import { getStartOfTodayWitaIso, getTodayWitaString, uniqueClasses } from "../reportsUtils";
 import { getTodaysClasses } from "../../attendance";
 import { exportTableCSV, useToast } from "../../shared";
-import {
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Search,
-  RefreshCw,
-} from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Search, RefreshCw } from "lucide-react";
 
 const TodayTab = forwardRef(function TodayTab(
   { branchFilter = "all", isAdminView = false, isFrontOffice = false },
@@ -138,19 +132,21 @@ const TodayTab = forwardRef(function TodayTab(
             Expected Today
           </p>
           <p className="text-2xl font-black text-[#1a3a8f] mt-1">{todayComputed.expectedCount}</p>
-          <p className="text-[10px] text-slate-500 font-medium">In {todayComputed.scheduledClassesCount} classes</p>
+          <p className="text-[10px] text-slate-500 font-medium">
+            In {todayComputed.scheduledClassesCount} classes
+          </p>
         </div>
         <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100">
           <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
             Checked In
           </p>
-          <p className="text-2xl font-black text-emerald-950 mt-1">{todayComputed.checkedInCount}</p>
+          <p className="text-2xl font-black text-emerald-950 mt-1">
+            {todayComputed.checkedInCount}
+          </p>
           <p className="text-[10px] text-emerald-700 font-medium">Recorded at kiosk</p>
         </div>
         <div className="p-4 rounded-2xl bg-rose-50/70 border border-rose-100">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-rose-800">
-            Not Yet In
-          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-rose-800">Not Yet In</p>
           <p className="text-2xl font-black text-rose-950 mt-1">{todayComputed.missingCount}</p>
           <p className="text-[10px] text-rose-700 font-medium">Pending arrival</p>
         </div>
@@ -173,7 +169,9 @@ const TodayTab = forwardRef(function TodayTab(
           <button
             onClick={() => setTodayFilter("all")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              todayFilter === "all" ? "bg-[#1a3a8f] text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              todayFilter === "all"
+                ? "bg-[#1a3a8f] text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             All Expected ({todayComputed.expectedCount})
@@ -181,7 +179,9 @@ const TodayTab = forwardRef(function TodayTab(
           <button
             onClick={() => setTodayFilter("checked_in")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              todayFilter === "checked_in" ? "bg-emerald-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              todayFilter === "checked_in"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             Checked In ({todayComputed.checkedInCount})
@@ -189,7 +189,9 @@ const TodayTab = forwardRef(function TodayTab(
           <button
             onClick={() => setTodayFilter("missing")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              todayFilter === "missing" ? "bg-rose-600 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              todayFilter === "missing"
+                ? "bg-rose-600 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
             Missing ({todayComputed.missingCount})
@@ -234,7 +236,11 @@ const TodayTab = forwardRef(function TodayTab(
                       isCheckedIn ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
                     }`}
                   >
-                    {isCheckedIn ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                    {isCheckedIn ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <XCircle className="w-4 h-4" />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="font-extrabold text-slate-900 text-xs truncate">
@@ -242,7 +248,8 @@ const TodayTab = forwardRef(function TodayTab(
                     </p>
                     <p className="text-[11px] text-slate-400 font-medium">
                       {student.branch || "Cabang Utama"}
-                      {scan && ` · Scanned at ${new Date(scan.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                      {scan &&
+                        ` · Scanned at ${new Date(scan.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                     </p>
                   </div>
                 </div>

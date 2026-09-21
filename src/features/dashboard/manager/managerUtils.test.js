@@ -14,16 +14,23 @@ describe("formatTime", () => {
 
 describe("formatPunctuality", () => {
   it("defaults to On Time (green) when nothing is recorded", () => {
-    expect(formatPunctuality({})).toMatchObject({ label: "On Time", classes: expect.stringContaining("emerald") });
+    expect(formatPunctuality({})).toMatchObject({
+      label: "On Time",
+      classes: expect.stringContaining("emerald"),
+    });
   });
 
   it("shows the minutes for LATE (rose) and EARLY (blue)", () => {
     expect(formatPunctuality({ punctualityStatus: "LATE", minutesEarlyOrLate: 12 })).toMatchObject({
-      label: "12m late", classes: expect.stringContaining("rose"),
+      label: "12m late",
+      classes: expect.stringContaining("rose"),
     });
-    expect(formatPunctuality({ punctualityStatus: "EARLY", minutesEarlyOrLate: -7 })).toMatchObject({
-      label: "7m early", classes: expect.stringContaining("blue"),
-    });
+    expect(formatPunctuality({ punctualityStatus: "EARLY", minutesEarlyOrLate: -7 })).toMatchObject(
+      {
+        label: "7m early",
+        classes: expect.stringContaining("blue"),
+      }
+    );
   });
 
   it("falls back to a plain label when minutes are missing", () => {

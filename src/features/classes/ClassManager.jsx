@@ -12,11 +12,7 @@ import TransferModal from "./TransferModal";
 import BatchOutreachPanel from "./BatchOutreachPanel";
 import CohortRosterTable from "./CohortRosterTable";
 import { findScheduleConflicts } from "./scheduleConflict";
-import {
-  Plus,
-  LayoutGrid,
-  Table as TableIcon,
-} from "lucide-react";
+import { Plus, LayoutGrid, Table as TableIcon } from "lucide-react";
 
 export default function ClassManager({
   classes = [],
@@ -135,11 +131,7 @@ export default function ClassManager({
 
   const handleRemoveStudentFromClass = async (cls, studentId) => {
     const student = users.find((u) => u.id === studentId);
-    if (
-      !(await confirm(
-        `Remove ${student?.displayName || "this student"} from ${cls.className}?`
-      ))
-    )
+    if (!(await confirm(`Remove ${student?.displayName || "this student"} from ${cls.className}?`)))
       return;
     try {
       await removeStudentFromClass(cls, studentId);

@@ -103,7 +103,10 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
     const lateTodayCount = shifts.filter((s) => {
       if (!s.clockIn) return false;
       const shiftDate = s.clockIn.slice(0, 10);
-      return shiftDate === todayWita && (s.punctualityStatus === "Late" || s.punctualityStatus === "LATE");
+      return (
+        shiftDate === todayWita &&
+        (s.punctualityStatus === "Late" || s.punctualityStatus === "LATE")
+      );
     }).length;
 
     const onLeaveCount = leaves.filter((l) => {
@@ -134,7 +137,8 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
         if (shiftStatusFilter === "on_duty") return derived === "on_duty";
         if (shiftStatusFilter === "stale") return derived === "stale";
         if (shiftStatusFilter === "auto_closed") return Boolean(s.autoClosed);
-        if (shiftStatusFilter === "needs_review") return derived === "stale" || (s.autoClosed && s.reviewStatus !== "reviewed");
+        if (shiftStatusFilter === "needs_review")
+          return derived === "stale" || (s.autoClosed && s.reviewStatus !== "reviewed");
         if (shiftStatusFilter === "corrected") return Boolean(s.corrected);
         return true;
       });
@@ -160,7 +164,16 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
   useImperativeHandle(ref, () => ({
     exportCSV: () => {
       const todayStr = getTodayWitaString();
-      const headers = ["Staff Name", "Role", "Campus Branch", "Class", "Clock In", "Clock Out", "Derived Status", "Auto-Closed"];
+      const headers = [
+        "Staff Name",
+        "Role",
+        "Campus Branch",
+        "Class",
+        "Clock In",
+        "Clock Out",
+        "Derived Status",
+        "Auto-Closed",
+      ];
       const rows = filteredShifts.map((s) => [
         s.displayName,
         s.role,
@@ -181,7 +194,11 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
         <div>
           <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-[#1a3a8f]" />
-            <span>{isActualAdmin || isAdminView ? "Staff Clock-In / Clock-Out Ledger" : "My Clock-In / Out History"}</span>
+            <span>
+              {isActualAdmin || isAdminView
+                ? "Staff Clock-In / Clock-Out Ledger"
+                : "My Clock-In / Out History"}
+            </span>
           </h4>
           <p className="text-[11px] text-slate-400 font-medium">
             {filteredShifts.length} Shift records in selected horizon
@@ -221,14 +238,18 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-900">
               Auto-Closed
             </p>
-            <p className="text-2xl font-black text-rose-950 mt-1">{staffKpiStats.autoClosedCount}</p>
+            <p className="text-2xl font-black text-rose-950 mt-1">
+              {staffKpiStats.autoClosedCount}
+            </p>
             <p className="text-[10px] text-rose-700 font-medium">Awaiting admin review</p>
           </div>
           <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100">
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-900">
               Late Today
             </p>
-            <p className="text-2xl font-black text-indigo-950 mt-1">{staffKpiStats.lateTodayCount}</p>
+            <p className="text-2xl font-black text-indigo-950 mt-1">
+              {staffKpiStats.lateTodayCount}
+            </p>
             <p className="text-[10px] text-indigo-700 font-medium">WITA arrival breaches</p>
           </div>
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
@@ -356,7 +377,8 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
                     <p className="text-[10px] font-bold text-amber-700 flex items-center gap-1 mt-0.5">
                       <AlertTriangle className="w-3 h-3 text-amber-600" />
                       <span>
-                        Auto-closed shift {s.reviewStatus === "reviewed" ? "(Reviewed)" : "(Pending Review)"}
+                        Auto-closed shift{" "}
+                        {s.reviewStatus === "reviewed" ? "(Reviewed)" : "(Pending Review)"}
                       </span>
                     </p>
                   )}
@@ -370,8 +392,8 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
                           ? "bg-slate-200 text-slate-700"
                           : "bg-amber-100 text-amber-900 border border-amber-200"
                         : s.clockOut
-                        ? "bg-slate-200 text-slate-800"
-                        : "bg-emerald-100 text-emerald-900 border border-emerald-200 animate-pulse"
+                          ? "bg-slate-200 text-slate-800"
+                          : "bg-emerald-100 text-emerald-900 border border-emerald-200 animate-pulse"
                     }`}
                   >
                     {s.autoClosed
@@ -379,8 +401,8 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
                         ? "Auto-Closed (Reviewed)"
                         : "Auto-Closed"
                       : s.clockOut
-                      ? "Completed"
-                      : "Active On Duty"}
+                        ? "Completed"
+                        : "Active On Duty"}
                   </span>
 
                   {/* Admin Mark Reviewed Button */}
@@ -436,7 +458,9 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
               <Calendar className="w-3.5 h-3.5 text-indigo-600" />
               <span>Scheduled Staff Leaves &amp; Absences ({leaves.length})</span>
             </h5>
-            <span className="text-[10px] text-slate-400 font-semibold">Active calendar records</span>
+            <span className="text-[10px] text-slate-400 font-semibold">
+              Active calendar records
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -458,7 +482,9 @@ const StaffDutyTab = forwardRef(function StaffDutyTab(
                     </span>
                   </div>
                   {l.note && (
-                    <p className="text-[10px] text-slate-500 truncate italic">&quot;{l.note}&quot;</p>
+                    <p className="text-[10px] text-slate-500 truncate italic">
+                      &quot;{l.note}&quot;
+                    </p>
                   )}
                 </div>
 

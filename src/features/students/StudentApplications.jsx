@@ -64,10 +64,7 @@ export default function StudentApplications({
   const [processingId, setProcessingId] = useState(null);
 
   // Derive counts
-  const pendingCount = useMemo(
-    () => applications.filter(isPending).length,
-    [applications]
-  );
+  const pendingCount = useMemo(() => applications.filter(isPending).length, [applications]);
   const approvedCount = useMemo(
     () => applications.filter((a) => a.status === "approved").length,
     [applications]
@@ -78,14 +75,8 @@ export default function StudentApplications({
   );
 
   // Dynamic filter options
-  const branchOptions = useMemo(
-    () => getDistinctValues(applications, "branch"),
-    [applications]
-  );
-  const programOptions = useMemo(
-    () => getDistinctValues(applications, "program"),
-    [applications]
-  );
+  const branchOptions = useMemo(() => getDistinctValues(applications, "branch"), [applications]);
+  const programOptions = useMemo(() => getDistinctValues(applications, "program"), [applications]);
 
   // Filtered dataset
   const filteredApps = useMemo(() => {
@@ -99,10 +90,7 @@ export default function StudentApplications({
   }, [applications, activeView, search, branchFilter, programFilter]);
 
   // Pagination (20 per page)
-  const { page, setPage, totalPages, pageItems, from, to, total } = usePagination(
-    filteredApps,
-    20
-  );
+  const { page, setPage, totalPages, pageItems, from, to, total } = usePagination(filteredApps, 20);
 
   // Handle Approve from modal
   const handleConfirmPlacement = async ({ level, paymentPlan, classId, openProfile }) => {
@@ -199,7 +187,8 @@ export default function StudentApplications({
             Student Admissions &amp; Registrations
           </h3>
           <p className="text-xs text-slate-500 font-medium">
-            Review online Google Form submissions, perform placement triage, and enroll incoming students
+            Review online Google Form submissions, perform placement triage, and enroll incoming
+            students
           </p>
         </div>
 
@@ -231,9 +220,7 @@ export default function StudentApplications({
           <span>Pending Review</span>
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-              activeView === "pending"
-                ? "bg-white/20 text-white"
-                : "bg-slate-200 text-slate-700"
+              activeView === "pending" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
             }`}
           >
             {pendingCount}
@@ -255,9 +242,7 @@ export default function StudentApplications({
           <span>Approved Roster</span>
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-              activeView === "approved"
-                ? "bg-white/20 text-white"
-                : "bg-slate-200 text-slate-700"
+              activeView === "approved" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
             }`}
           >
             {approvedCount}
@@ -279,9 +264,7 @@ export default function StudentApplications({
           <span>Archived / Rejected</span>
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
-              activeView === "rejected"
-                ? "bg-white/20 text-white"
-                : "bg-slate-200 text-slate-700"
+              activeView === "rejected" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
             }`}
           >
             {rejectedCount}
@@ -455,9 +438,7 @@ export default function StudentApplications({
                               <button
                                 key={`dup-s-${idx}`}
                                 type="button"
-                                onClick={() =>
-                                  (onViewStudent || onApproveAndEdit)?.(match.student)
-                                }
+                                onClick={() => (onViewStudent || onApproveAndEdit)?.(match.student)}
                                 className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md transition flex items-center gap-1 cursor-pointer ${
                                   isStrong
                                     ? "bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-200"
@@ -580,12 +561,12 @@ export default function StudentApplications({
                     <div>
                       <span className="font-bold">Approved: </span>
                       <span>
-                        {app.approvedAt
-                          ? new Date(app.approvedAt).toLocaleString()
-                          : "—"}
+                        {app.approvedAt ? new Date(app.approvedAt).toLocaleString() : "—"}
                       </span>
                       <span className="mx-1.5">·</span>
-                      <span>By: <strong>{app.approvedBy || "system"}</strong></span>
+                      <span>
+                        By: <strong>{app.approvedBy || "system"}</strong>
+                      </span>
                       {app.studentId && (
                         <span className="ml-2 font-mono text-[10px] text-emerald-700">
                           (Student ID: {app.studentId.slice(0, 8)}...)
@@ -596,9 +577,7 @@ export default function StudentApplications({
                     {matchingStudent && (
                       <button
                         type="button"
-                        onClick={() =>
-                          (onViewStudent || onApproveAndEdit)?.(matchingStudent)
-                        }
+                        onClick={() => (onViewStudent || onApproveAndEdit)?.(matchingStudent)}
                         className="font-extrabold text-emerald-800 hover:text-emerald-900 underline cursor-pointer"
                       >
                         Open Student Profile →
@@ -612,12 +591,12 @@ export default function StudentApplications({
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-bold">Rejected: </span>
                       <span>
-                        {app.rejectedAt
-                          ? new Date(app.rejectedAt).toLocaleString()
-                          : "—"}
+                        {app.rejectedAt ? new Date(app.rejectedAt).toLocaleString() : "—"}
                       </span>
                       <span>·</span>
-                      <span>By: <strong>{app.rejectedBy || "staff"}</strong></span>
+                      <span>
+                        By: <strong>{app.rejectedBy || "staff"}</strong>
+                      </span>
                       {app.rejectedReason && (
                         <>
                           <span>·</span>
@@ -642,10 +621,14 @@ export default function StudentApplications({
                       Personal
                     </span>
                     <p>
-                      DOB: <span className="font-semibold text-slate-800">{app.dob || "—"}</span> ({app.gender || "—"})
+                      DOB: <span className="font-semibold text-slate-800">{app.dob || "—"}</span> (
+                      {app.gender || "—"})
                     </p>
                     <p>
-                      Birthplace: <span className="font-semibold text-slate-800">{app.placeOfBirth || "—"}</span>
+                      Birthplace:{" "}
+                      <span className="font-semibold text-slate-800">
+                        {app.placeOfBirth || "—"}
+                      </span>
                     </p>
                   </div>
                   <div>
@@ -653,10 +636,14 @@ export default function StudentApplications({
                       Parents
                     </span>
                     <p>
-                      Father: <span className="font-semibold text-slate-800">{app.fatherName || "—"}</span> ({app.fatherPhone || "—"})
+                      Father:{" "}
+                      <span className="font-semibold text-slate-800">{app.fatherName || "—"}</span>{" "}
+                      ({app.fatherPhone || "—"})
                     </p>
                     <p>
-                      Mother: <span className="font-semibold text-slate-800">{app.motherName || "—"}</span> ({app.motherPhone || "—"})
+                      Mother:{" "}
+                      <span className="font-semibold text-slate-800">{app.motherName || "—"}</span>{" "}
+                      ({app.motherPhone || "—"})
                     </p>
                   </div>
                   <div className="sm:col-span-2 md:col-span-1">
@@ -664,10 +651,12 @@ export default function StudentApplications({
                       Academic &amp; Address
                     </span>
                     <p>
-                      School/Job: <span className="font-semibold text-slate-800">{app.schoolOrJob || "—"}</span>
+                      School/Job:{" "}
+                      <span className="font-semibold text-slate-800">{app.schoolOrJob || "—"}</span>
                     </p>
                     <p className="truncate" title={app.address}>
-                      Address: <span className="font-semibold text-slate-800">{app.address || "—"}</span>
+                      Address:{" "}
+                      <span className="font-semibold text-slate-800">{app.address || "—"}</span>
                     </p>
                   </div>
                 </div>

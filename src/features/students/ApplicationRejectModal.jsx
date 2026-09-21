@@ -15,12 +15,7 @@ const REJECT_REASONS = [
   "Other",
 ];
 
-export default function ApplicationRejectModal({
-  app,
-  submitting = false,
-  onClose,
-  onConfirm,
-}) {
+export default function ApplicationRejectModal({ app, submitting = false, onClose, onConfirm }) {
   const [reason, setReason] = useState(REJECT_REASONS[0]);
   const [note, setNote] = useState("");
 
@@ -43,9 +38,7 @@ export default function ApplicationRejectModal({
               <h3 className="font-extrabold text-rose-950 text-sm">
                 Reject &amp; Archive Application
               </h3>
-              <p className="text-[11px] text-rose-700">
-                Move submission to the archive repository
-              </p>
+              <p className="text-[11px] text-rose-700">Move submission to the archive repository</p>
             </div>
           </div>
           <button
@@ -97,7 +90,8 @@ export default function ApplicationRejectModal({
           </div>
 
           <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-            Archived applications can be reviewed in the <strong>Archived / Rejected</strong> view and restored to Pending at any time if the student reconnects.
+            Archived applications can be reviewed in the <strong>Archived / Rejected</strong> view
+            and restored to Pending at any time if the student reconnects.
           </p>
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">

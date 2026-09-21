@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fake } from "../../test/firestoreFake.js";
 import { fetchPaymentHistory, markPaymentPending, recordPayment } from "./paymentsRepository.js";
 
-vi.mock("firebase/firestore", async () => (await import("../../test/firestoreFake.js")).firestoreModule);
+vi.mock(
+  "firebase/firestore",
+  async () => (await import("../../test/firestoreFake.js")).firestoreModule
+);
 vi.mock("../../firebase", () => ({ db: {}, auth: {} }));
 
 beforeEach(() => fake.reset());

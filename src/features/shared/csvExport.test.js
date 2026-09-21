@@ -28,7 +28,14 @@ async function read() {
 
 describe("exportTableCSV", () => {
   it("writes headers and rows separated by CRLF, with a UTF-8 BOM for Excel", async () => {
-    exportTableCSV("roster", ["Name", "Level"], [["Budi", "warrior"], ["Ani", "elite"]]);
+    exportTableCSV(
+      "roster",
+      ["Name", "Level"],
+      [
+        ["Budi", "warrior"],
+        ["Ani", "elite"],
+      ]
+    );
     const { hasBom, text } = await read();
     expect(hasBom).toBe(true);
     expect(text).toBe("Name,Level\r\nBudi,warrior\r\nAni,elite");

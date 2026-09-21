@@ -95,7 +95,9 @@ export const firestoreModule = {
   limit: vi.fn((n) => ({ type: "limit", n })),
   getDocs: vi.fn(async (q) => runQuery(q.isCollection ? { path: q.path } : q)),
   getDoc: vi.fn(async (ref) => snapshotOf(ref.path)),
-  addDoc: vi.fn((col, data) => record("add", refOf(`${col.path}/${newId()}`), data, null, "direct")),
+  addDoc: vi.fn((col, data) =>
+    record("add", refOf(`${col.path}/${newId()}`), data, null, "direct")
+  ),
   setDoc: vi.fn((ref, data, opts) => record("set", ref, data, opts, "direct")),
   updateDoc: vi.fn((ref, data) => record("update", ref, data, null, "direct")),
   deleteDoc: vi.fn((ref) => record("delete", ref, null, null, "direct")),
@@ -105,9 +107,12 @@ export const firestoreModule = {
   writeBatch: vi.fn(() => {
     const pending = [];
     return {
-      set: (ref, data, opts) => void pending.push({ kind: "set", path: ref.path, data, opts: opts ?? null, via: "batch" }),
-      update: (ref, data) => void pending.push({ kind: "update", path: ref.path, data, opts: null, via: "batch" }),
-      delete: (ref) => void pending.push({ kind: "delete", path: ref.path, data: null, opts: null, via: "batch" }),
+      set: (ref, data, opts) =>
+        void pending.push({ kind: "set", path: ref.path, data, opts: opts ?? null, via: "batch" }),
+      update: (ref, data) =>
+        void pending.push({ kind: "update", path: ref.path, data, opts: null, via: "batch" }),
+      delete: (ref) =>
+        void pending.push({ kind: "delete", path: ref.path, data: null, opts: null, via: "batch" }),
       commit: async () => {
         if (fake.failCommit) {
           const e = fake.failCommit;
@@ -122,8 +127,16 @@ export const firestoreModule = {
     const pending = [];
     const tx = {
       get: async (ref) => snapshotOf(ref.path),
-      set: (ref, data, opts) => void pending.push({ kind: "set", path: ref.path, data, opts: opts ?? null, via: "transaction" }),
-      update: (ref, data) => void pending.push({ kind: "update", path: ref.path, data, opts: null, via: "transaction" }),
+      set: (ref, data, opts) =>
+        void pending.push({
+          kind: "set",
+          path: ref.path,
+          data,
+          opts: opts ?? null,
+          via: "transaction",
+        }),
+      update: (ref, data) =>
+        void pending.push({ kind: "update", path: ref.path, data, opts: null, via: "transaction" }),
     };
     const result = await fn(tx); // if fn throws, nothing below runs -> nothing is written
     fake.ops.push(...pending);
