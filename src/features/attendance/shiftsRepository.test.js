@@ -1,0 +1,151 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fake } from "../../test/firestoreFake.js";
+import {
+  adjustShiftWithAudit,
+  clockIn,
+  clockOutShift,
+  fetchInstructorClasses,
+  fetchOpenShiftFor,
+  fetchStaffLeaves,
+  logStaffLeave,
+  switchClassAtomic,
+} from "./shiftsRepository.js";
+
+vi.mock("firebase/firestore", async () => (await import("../../test/firestoreFake.js")).firestoreModule);
+vi.mock("../../firebase", () => ({ db: {}, auth: {} }));
+
+beforeEach(() => fake.reset());
+
+const at = new Date("2026-09-21T02:00:00.000Z");
+
+describe("clockIn", () => {
+  it("creates an open shift with the punctuality result attached", async () => {
+    await clockIn({
+      uid: "i1", displayName: "Ms. Rina", role: "instructor", classId: "c1", className: "Warrior A", clockInAt: at,
+      punctuality: { status: "Late", scheduledStart: "s", requiredArrival: "r", minutesEarlyOrLate: -5 },
+    });
+    const op = fake.opsOf("add")[0];
+    expect(op.path.startsWith("shifts/")).toBe(true);
+    expect(op.data).toMatchObject({
+      userId: "i1", role: "instructor", classId: "c1", className: "Warrior A",
+      clockIn: "2026-09-21T02:00:00.000Z", clockOut: null,
+      punctualityStatus: "Late", minutesEarlyOrLate: -5, stationId: "reception-01", clockInSource: "kiosk",
+    });
+  });
+
+  it("uses safe defaults when there is no class or punctuality result", async () => {
+    await clockIn({ uid: "f1", role: "frontoffice", clockInAt: at });
+    expect(fake.opsOf("add")[0].data).toMatchObject({
+      displayName: "", classId: "general", className: "", punctualityStatus: "Present", minutesEarlyOrLate: 0,
+      scheduledStart: null, requiredArrival: null,
+    });
+  });
+
+  it("writes to a chosen document id through a batch when docId is given", async () => {
+    await clockIn({ uid: "i1", role: "instructor", clockInAt: at, docId: "fixed-id" });
+    expect(fake.find("shifts/fixed-id")).toMatchObject({ kind: "set", via: "batch" });
+  });
+});
+
+describe("clockOutShift / switchClassAtomic", () => {
+  it("writes the clock-out time", async () => {
+    await clockOutShift("sh1", at);
+    expect(fake.find("shifts/sh1").data).toEqual({ clockOut: "2026-09-21T02:00:00.000Z" });
+  });
+
+  it("closes the old shift and opens the new one at the same instant, atomically", async () => {
+    await switchClassAtomic({
+      previousShiftId: "old", clockOutAt: at, newShiftDocId: "new", uid: "i1", displayName: "Ms. Rina",
+      role: "instructor", classId: "c2", className: "Elite B",
+    });
+    const oldOp = fake.find("shifts/old");
+    const newOp = fake.find("shifts/new");
+    expect(oldOp).toMatchObject({ kind: "update", via: "batch", data: { clockOut: "2026-09-21T02:00:00.000Z" } });
+    expect(newOp).toMatchObject({ kind: "set", via: "batch" });
+    expect(newOp.data).toMatchObject({ clockIn: oldOp.data.clockOut, clockOut: null, classId: "c2" });
+  });
+
+  it("changes nothing if the batch fails", async () => {
+    fake.failCommit = new Error("offline");
+    await expect(switchClassAtomic({ previousShiftId: "old", uid: "i1", role: "instructor" })).rejects.toThrow("offline");
+    expect(fake.ops).toHaveLength(0);
+  });
+});
+
+describe("adjustShiftWithAudit", () => {
+  const before = { clockIn: "2026-09-21T01:00:00.000Z", clockOut: null, autoClosed: true };
+  const after = { clockIn: "2026-09-21T01:00:00.000Z", clockOut: "2026-09-21T03:00:00.000Z" };
+
+  it("updates the shift and writes an audit event in the same batch", async () => {
+    await adjustShiftWithAudit({
+      shiftId: "sh1", beforeShift: before, afterData: after, reasonCode: "forgot_clock_out", note: "asked by manager",
+      actorId: "admin1", actorName: "Admin",
+    });
+    expect(fake.find("shifts/sh1")).toMatchObject({
+      kind: "update", via: "batch", data: { ...after, corrected: true, reviewStatus: "reviewed" },
+    });
+    const audit = fake.opsOf("set").find((o) => o.path.startsWith("shiftAuditEvents/"));
+    expect(audit.via).toBe("batch");
+    expect(audit.data).toMatchObject({
+      shiftId: "sh1", action: "manual_adjustment", reasonCode: "forgot_clock_out", note: "asked by manager",
+      actorId: "admin1", actorNameSnapshot: "Admin",
+      before: { clockIn: before.clockIn, clockOut: null, autoClosed: true },
+      after: { clockIn: after.clockIn, clockOut: after.clockOut },
+    });
+  });
+
+  it("falls back to 'Administrator' and an empty note", async () => {
+    await adjustShiftWithAudit({ shiftId: "sh1", beforeShift: {}, afterData: {}, reasonCode: "x", actorId: "a" });
+    const audit = fake.opsOf("set")[0];
+    expect(audit.data).toMatchObject({ actorNameSnapshot: "Administrator", note: "" });
+    expect(audit.data.before).toEqual({ clockIn: null, clockOut: null, autoClosed: false });
+  });
+
+  it("saves neither the shift change nor the audit if the batch fails", async () => {
+    fake.failCommit = new Error("permission-denied");
+    await expect(
+      adjustShiftWithAudit({ shiftId: "sh1", beforeShift: {}, afterData: {}, reasonCode: "x", actorId: "a" })
+    ).rejects.toThrow();
+    expect(fake.ops).toHaveLength(0);
+  });
+});
+
+describe("staff leave", () => {
+  it("logs approved leave, and a single-day leave ends the same day", async () => {
+    await logStaffLeave({ userId: "u1", type: "Sakit", startDate: "2026-09-22", createdBy: "admin1" });
+    expect(fake.opsOf("add")[0].data).toMatchObject({
+      userId: "u1", type: "Sakit", startDate: "2026-09-22", endDate: "2026-09-22", dayPortion: "full", status: "approved",
+    });
+  });
+
+  it("only returns leave that ends on or after the given date", async () => {
+    fake.seed("staffLeave", [
+      { id: "l1", endDate: "2026-09-10" },
+      { id: "l2", endDate: "2026-09-25" },
+    ]);
+    expect((await fetchStaffLeaves("2026-09-20")).map((l) => l.id)).toEqual(["l2"]);
+    expect(await fetchStaffLeaves()).toHaveLength(2);
+  });
+});
+
+describe("fetchOpenShiftFor / fetchInstructorClasses", () => {
+  it("returns the open shift, or null", async () => {
+    fake.seed("shifts", [
+      { id: "a", userId: "u1", clockOut: "x" },
+      { id: "b", userId: "u1", clockOut: null },
+    ]);
+    expect((await fetchOpenShiftFor("u1")).id).toBe("b");
+    expect(await fetchOpenShiftFor("u2")).toBeNull();
+  });
+
+  it("combines main and substitute classes without duplicates", async () => {
+    fake.seed("classes", [
+      { id: "c1", instructorId: "i1" },
+      { id: "c2", substituteInstructorId: "i1" },
+      { id: "c3", instructorId: "i1", substituteInstructorId: "i1" },
+      { id: "c4", instructorId: "other" },
+    ]);
+    const ids = (await fetchInstructorClasses("i1")).map((c) => c.id).sort();
+    expect(ids).toEqual(["c1", "c2", "c3"]);
+  });
+});
