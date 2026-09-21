@@ -117,26 +117,26 @@ describe("getTodaysClasses", () => {
 
     // Friday is the school's day off, so the "Fri Only" option itself may be retired (audit F10);
     // the parser should still recognise the value so old data is not silently mis-handled.
-    it.fails("still recognises a legacy 'Fri Only' value on a Friday", () => {
+    it("still recognises a legacy 'Fri Only' value on a Friday", () => {
       vi.useFakeTimers();
       vi.setSystemTime(wita("2026-09-25", "10:00")); // Friday
       expect(getTodaysClasses([{ id: "f", classDay: "Fri Only" }])).toHaveLength(1);
     });
 
-    it.fails("shows 'Sat Only' on a Saturday", () => {
+    it("shows 'Sat Only' on a Saturday", () => {
       vi.useFakeTimers();
       vi.setSystemTime(wita("2026-09-26", "10:00"));
       expect(getTodaysClasses([{ id: "s", classDay: "Sat Only" }])).toHaveLength(1);
     });
 
-    it.fails("shows 'Everyday' (Sat–Thu Intensive) on a Monday", () => {
+    it("shows 'Everyday' (Sat–Thu Intensive) on a Monday", () => {
       vi.useFakeTimers();
       vi.setSystemTime(wita("2026-09-21", "10:00"));
       expect(getTodaysClasses([{ id: "e", classDay: "Everyday" }])).toHaveLength(1);
     });
 
     // Kifry confirmed "Everyday" means Saturday to Thursday, so it includes the weekend.
-    it.fails("shows 'Everyday' on a Sunday", () => {
+    it("shows 'Everyday' on a Sunday", () => {
       vi.useFakeTimers();
       vi.setSystemTime(wita("2026-09-27", "10:00")); // Sunday
       expect(getTodaysClasses([{ id: "e", classDay: "Everyday" }])).toHaveLength(1);
@@ -300,7 +300,7 @@ describe("computeMonthlyPunctuality", () => {
   // Same root cause as the getTodaysClasses gap: "Fri Only", "Sat Only" and
   // "Everyday" are not recognised, so those classes are treated like Private
   // lessons — absences are never counted and every attended shift is "on time".
-  it.fails("schedules sessions for a 'Sat Only' class (so absences can be counted)", () => {
+  it("schedules sessions for a 'Sat Only' class (so absences can be counted)", () => {
     const saturday = { ...baseClass, id: "f1", classDay: "Sat Only" };
     const [stats] = computeMonthlyPunctuality([saturday], [], instructors, SEPT.year, SEPT.month);
     expect(stats.sessionsScheduled).toBe(4); // Saturdays: 5, 12, 19, 26

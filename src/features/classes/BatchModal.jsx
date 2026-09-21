@@ -362,10 +362,10 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
             >
               <option value="Mon/Wed">Mon / Wed</option>
               <option value="Tue/Thu">Tue / Thu</option>
-              <option value="Fri Only">Fri Only</option>
               <option value="Sat Only">Sat Only</option>
               <option value="Sat/Sun">Sat / Sun (Weekend)</option>
-              <option value="Everyday">Mon - Fri (Intensive)</option>
+              <option value="Everyday">Sat - Thu (Intensive)</option>
+              {classDay === "Fri Only" && <option value="Fri Only">Fri Only (Legacy)</option>}
             </select>
           </div>
 

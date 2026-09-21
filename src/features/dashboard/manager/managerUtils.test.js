@@ -36,8 +36,9 @@ describe("formatPunctuality", () => {
   // function looks for "LATE" / "EARLY" / "ON_TIME", so a late shift is shown as
   // a green "On Time" in the Manager overview. StaffDutyTab already accepts both
   // spellings. Expectation below is a proposal — open to challenge.
-  it.fails("shows a shift the kiosk saved as 'Late' as late (rose)", () => {
+  it("shows a shift the kiosk saved as 'Late' as late (rose)", () => {
     const r = formatPunctuality({ punctualityStatus: "Late", minutesEarlyOrLate: -20 });
     expect(r.classes).toContain("rose");
+    expect(r.label).toBe("20m late");
   });
 });

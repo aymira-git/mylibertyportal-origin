@@ -9,17 +9,19 @@ export function formatTime(isoString) {
 }
 
 export function formatPunctuality(shift) {
-  const status = shift.punctualityStatus || "ON_TIME";
+  const rawStatus = (shift.punctualityStatus || "ON_TIME").toUpperCase().replace(/\s+/g, "_");
   const mins = shift.minutesEarlyOrLate;
-  if (status === "LATE") {
+  const absMins = mins != null && Number.isFinite(Number(mins)) ? Math.abs(Math.round(mins)) : null;
+
+  if (rawStatus === "LATE") {
     return {
-      label: mins ? `${mins}m late` : "Late",
+      label: absMins ? `${absMins}m late` : "Late",
       classes: "bg-rose-100 text-rose-800 border-rose-200",
     };
   }
-  if (status === "EARLY") {
+  if (rawStatus === "EARLY") {
     return {
-      label: mins ? `${Math.abs(mins)}m early` : "Early",
+      label: absMins ? `${absMins}m early` : "Early",
       classes: "bg-blue-100 text-blue-800 border-blue-200",
     };
   }

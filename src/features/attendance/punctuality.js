@@ -17,22 +17,48 @@ const DAY_NAME_TO_NUM = {
   "sun": 0, "sunday": 0,
 };
 
+// Known canonical patterns from the class frequency selector
+const KNOWN_CLASS_DAYS = {
+  "mon/wed": [1, 3],
+  "tue/thu": [2, 4],
+  "sat/sun": [6, 0],
+  "sat only": [6],
+  "sun only": [0],
+  "fri only": [5],
+  "everyday": [6, 0, 1, 2, 3, 4], // School week: Saturday to Thursday (Friday is off)
+};
+
 /**
  * Parses a classDay string into a list of JS weekday numbers (0-6).
- * Supports patterns like "Mon/Wed", "Mon, Wed, Fri", "Saturday", etc.
+ * Supports patterns like "Mon/Wed", "Mon, Wed, Fri", "Saturday", "Sat Only", "Everyday", etc.
  * Returns null for "Private" or untracked formats.
  */
 function parseClassDays(dayString) {
-  if (!dayString || dayString.toLowerCase().includes("private")) return null;
-  
+  if (!dayString || typeof dayString !== "string") return null;
+  const clean = dayString.trim().toLowerCase();
+  if (clean.includes("private")) return null;
+
+  if (KNOWN_CLASS_DAYS[clean]) {
+    return KNOWN_CLASS_DAYS[clean];
+  }
+
+  if (clean.includes("everyday")) {
+    return [6, 0, 1, 2, 3, 4];
+  }
+
+  const withoutOnly = clean.replace(/\s+only$/i, "").trim();
+  if (DAY_NAME_TO_NUM[withoutOnly] !== undefined) {
+    return [DAY_NAME_TO_NUM[withoutOnly]];
+  }
+
   // Split by common delimiters: /, ,, or spaces
-  const parts = dayString.split(/[/,]/);
+  const parts = clean.split(/[/,]/);
   const nums = parts
-    .map(p => p.trim().toLowerCase())
-    .map(p => DAY_NAME_TO_NUM[p])
+    .map(p => p.trim().replace(/\s+only$/i, ""))
+    .map(p => (DAY_NAME_TO_NUM[p] !== undefined ? DAY_NAME_TO_NUM[p] : DAY_NAME_TO_NUM[p.slice(0, 3)]))
     .filter(n => n !== undefined);
-    
-  return nums.length > 0 ? nums : null;
+
+  return nums.length > 0 ? Array.from(new Set(nums)) : null;
 }
 
 // Which of an instructor's classes fall on today's weekday in WITA.

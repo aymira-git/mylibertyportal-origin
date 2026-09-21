@@ -34,7 +34,7 @@ describe("parseTimeMinutes", () => {
 describe("doDaysOverlap", () => {
   it("detects a shared weekday between the dropdown values", () => {
     expect(doDaysOverlap("Mon/Wed", "Mon/Wed")).toBe(true);
-    expect(doDaysOverlap("Fri Only", "Everyday")).toBe(true);
+    expect(doDaysOverlap("Sat Only", "Everyday")).toBe(true);
     expect(doDaysOverlap("Mon/Wed", "Everyday")).toBe(true);
   });
 
@@ -54,27 +54,15 @@ describe("doDaysOverlap", () => {
     expect(doDaysOverlap("Mon/Thu", "Tue/Fri")).toBe(false);
   });
 
-  // Current behaviour: "Everyday" (labelled "Mon - Fri (Intensive)" in the modal)
-  // maps to Monday–Friday. The school works Saturday–Thursday and Friday is
-  // always off (see F10 in the audit), so this is likely to change — update
-  // this test together with DAY_MAP when it does.
-  it("currently treats 'Everyday' as Monday to Friday", () => {
-    expect(doDaysOverlap("Everyday", "Sat Only")).toBe(false);
-    expect(doDaysOverlap("Everyday", "Sat/Sun")).toBe(false);
-    expect(doDaysOverlap("Everyday", "Fri Only")).toBe(true);
-  });
-
-  // Proposals, based on Kifry's confirmation that an "Everyday" batch runs
-  // Saturday to Thursday (Friday is always off). Open to challenge.
-  it.fails("treats 'Everyday' as a school-week batch that overlaps a Saturday class", () => {
+  it("treats 'Everyday' as a school-week batch (Sat–Thu) that overlaps a Saturday class", () => {
     expect(doDaysOverlap("Everyday", "Sat Only")).toBe(true);
   });
 
-  it.fails("treats 'Everyday' as overlapping a Sunday-only class", () => {
+  it("treats 'Everyday' as overlapping a Sunday-only class", () => {
     expect(doDaysOverlap("Everyday", "Sun Only")).toBe(true);
   });
 
-  it.fails("does not treat 'Everyday' as overlapping a legacy Friday-only class", () => {
+  it("does not treat 'Everyday' as overlapping a legacy Friday-only class", () => {
     expect(doDaysOverlap("Everyday", "Fri Only")).toBe(false);
   });
 });
@@ -195,7 +183,7 @@ describe("checkDraftConflicts", () => {
   // anything. Right now it returns clashes between OTHER classes as well, so if
   // two saved classes already overlap, every new draft shows a warning that is
   // not about the draft.
-  it.fails("only reports clashes that involve the draft itself", () => {
+  it("only reports clashes that involve the draft itself", () => {
     const alreadyClashing = [cls({ id: "x1" }), cls({ id: "x2" })];
     const unrelatedDraft = cls({ id: undefined, classDay: "Sat Only", instructorId: "i9", classRoom: "Room Z" });
     const result = checkDraftConflicts(unrelatedDraft, alreadyClashing);

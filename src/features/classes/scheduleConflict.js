@@ -21,8 +21,9 @@ const DAY_MAP = {
   "Tue/Thu":  new Set(["tue", "thu"]),
   "Fri Only": new Set(["fri"]),
   "Sat Only": new Set(["sat"]),
+  "Sun Only": new Set(["sun"]),
   "Sat/Sun":  new Set(["sat", "sun"]),
-  "Everyday": new Set(["mon", "tue", "wed", "thu", "fri"]),
+  "Everyday": new Set(["sat", "sun", "mon", "tue", "wed", "thu"]),
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -56,11 +57,18 @@ export function doDaysOverlap(dayA, dayB) {
 
 /** Fallback parser for unexpected classDay values. */
 function parseDayString(str) {
+  const clean = (str || "").trim().toLowerCase();
+  if (clean.includes("everyday")) {
+    return new Set(["sat", "sun", "mon", "tue", "wed", "thu"]);
+  }
+  if (clean === "sat only") return new Set(["sat"]);
+  if (clean === "sun only") return new Set(["sun"]);
+  if (clean === "fri only") return new Set(["fri"]);
+
   return new Set(
-    str
-      .toLowerCase()
-      .split("/")
-      .map((s) => s.trim().slice(0, 3))
+    clean
+      .split(/[/,]/)
+      .map((s) => s.trim().replace(/\s+only$/i, "").slice(0, 3))
       .filter(Boolean)
   );
 }
@@ -171,11 +179,18 @@ export function checkDraftConflicts(draft, existingClasses) {
   );
 
   // Wrap draft as a pseudo-class for the engine
+  const draftId = draft.id || "__draft__";
   const draftClass = {
     ...draft,
-    id: draft.id || "__draft__",
+    id: draftId,
     status: draft.status || "open",
   };
 
-  return findScheduleConflicts([...others, draftClass]);
+  const conflicts = findScheduleConflicts([...others, draftClass]);
+  const involvesDraft = (c) => c.classA.id === draftId || c.classB.id === draftId;
+
+  return {
+    teacherConflicts: conflicts.teacherConflicts.filter(involvesDraft),
+    roomConflicts: conflicts.roomConflicts.filter(involvesDraft),
+  };
 }
