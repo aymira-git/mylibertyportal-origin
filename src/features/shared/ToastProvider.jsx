@@ -11,20 +11,31 @@
 //   ...
 //   toast("Success! Class scheduled.");           // default = success styling
 //   toast("Error: " + err.message, "error");       // error styling
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ToastContext } from "./useToast";
 
 let nextId = 1;
 
 export default function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const activeTimers = useRef(new Set());
+
+  useEffect(() => {
+    const timers = activeTimers.current;
+    return () => {
+      timers.forEach((timerId) => clearTimeout(timerId));
+      timers.clear();
+    };
+  }, []);
 
   const toast = useCallback((message, type = "success") => {
     const id = nextId++;
     setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
+    const timerId = setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
+      activeTimers.current.delete(timerId);
     }, 4000);
+    activeTimers.current.add(timerId);
   }, []);
 
   return (

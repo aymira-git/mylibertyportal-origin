@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { auth, db } from "../../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { AIAssistant, DashboardShell, useToast } from "../shared";
 import { ReportsDashboard } from "../reports";
 import { createTodo, deleteTodo, toggleTodoComplete } from "../staff";
@@ -44,8 +44,10 @@ export default function ManagerDashboard() {
       (err) => console.warn("applications listener:", err)
     );
 
+    // Only subscribe to still-open shifts (clockOut == null) to prevent downloading
+    // the entire unbounded shifts collection on the manager portal
     const unsubShifts = onSnapshot(
-      collection(db, "shifts"),
+      query(collection(db, "shifts"), where("clockOut", "==", null)),
       (snap) => setShifts(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       (err) => console.warn("shifts listener:", err)
     );

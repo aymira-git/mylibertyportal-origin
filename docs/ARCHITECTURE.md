@@ -71,13 +71,20 @@ separate verification pass.
 
 ## Data volume
 
-Only two collections grow without limit: `shifts` (one document per staff
+Only two collections grow rapidly without limit: `shifts` (one document per staff
 clock-in) and `attendance` (one per student scan). Both are read through a
 date window, chosen by the "Period" control on the Reports dashboard and
 defaulting to the last 90 days. The window is a visible setting rather than
 a silent cap, so missing older records read as a filter rather than as data
-loss. Still-open shifts are always fetched outside the window so the
-auto-close pass can't miss one.
+loss. Still-open shifts are always fetched outside the window (`where("clockOut", "==", null)`)
+so real-time dashboards (such as Manager Dashboard) and auto-close passes never download
+unbounded historical records.
+
+Secondary accumulators: `applications` (intake records retained for audit) and `todos`
+(staff directives retained for tracking) grow slowly over time. Because the school operates
+with a manageable yearly intake, reading these collections directly remains performant.
+However, rejected applications can be permanently purged by admins, and completed todos
+may be archived in future releases if volume expands.
 
 Every other collection is bounded by the size of the school and is read
 whole. `users` in particular is NOT paginated at the database level, and
