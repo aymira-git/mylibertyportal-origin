@@ -49,3 +49,10 @@ desktop.ini
 # Legacy / Non-web Files
 Example Workflows/
 KNIME_project/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
