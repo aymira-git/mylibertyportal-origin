@@ -78,9 +78,6 @@ service cloud.firestore {
       allow delete: if isAdmin()
         || (signedIn() && resource.data.email == request.auth.token.email);
 
-      allow update: if true 
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used', 'usedAt', 'usedBy'])
-        && resource.data.used == false; 
       allow create: if isAdmin();
     }
 
@@ -111,8 +108,11 @@ service cloud.firestore {
       allow read: if isStaff();
       // Admins and Managers issue directives; Front Office can manage desk directives
       allow create, delete: if isAdmin() || isManager() || isFrontOffice();
-      // All staff can update directives (to toggle completion status, timestamps, etc.)
-      allow update: if isStaff();
+      // Admins, Managers, and Front Office can update any directive field;
+      // other staff can only toggle completion status and attribution
+      allow update: if isAdmin() || isManager() || isFrontOffice()
+        || (isStaff() && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['completed', 'completedAt', 'completedBy', 'completedByName', 'updatedAt']));
     }
 
     match /attendance/{attendanceId} {
