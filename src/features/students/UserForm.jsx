@@ -20,6 +20,7 @@ import {
 } from "../shared";
 import { STAFF_STATUS_OPTIONS, STANDARD_BRANCHES } from "../staff/staffUtils";
 import { normalizeBranch } from "../../constants/branches";
+import { normalizeDivision } from "../../constants/divisions";
 import { getEnabledPrograms, getProgram, normalizeProgram } from "../../constants/programs";
 
 export default function UserForm({ formData, setFormData, editId, onSubmit }) {
@@ -32,6 +33,16 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
     const stars = getStars(level);
     if (stars) {
       field("rating", String(stars));
+    }
+  };
+
+  const handleDivisionChange = (newDiv) => {
+    field("division", newDiv);
+    if (
+      newDiv === "kindergarten" &&
+      (formData.role === "marketing" || formData.role === "officeboy")
+    ) {
+      field("role", "instructor");
     }
   };
 
@@ -58,26 +69,53 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
           </p>
         </div>
 
-        {/* Role badge or picker */}
+        {/* Role & Division badges or pickers */}
         <div>
           {editId || isStudent ? (
-            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 font-bold text-xs rounded-full uppercase">
-              Role: {formData.role}
-            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="px-3 py-1 bg-indigo-50 text-indigo-700 font-bold text-xs rounded-full uppercase">
+                Role: {formData.role}
+              </span>
+              {!isStudent && (
+                <span className="px-3 py-1 bg-cyan-50 text-cyan-700 font-bold text-xs rounded-full uppercase">
+                  Division:{" "}
+                  {normalizeDivision(formData.division) === "kindergarten"
+                    ? "Kids School"
+                    : "Courses"}
+                </span>
+              )}
+            </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Role:</label>
-              <select
-                value={formData.role}
-                onChange={(e) => field("role", e.target.value)}
-                className="p-2 border rounded-xl bg-white font-bold text-xs"
-              >
-                <option value="instructor">Instructor</option>
-                <option value="manager">Manager</option>
-                <option value="marketing">Marketing Staff</option>
-                <option value="frontoffice">Front Office</option>
-                <option value="officeboy">Office Boy</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Division:</label>
+                <select
+                  value={normalizeDivision(formData.division)}
+                  onChange={(e) => handleDivisionChange(e.target.value)}
+                  className="p-2 border rounded-xl bg-white font-bold text-xs"
+                >
+                  <option value="courses">Course Academy</option>
+                  <option value="kindergarten">Kids School (Kindergarten)</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Role:</label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => field("role", e.target.value)}
+                  className="p-2 border rounded-xl bg-white font-bold text-xs"
+                >
+                  <option value="instructor">Instructor</option>
+                  <option value="manager">Manager</option>
+                  <option value="frontoffice">Front Office</option>
+                  {normalizeDivision(formData.division) !== "kindergarten" && (
+                    <>
+                      <option value="marketing">Marketing Staff</option>
+                      <option value="officeboy">Office Boy</option>
+                    </>
+                  )}
+                </select>
+              </div>
             </div>
           )}
         </div>
@@ -682,6 +720,19 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 {formData.branch && !STANDARD_BRANCHES.includes(formData.branch) && (
                   <option value={formData.branch}>{formData.branch}</option>
                 )}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                Division (Divisi)
+              </label>
+              <select
+                value={normalizeDivision(formData.division)}
+                onChange={(e) => handleDivisionChange(e.target.value)}
+                className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs"
+              >
+                <option value="courses">Course Academy</option>
+                <option value="kindergarten">Kids School (Kindergarten)</option>
               </select>
             </div>
             <div>

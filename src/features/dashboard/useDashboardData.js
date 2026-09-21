@@ -235,7 +235,10 @@ export function useDashboardData({
 
   const handleAddStaff = () => {
     setEditId(null);
-    setFormData(emptyFormData);
+    setFormData({
+      ...emptyFormData,
+      division: division || DEFAULT_DIVISION,
+    });
     setActiveTab?.("addUser");
   };
 
