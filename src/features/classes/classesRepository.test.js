@@ -7,6 +7,7 @@ import {
   setClassGroupLevel,
   syncStudentsCurrentLevel,
   transferStudentBetweenClasses,
+  updateClass,
 } from "./classesRepository.js";
 
 vi.mock(
@@ -248,5 +249,26 @@ describe("createClass", () => {
         classLevel: "master",
       })
     ).rejects.toThrow();
+  });
+});
+
+describe("updateClass", () => {
+  it("normalizes batchType before writing update to Firestore", async () => {
+    await updateClass("class-123", {
+      batchType: "PRIVATE",
+      className: "Updated Title",
+    });
+    const op = fake.find("classes/class-123");
+    expect(op.data.batchType).toBe("private");
+    expect(op.data.className).toBe("Updated Title");
+  });
+
+  it("leaves update data untouched if batchType is not specified", async () => {
+    await updateClass("class-456", {
+      className: "New Title Only",
+    });
+    const op = fake.find("classes/class-456");
+    expect(op.data).not.toHaveProperty("batchType");
+    expect(op.data.className).toBe("New Title Only");
   });
 });

@@ -94,7 +94,7 @@ describe("getBatchAvailability", () => {
   });
 });
 
-import { filterBatchesByProgram } from "./batchAvailability.js";
+import { filterBatchesByProgram, filterBatchesByType } from "./batchAvailability.js";
 
 describe("filterBatchesByProgram", () => {
   const sampleBatches = [
@@ -118,5 +118,37 @@ describe("filterBatchesByProgram", () => {
 
     const toefl = filterBatchesByProgram(sampleBatches, "toefl");
     expect(toefl.map((b) => b.id)).toEqual(["b3"]);
+  });
+});
+
+describe("filterBatchesByType", () => {
+  const sampleBatches = [
+    { id: "b1", className: "Standard Group", batchType: "reguler" },
+    { id: "b2", className: "VIP Private", batchType: "private" },
+    { id: "b3", className: "Calistung 1", batchType: "the_three_rs" },
+    { id: "b4", className: "Legacy Batch" }, // no batchType -> reguler
+  ];
+
+  it("returns all batches when filter is 'all' or empty", () => {
+    expect(filterBatchesByType(sampleBatches, "all")).toHaveLength(4);
+    expect(filterBatchesByType(sampleBatches, "")).toHaveLength(4);
+  });
+
+  it("filters by private", () => {
+    const priv = filterBatchesByType(sampleBatches, "private");
+    expect(priv.map((b) => b.id)).toEqual(["b2"]);
+  });
+
+  it("filters by the_three_rs (and supports aliases)", () => {
+    const threeRs = filterBatchesByType(sampleBatches, "the_three_rs");
+    expect(threeRs.map((b) => b.id)).toEqual(["b3"]);
+
+    const alias3r = filterBatchesByType(sampleBatches, "3rs");
+    expect(alias3r.map((b) => b.id)).toEqual(["b3"]);
+  });
+
+  it("filters by reguler and includes legacy batches without batchType", () => {
+    const reg = filterBatchesByType(sampleBatches, "reguler");
+    expect(reg.map((b) => b.id)).toEqual(["b1", "b4"]);
   });
 });

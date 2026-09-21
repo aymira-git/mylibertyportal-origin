@@ -15,6 +15,7 @@ import { LevelBadge } from "../shared";
 import BatchStatusPill from "./BatchStatusPill";
 import { normalizeBranch } from "../../constants/branches";
 import { getBatchProgram, getProgram } from "../../constants/programs";
+import { getBatchType } from "../../constants/batchTypes";
 
 export default function AvailableBatchCard({
   batch,
@@ -30,6 +31,7 @@ export default function AvailableBatchCard({
 }) {
   const progId = getBatchProgram(batch);
   const prog = getProgram(progId);
+  const batchTypeConfig = getBatchType(batch.batchType);
 
   return (
     <div
@@ -47,6 +49,11 @@ export default function AvailableBatchCard({
               className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${prog.badgeBg}`}
             >
               {prog.shortLabel || prog.label}
+            </span>
+            <span
+              className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${batchTypeConfig.badgeBg}`}
+            >
+              {batchTypeConfig.label}
             </span>
             <LevelBadge level={batch.classLevel || "warrior"} programId={progId} />
           </div>

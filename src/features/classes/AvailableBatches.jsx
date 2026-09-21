@@ -10,6 +10,12 @@ import { copyText } from "../../utils/copyText";
 import { getRegistrationUrl } from "../../constants/externalLinks";
 import { BRANCHES, matchesBranchFilter } from "../../constants/branches";
 import { getBatchProgram, getEnabledPrograms } from "../../constants/programs";
+import {
+  normalizeBatchType,
+  getBatchType,
+  getBatchTypeList,
+  matchesBatchTypeFilter,
+} from "../../constants/batchTypes";
 
 export default function AvailableBatches({
   classes = [],
@@ -26,6 +32,7 @@ export default function AvailableBatches({
 
   const [search, setSearch] = useState("");
   const [programFilter, setProgramFilter] = useState("all");
+  const [batchTypeFilter, setBatchTypeFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
@@ -92,6 +99,7 @@ export default function AvailableBatches({
 
       return {
         ...cls,
+        batchType: normalizeBatchType(cls.batchType),
         studentCount,
         maxCapacity: capacity,
         seatsAvailable,
@@ -134,6 +142,8 @@ export default function AvailableBatches({
     return augmentedBatches
       .filter((b) => {
         if (programFilter !== "all" && getBatchProgram(b) !== programFilter) return false;
+        if (batchTypeFilter !== "all" && !matchesBatchTypeFilter(b.batchType, batchTypeFilter))
+          return false;
         if (branchFilter !== "all" && !matchesBranchFilter(b.branch, branchFilter)) return false;
         if (tierFilter !== "all" && getTier(b.classLevel) !== tierFilter) return false;
         if (levelFilter !== "all" && b.classLevel !== levelFilter) return false;
@@ -153,17 +163,22 @@ export default function AvailableBatches({
       .filter((b) => {
         const q = search.trim().toLowerCase();
         if (!q) return true;
+        const bType = getBatchType(b.batchType);
         return (
           (b.className || "").toLowerCase().includes(q) ||
           (b.instructorName || "").toLowerCase().includes(q) ||
           (b.classRoom || "").toLowerCase().includes(q) ||
           (b.schedule || "").toLowerCase().includes(q) ||
-          (b.classDay || "").toLowerCase().includes(q)
+          (b.classDay || "").toLowerCase().includes(q) ||
+          bType.label.toLowerCase().includes(q) ||
+          bType.shortLabel.toLowerCase().includes(q) ||
+          (b.batchType || "").toLowerCase().includes(q)
         );
       });
   }, [
     augmentedBatches,
     programFilter,
+    batchTypeFilter,
     tierFilter,
     levelFilter,
     statusFilter,
@@ -198,10 +213,12 @@ export default function AvailableBatches({
   const handleCopyMarketingBlurb = async (batch) => {
     const regUrl = getRegistrationUrl();
     const levelName = LEVELS[batch.classLevel]?.label || batch.classLevel || "Standard";
+    const bType = getBatchType(batch.batchType);
 
     const text = [
       `🌟 AVAILABLE BATCH @ MY LIBERTY ENGLISH SCHOOL 🌟`,
       `📚 Cohort: ${batch.className}`,
+      `🏷️ Batch Type: ${bType.label}`,
       `🎯 Track: ${levelName} Level`,
       `📅 Schedule: ${batch.schedule || `${batch.classDay} (${batch.startTime} - ${batch.endTime})`}`,
       `📍 Location: ${batch.classRoom || "Main Campus"}`,
@@ -454,6 +471,20 @@ export default function AvailableBatches({
             <option value="upcoming">🔵 Upcoming Intake</option>
             <option value="full">🔴 Full / Closed</option>
             <option value="completed">🟣 Completed / Cancelled</option>
+          </select>
+
+          {/* Batch Type Filter */}
+          <select
+            value={batchTypeFilter}
+            onChange={(e) => setBatchTypeFilter(e.target.value)}
+            className="p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:border-[#1a3a8f] outline-none"
+          >
+            <option value="all">All Batch Types</option>
+            {getBatchTypeList().map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
           </select>
 
           {/* Campus Branch Filter */}

@@ -26,6 +26,12 @@ import {
   getProgramLevels,
   normalizeProgram,
 } from "../../constants/programs";
+import {
+  normalizeBatchType,
+  getBatchType,
+  getBatchTypeList,
+  getBatchTypeDefaults,
+} from "../../constants/batchTypes";
 
 function BatchForm({ batch, instructors, existingClasses = [], onClose, onSuccess = null }) {
   const toast = useToast();
@@ -33,6 +39,9 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
 
   const [programId, setProgramId] = useState(
     batch ? getBatchProgram(batch) : "english_course"
+  );
+  const [batchType, setBatchType] = useState(
+    batch?.batchType ? normalizeBatchType(batch.batchType) : "reguler"
   );
   const currentProgram = useMemo(() => getProgram(programId), [programId]);
   const currentLevels = useMemo(() => getProgramLevels(programId), [programId]);
@@ -64,13 +73,42 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
   const [classRoom, setClassRoom] = useState(
     batch?.classRoom && batch.classRoom !== "N/A" ? batch.classRoom : ""
   );
-  const [maxCapacity, setMaxCapacity] = useState(batch?.maxCapacity || currentProgram.defaultCapacity || 15);
-  const [minQuorum, setMinQuorum] = useState(batch?.minQuorum ?? currentProgram.minQuorum ?? 4);
+  const initialDefaults = useMemo(
+    () =>
+      getBatchTypeDefaults({
+        batchType: batch?.batchType || "reguler",
+        programId: batch ? getBatchProgram(batch) : "english_course",
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const [maxCapacity, setMaxCapacity] = useState(
+    batch?.maxCapacity || initialDefaults.defaultCapacity || 15
+  );
+  const [minQuorum, setMinQuorum] = useState(
+    batch?.minQuorum ?? initialDefaults.minQuorum ?? 4
+  );
   const [status, setStatus] = useState(batch?.status || "open");
   const [notes, setNotes] = useState(batch?.notes || "");
   const [worksheetUrl, setWorksheetUrl] = useState(batch?.worksheetUrl || "");
   const [selectedFile, setSelectedFile] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  const handleBatchTypeChange = (newType) => {
+    const normType = normalizeBatchType(newType);
+    if (!isEditing) {
+      const prevDefaults = getBatchTypeDefaults({ batchType, programId });
+      const newDefaults = getBatchTypeDefaults({ batchType: normType, programId });
+      if (Number(maxCapacity) === prevDefaults.defaultCapacity) {
+        setMaxCapacity(newDefaults.defaultCapacity);
+      }
+      if (Number(minQuorum) === prevDefaults.minQuorum) {
+        setMinQuorum(newDefaults.minQuorum);
+      }
+    }
+    setBatchType(normType);
+  };
 
   const handleProgramChange = (newProgId) => {
     const norm = normalizeProgram(newProgId);
@@ -87,7 +125,16 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
     if (!isEditing) {
       if (prog.defaultStartTime) setStartTime(prog.defaultStartTime);
       if (prog.defaultEndTime) setEndTime(prog.defaultEndTime);
-      if (prog.defaultCapacity) setMaxCapacity(prog.defaultCapacity);
+      if (batchType === "reguler") {
+        const prevDefaults = getBatchTypeDefaults({ batchType: "reguler", programId });
+        const newDefaults = getBatchTypeDefaults({ batchType: "reguler", programId: norm });
+        if (Number(maxCapacity) === prevDefaults.defaultCapacity) {
+          setMaxCapacity(newDefaults.defaultCapacity);
+        }
+        if (Number(minQuorum) === prevDefaults.minQuorum) {
+          setMinQuorum(newDefaults.minQuorum);
+        }
+      }
     }
   };
 
@@ -159,6 +206,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
       const payload = {
         className: className.trim(),
         programId: normalizeProgram(programId),
+        batchType: normalizeBatchType(batchType),
         classLevel,
         minLevel: minLevel || classLevel,
         maxLevel: maxLevel || classLevel,
@@ -257,6 +305,54 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
             </p>
           </div>
         )}
+
+        {/* Batch Type Selection Row */}
+        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              Batch Type (Tipe Batch) *
+            </label>
+            <span
+              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                getBatchType(batchType).badgeBg
+              }`}
+            >
+              {getBatchType(batchType).label}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {getBatchTypeList().map((t) => (
+              <button
+                type="button"
+                key={t.id}
+                onClick={() => handleBatchTypeChange(t.id)}
+                className={`p-2.5 rounded-xl text-xs font-bold border transition text-left cursor-pointer ${
+                  batchType === t.id
+                    ? "bg-[#1a3a8f] text-white border-[#1a3a8f] shadow-xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold">{t.label}</span>
+                  <span
+                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
+                      batchType === t.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {t.shortLabel}
+                  </span>
+                </div>
+                <div
+                  className={`text-[10px] font-normal line-clamp-2 mt-1 ${
+                    batchType === t.id ? "text-indigo-100" : "text-slate-400"
+                  }`}
+                >
+                  {t.description}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Program Selection Row */}
         <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">

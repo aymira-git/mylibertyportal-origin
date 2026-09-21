@@ -116,6 +116,30 @@ describe("batchSchema", () => {
     expect(parsed.status).toBe("open");
     expect(parsed.branch).toBe("Kota Gorontalo");
     expect(parsed.programId).toBe("english_course");
+    expect(parsed.batchType).toBe("reguler");
+  });
+
+  it("normalizes batchType and accepts canonical and alias values", () => {
+    const priv = batchSchema.parse({
+      className: "Private 101",
+      classLevel: "warrior",
+      batchType: "PRIVATE",
+    });
+    expect(priv.batchType).toBe("private");
+
+    const threeRs = batchSchema.parse({
+      className: "Calistung Prep",
+      classLevel: "starters",
+      batchType: "3Rs",
+    });
+    expect(threeRs.batchType).toBe("the_three_rs");
+
+    const regAlias = batchSchema.parse({
+      className: "Standard Group",
+      classLevel: "elite",
+      batchType: "regular",
+    });
+    expect(regAlias.batchType).toBe("reguler");
   });
 
   it("normalizes programId and derives division in batch creation", () => {
@@ -167,6 +191,24 @@ describe("applicationSchema", () => {
     expect(parsed.status).toBe("active");
     expect(parsed.programId).toBe("english_course");
     expect(parsed.division).toBe("courses");
+    expect(parsed.batchType).toBe("reguler");
+  });
+
+  it("normalizes batchType from classType or explicit batchType while preserving classType", () => {
+    const fromClassType = applicationSchema.parse({
+      displayName: "Jane Doe",
+      classType: "Private",
+    });
+    expect(fromClassType.batchType).toBe("private");
+    expect(fromClassType.classType).toBe("Private");
+
+    const fromBatchType = applicationSchema.parse({
+      displayName: "Alex Doe",
+      batchType: "the_three_rs",
+      classType: "Three Rs",
+    });
+    expect(fromBatchType.batchType).toBe("the_three_rs");
+    expect(fromBatchType.classType).toBe("Three Rs");
   });
 
   it("normalizes program and derives division for student applications", () => {

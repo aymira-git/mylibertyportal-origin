@@ -3,6 +3,12 @@ import { LevelBadge, LEVELS, LEVEL_KEYS, exportTableCSV } from "../shared";
 import { setClassGroupLevel, syncStudentsCurrentLevel } from "./classesRepository";
 import BatchCard from "./BatchCard";
 import { Search, Download, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  normalizeBatchType,
+  getBatchType,
+  getBatchTypeList,
+  matchesBatchTypeFilter,
+} from "../../constants/batchTypes";
 
 export default function CohortRosterTable({
   classes = [],
@@ -22,6 +28,7 @@ export default function CohortRosterTable({
   const [statusFilter, setStatusFilter] = useState("active_upcoming");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterLevel, setFilterLevel] = useState("all");
+  const [filterBatchType, setFilterBatchType] = useState("all");
 
   // Sorting & expansion state
   const [classSortField, setClassSortField] = useState("className");
@@ -47,7 +54,13 @@ export default function CohortRosterTable({
   }, [classes, classSortField, classSortAsc, users]);
 
   const getGroupKey = (cls) =>
-    [cls.className, cls.schedule, cls.instructorId, cls.classLevel || "unset"].join("::");
+    [
+      cls.className,
+      cls.schedule,
+      cls.instructorId,
+      cls.classLevel || "unset",
+      normalizeBatchType(cls.batchType),
+    ].join("::");
 
   const classGroups = useMemo(() => {
     const groups = [];
@@ -62,6 +75,7 @@ export default function CohortRosterTable({
           schedule: cls.schedule,
           instructorId: cls.instructorId,
           classLevel: cls.classLevel,
+          batchType: normalizeBatchType(cls.batchType),
           items: [],
         };
         groups.push(groupIndex[key]);
@@ -79,6 +93,9 @@ export default function CohortRosterTable({
         (group.className || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (group.schedule || "").toLowerCase().includes(searchQuery.toLowerCase());
       const matchesLevel = filterLevel === "all" || group.classLevel === filterLevel;
+      const matchesBatchType =
+        filterBatchType === "all" ||
+        matchesBatchTypeFilter(group.batchType, filterBatchType);
 
       // Status Filter matching across batches inside group
       const matchesStatus = group.items.some((cls) => {
@@ -107,9 +124,9 @@ export default function CohortRosterTable({
         return true;
       });
 
-      return matchesSearch && matchesLevel && matchesStatus;
+      return matchesSearch && matchesLevel && matchesBatchType && matchesStatus;
     });
-  }, [classGroups, searchQuery, filterLevel, statusFilter]);
+  }, [classGroups, searchQuery, filterLevel, filterBatchType, statusFilter]);
 
   const handleClassSort = (field) => {
     if (classSortField === field) {
@@ -192,11 +209,24 @@ export default function CohortRosterTable({
               </option>
             ))}
           </select>
+
+          <select
+            value={filterBatchType}
+            onChange={(e) => setFilterBatchType(e.target.value)}
+            className="p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-700 outline-none"
+          >
+            <option value="all">All Batch Types</option>
+            {getBatchTypeList().map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         <button
           onClick={() => {
-            const headers = ["Class Name", "Level", "Instructor", "Schedule", "Students"];
+            const headers = ["Class Name", "Batch Type", "Level", "Instructor", "Schedule", "Students"];
             const rows = classGroups.map((group) => {
               const teacher = users.find((u) => u.id === group.instructorId);
               const totalStudents = group.items.reduce(
@@ -206,6 +236,7 @@ export default function CohortRosterTable({
               return [
                 group.className +
                   (group.items.length > 1 ? ` (${group.items.length} batches)` : ""),
+                getBatchType(group.batchType).label,
                 group.classLevel || "Unset",
                 teacher ? teacher.displayName : "Unassigned",
                 group.schedule,
@@ -271,7 +302,16 @@ export default function CohortRosterTable({
                     onClick={() => toggleGroup(group.key)}
                   >
                     <td className="p-3.5 font-extrabold text-slate-900">
-                      <div>{group.className}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{group.className}</span>
+                        <span
+                          className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border ${
+                            getBatchType(group.batchType).badgeBg
+                          }`}
+                        >
+                          {getBatchType(group.batchType).label}
+                        </span>
+                      </div>
                       {group.items.length > 1 && (
                         <span className="text-[10px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full font-bold">
                           {group.items.length} batches
@@ -406,7 +446,16 @@ export default function CohortRosterTable({
             >
               <div onClick={() => toggleGroup(group.key)} className="cursor-pointer space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-extrabold text-slate-900 text-sm">{group.className}</h4>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h4 className="font-extrabold text-slate-900 text-sm">{group.className}</h4>
+                    <span
+                      className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md border ${
+                        getBatchType(group.batchType).badgeBg
+                      }`}
+                    >
+                      {getBatchType(group.batchType).label}
+                    </span>
+                  </div>
                   <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-[#1a3a8f] font-extrabold text-[10px]">
                     {totalStudents} students
                   </span>

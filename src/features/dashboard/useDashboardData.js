@@ -44,6 +44,7 @@ const emptyFormData = {
   branch: DEFAULT_BRANCH,
   division: DEFAULT_DIVISION,
   program: "",
+  batchType: "reguler",
   classType: "",
   schoolOrJob: "",
   classOrSemester: "",
@@ -169,6 +170,7 @@ export function useDashboardData({
           branch: formData.branch,
           division: formData.division,
           program: formData.program,
+          batchType: formData.batchType || formData.classType || "reguler",
           classType: formData.classType,
           schoolOrJob: formData.schoolOrJob,
           classOrSemester: formData.classOrSemester,
@@ -287,6 +289,7 @@ export function useDashboardData({
         user.division || (user.role === "student" ? divisionOfProgram(user.programId || user.program) : "courses")
       ),
       program: user.program || "",
+      batchType: user.batchType || user.classType || "reguler",
       classType: user.classType || "",
       schoolOrJob: user.schoolOrJob || "",
       classOrSemester: user.classOrSemester || "",

@@ -11,6 +11,7 @@ import {
   getStudentProgram,
   normalizeProgram,
 } from "../../constants/programs";
+import { normalizeBatchType } from "../../constants/batchTypes";
 
 export function isPending(app) {
   return (app?.status || "pending") === "pending";
@@ -230,7 +231,7 @@ export function getDistinctValues(apps = [], field) {
  */
 export function sortPlacementBatches(
   classes = [],
-  { selectedLevel = "warrior", appBranch = "", appProgram = null } = {}
+  { selectedLevel = "warrior", appBranch = "", appProgram = null, appBatchType = null } = {}
 ) {
   return [...classes].sort((a, b) => {
     if (appProgram) {
@@ -246,6 +247,14 @@ export function sortPlacementBatches(
       const bBranchMatch = matchesBranchFilter(b.branch, appBranch);
       if (aBranchMatch && !bBranchMatch) return -1;
       if (!aBranchMatch && bBranchMatch) return 1;
+    }
+
+    if (appBatchType) {
+      const targetType = normalizeBatchType(appBatchType);
+      const aTypeMatch = normalizeBatchType(a.batchType) === targetType;
+      const bTypeMatch = normalizeBatchType(b.batchType) === targetType;
+      if (aTypeMatch && !bTypeMatch) return -1;
+      if (!aTypeMatch && bTypeMatch) return 1;
     }
 
     const aComp = isCompatible(selectedLevel, a, appProgram);

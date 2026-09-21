@@ -45,6 +45,7 @@ export function getBatchAvailability(cls) {
 }
 
 import { getBatchProgram, normalizeProgram } from "../../constants/programs.js";
+import { matchesBatchTypeFilter } from "../../constants/batchTypes.js";
 
 /**
  * Filter batches by educational program.
@@ -59,5 +60,19 @@ export function filterBatchesByProgram(batches, programFilter) {
   if (!programFilter || programFilter === "all") return batches;
   const normFilter = normalizeProgram(programFilter);
   return batches.filter((b) => getBatchProgram(b) === normFilter);
+}
+
+/**
+ * Filter batches by batch type (reguler, private, the_three_rs).
+ * Missing/legacy batchType defaults safely to reguler.
+ *
+ * @param {Array} batches
+ * @param {string} typeFilter - "all" or batchType id/alias
+ * @returns {Array}
+ */
+export function filterBatchesByType(batches, typeFilter) {
+  if (!batches || !Array.isArray(batches)) return [];
+  if (!typeFilter || typeFilter === "all") return batches;
+  return batches.filter((b) => matchesBatchTypeFilter(b.batchType, typeFilter));
 }
 

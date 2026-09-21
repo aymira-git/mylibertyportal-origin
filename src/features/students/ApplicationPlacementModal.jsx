@@ -21,6 +21,7 @@ import { LevelBadge, PAYMENT_PLAN_LIST, isCompatible } from "../shared";
 import { getBatchAvailability } from "../classes/batchAvailability";
 import { sortPlacementBatches } from "./admissionsUtils";
 import { getStudentProgram, getProgram, getProgramLevels } from "../../constants/programs";
+import { normalizeBatchType, getBatchType } from "../../constants/batchTypes";
 
 function formatDobAndAge(dob) {
   if (!dob) return "—";
@@ -50,6 +51,10 @@ export default function ApplicationPlacementModal({
   const appProgId = useMemo(() => getStudentProgram(app), [app]);
   const appProgram = useMemo(() => getProgram(appProgId), [appProgId]);
   const appLevels = useMemo(() => getProgramLevels(appProgId), [appProgId]);
+  const appBatchType = useMemo(
+    () => normalizeBatchType(app?.batchType || app?.classType),
+    [app]
+  );
 
   const [selectedLevel, setSelectedLevel] = useState(
     app?.currentLevel || appLevels[0]?.id || "warrior"
@@ -64,14 +69,15 @@ export default function ApplicationPlacementModal({
     return classes.filter((cls) => getBatchAvailability(cls).canEnroll);
   }, [classes]);
 
-  // Sort batches: applicant's program first, branch, then compatible with selectedLevel, then by name
+  // Sort batches: applicant's program first, branch, batchType, then compatible with selectedLevel, then by name
   const sortedClasses = useMemo(() => {
     return sortPlacementBatches(enrollableClasses, {
       selectedLevel,
       appBranch: app.branch,
       appProgram: appProgId,
+      appBatchType,
     });
-  }, [enrollableClasses, selectedLevel, app.branch, appProgId]);
+  }, [enrollableClasses, selectedLevel, app.branch, appProgId, appBatchType]);
 
   const selectedClass = useMemo(() => {
     if (!selectedClassId) return null;
@@ -164,8 +170,12 @@ export default function ApplicationPlacementModal({
                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
                   {normalizeBranch(app.branch)}
                 </span>
-                <span className="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-full">
-                  {app.classType || "Reguler"}
+                <span
+                  className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                    getBatchType(appBatchType).badgeBg
+                  }`}
+                >
+                  {getBatchType(appBatchType).label}
                 </span>
               </div>
 
@@ -334,11 +344,12 @@ export default function ApplicationPlacementModal({
                 const avail = getBatchAvailability(cls);
                 const compat = isCompatible(selectedLevel, cls, appProgId);
                 const branchName = normalizeBranch(cls.branch);
+                const bType = getBatchType(cls.batchType);
                 return (
                   <option key={cls.id} value={cls.id}>
                     {compat ? "✓ " : ""}
-                    [{branchName}] {cls.className} · {cls.classLevel?.toUpperCase() || "WARRIOR"} ·{" "}
-                    {cls.classSchedule || "Flexible"} ({avail.studentCount}/{avail.capacity} seats)
+                    [{branchName}] {cls.className} · {bType.label} · {cls.classLevel?.toUpperCase() || "WARRIOR"} ·{" "}
+                    {cls.schedule || cls.classSchedule || "Flexible"} ({avail.studentCount}/{avail.capacity} seats)
                   </option>
                 );
               })}
@@ -351,6 +362,17 @@ export default function ApplicationPlacementModal({
                   Cross-Campus Placement: This cohort is at{" "}
                   <strong>{normalizeBranch(selectedClass.branch)}</strong>, while the applicant
                   requested <strong>{normalizeBranch(app.branch)}</strong>.
+                </span>
+              </p>
+            )}
+
+            {selectedClass && normalizeBatchType(selectedClass.batchType) !== appBatchType && (
+              <p className="text-[11px] text-amber-850 bg-amber-50 p-2.5 rounded-xl border border-amber-200 font-medium flex items-center gap-1.5">
+                <span>ℹ️</span>
+                <span>
+                  Cohort Type Preference: Applicant requested a{" "}
+                  <strong>{getBatchType(appBatchType).label}</strong> cohort, but this batch is{" "}
+                  <strong>{getBatchType(selectedClass.batchType).label}</strong>.
                 </span>
               </p>
             )}

@@ -76,6 +76,7 @@ export async function approveApplication({
       address: app.address,
       branch: app.branch,
       program: app.program,
+      batchType: app.batchType || app.classType,
       classType: app.classType,
       schoolOrJob: app.schoolOrJob,
       classOrSemester: app.classOrSemester,

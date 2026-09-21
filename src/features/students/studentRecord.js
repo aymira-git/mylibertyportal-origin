@@ -1,6 +1,7 @@
 import { normalizeBranch } from "../../constants/branches.js";
 import { normalizeProgram } from "../../constants/programs.js";
 import { divisionOfProgram } from "../../constants/divisions.js";
+import { normalizeBatchType } from "../../constants/batchTypes.js";
 
 function clean(value) {
   return (value || "").toString().trim();
@@ -26,6 +27,7 @@ export function buildStudentRecord(fields = {}) {
   const motherPhone = clean(fields.motherPhone);
   const programId = normalizeProgram(fields.programId || fields.program);
   const division = divisionOfProgram(fields.division || programId);
+  const batchType = normalizeBatchType(fields.batchType || fields.classType);
 
   return {
     displayName: clean(fields.displayName),
@@ -40,6 +42,7 @@ export function buildStudentRecord(fields = {}) {
     program: clean(fields.program) || programId,
     programId,
     division,
+    batchType,
     classType: clean(fields.classType),
     schoolOrJob: clean(fields.schoolOrJob),
     classOrSemester: clean(fields.classOrSemester),

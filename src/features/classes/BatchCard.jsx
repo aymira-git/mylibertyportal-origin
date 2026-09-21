@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getEnrollment, getDuration, openWhatsAppParentChat } from "./classesUtils";
 import StudentPaymentBadge from "./StudentPaymentBadge";
+import { getBatchType } from "../../constants/batchTypes";
 
 export default function BatchCard({
   cls,
@@ -81,6 +82,15 @@ export default function BatchCard({
                 </span>
               </span>
             )}
+
+            {/* Batch Type Badge */}
+            <span
+              className={`px-2 py-0.5 rounded-md border font-extrabold text-[10px] tracking-wide ${
+                getBatchType(cls.batchType).badgeBg
+              }`}
+            >
+              {getBatchType(cls.batchType).label}
+            </span>
 
             {/* Status Badge */}
             <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px] uppercase tracking-wide">

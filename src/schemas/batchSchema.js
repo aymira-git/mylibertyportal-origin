@@ -2,6 +2,7 @@ import { z } from "zod";
 import { normalizeBranch } from "../constants/branches.js";
 import { normalizeProgram } from "../constants/programs.js";
 import { divisionOfProgram } from "../constants/divisions.js";
+import { normalizeBatchType } from "../constants/batchTypes.js";
 
 export const batchSchema = z
   .object({
@@ -11,6 +12,11 @@ export const batchSchema = z
       .trim()
       .optional()
       .transform((p) => normalizeProgram(p)),
+    batchType: z
+      .string()
+      .trim()
+      .optional()
+      .transform((t) => normalizeBatchType(t)),
     division: z.string().trim().optional(),
     classLevel: z.string().trim().min(1, "Class level is required."),
     minLevel: z.string().trim().optional(),
@@ -52,5 +58,6 @@ export const batchSchema = z
   .transform((data) => ({
     ...data,
     division: divisionOfProgram(data.programId),
+    batchType: normalizeBatchType(data.batchType),
   }));
 

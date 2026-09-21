@@ -4,6 +4,7 @@ import {
   computeMonthlyPunctuality,
   getInstantPunctuality,
   getTodaysClasses,
+  isPrivateBatch,
 } from "./punctuality.js";
 
 // Build a Date/ISO for a WITA wall-clock time, e.g. wita("2026-09-07", "09:45").
@@ -12,6 +13,27 @@ const witaIso = (date, time) => wita(date, time).toISOString();
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe("isPrivateBatch", () => {
+  it("returns true when canonical batchType is private", () => {
+    expect(isPrivateBatch({ batchType: "private", classDay: "Mon/Wed" })).toBe(true);
+    expect(isPrivateBatch({ batchType: "PRIVATE" })).toBe(true);
+    expect(isPrivateBatch({ batchType: "1-on-1" })).toBe(true);
+  });
+
+  it("returns true when legacy classDay contains 'private' and batchType is absent", () => {
+    expect(isPrivateBatch({ classDay: "Private 1-on-1" })).toBe(true);
+    expect(isPrivateBatch({ classDay: "VIP Private" })).toBe(true);
+  });
+
+  it("returns false for regular or the_three_rs batch types", () => {
+    expect(isPrivateBatch({ batchType: "reguler", classDay: "Mon/Wed" })).toBe(false);
+    expect(isPrivateBatch({ batchType: "the_three_rs", classDay: "Mon - Fri" })).toBe(false);
+    expect(isPrivateBatch({ classDay: "Mon/Wed" })).toBe(false);
+    expect(isPrivateBatch(null)).toBe(false);
+    expect(isPrivateBatch({})).toBe(false);
+  });
 });
 
 describe("getInstantPunctuality", () => {
@@ -102,6 +124,13 @@ describe("getTodaysClasses", () => {
     vi.useFakeTimers();
     vi.setSystemTime(wita("2026-09-21", "10:00"));
     expect(getTodaysClasses([{ id: "none" }])).toEqual([]);
+  });
+
+  it("shows classes with canonical batchType: 'private' regardless of classDay", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(wita("2026-09-22", "10:00")); // Tuesday
+    const privBatch = { id: "p-batch", batchType: "private", classDay: "Mon/Wed" };
+    expect(getTodaysClasses([privBatch])).toHaveLength(1);
   });
 
   // The BatchModal dropdown only offers six values: "Mon/Wed", "Tue/Thu",
@@ -317,6 +346,21 @@ describe("computeMonthlyPunctuality", () => {
       sessionsScheduled: 2,
       sessionsAttended: 2,
       onTime: 2,
+      absent: 0,
+      limitedAccuracy: true,
+    });
+  });
+
+  it("counts canonical batchType: 'private' lessons by attended shifts only with limited accuracy", () => {
+    const priv = { ...baseClass, id: "p2", batchType: "private", classDay: "Mon/Wed" };
+    const shifts = [
+      { id: "a", userId: "i1", classId: "p2", clockIn: witaIso("2026-09-03", "16:00") },
+    ];
+    const [stats] = computeMonthlyPunctuality([priv], shifts, instructors, SEPT.year, SEPT.month);
+    expect(stats).toMatchObject({
+      sessionsScheduled: 1,
+      sessionsAttended: 1,
+      onTime: 1,
       absent: 0,
       limitedAccuracy: true,
     });

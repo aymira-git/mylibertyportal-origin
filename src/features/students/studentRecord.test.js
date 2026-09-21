@@ -14,6 +14,8 @@ describe("buildStudentRecord", () => {
       gender: "",
       dob: "",
       joinedDate: "",
+      batchType: "reguler",
+      classType: "",
     });
   });
 
@@ -86,6 +88,16 @@ describe("buildStudentRecord", () => {
     const kidsStudent = buildStudentRecord({ program: "Kids School", currentLevel: "tk_a" });
     expect(kidsStudent.programId).toBe("kids_school");
     expect(kidsStudent.division).toBe("kindergarten");
+  });
+
+  it("normalizes batchType from classType or explicit batchType", () => {
+    const fromClassType = buildStudentRecord({ classType: "Private" });
+    expect(fromClassType.batchType).toBe("private");
+    expect(fromClassType.classType).toBe("Private");
+
+    const fromExplicit = buildStudentRecord({ batchType: "the_three_rs", classType: "3Rs" });
+    expect(fromExplicit.batchType).toBe("the_three_rs");
+    expect(fromExplicit.classType).toBe("3Rs");
   });
 });
 

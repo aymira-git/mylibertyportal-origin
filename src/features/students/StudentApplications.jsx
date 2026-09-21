@@ -25,6 +25,7 @@ import ApplicationPlacementModal from "./ApplicationPlacementModal";
 import ApplicationRejectModal from "./ApplicationRejectModal";
 import { STUDENT_APPLICATIONS_SHEET_URL } from "../../constants/externalLinks";
 import { getProgram, getStudentProgram } from "../../constants/programs";
+import { getBatchType } from "../../constants/batchTypes";
 import {
   Check,
   X,
@@ -405,9 +406,13 @@ export default function StudentApplications({
                             {app.program}
                           </span>
                         )}
-                        {app.classType && (
-                          <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                            {app.classType}
+                        {(app.batchType || app.classType) && (
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                              getBatchType(app.batchType || app.classType).badgeBg
+                            }`}
+                          >
+                            {getBatchType(app.batchType || app.classType).label}
                           </span>
                         )}
                       </div>

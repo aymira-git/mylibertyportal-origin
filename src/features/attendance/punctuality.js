@@ -1,12 +1,28 @@
 import { getTodayWitaWeekday, validateHHmm, WITA_OFFSET_MS } from "../../utils/dateWita.js";
 import { normalizeBranch } from "../../constants/branches.js";
 import { parseClassDayNumbers } from "../../constants/scheduleDays.js";
+import { normalizeBatchType } from "../../constants/batchTypes.js";
 
 // Company policy: an instructor must clock in at least this many minutes
 // BEFORE the scheduled start time to count as "on time." Arriving after
 // that cutoff — even if technically before class starts — counts as late.
 // This is a pre-start cutoff, not a post-start grace period.
 const EARLY_CUTOFF_MINUTES = 15;
+
+/**
+ * Checks whether a class is a Private class.
+ * Authority: canonical batchType === "private", with legacy fallback to classDay containing "private".
+ *
+ * @param {Object} cls
+ * @returns {boolean}
+ */
+export function isPrivateBatch(cls) {
+  if (!cls) return false;
+  if (cls.batchType && normalizeBatchType(cls.batchType) === "private") {
+    return true;
+  }
+  return typeof cls.classDay === "string" && cls.classDay.toLowerCase().includes("private");
+}
 
 /**
  * Parses a classDay string into a list of JS weekday numbers (0-6).
@@ -20,10 +36,9 @@ function parseClassDays(dayString) {
 export function getTodaysClasses(classes) {
   const todayWeekday = getTodayWitaWeekday();
   return classes.filter((cls) => {
+    if (isPrivateBatch(cls)) return true;
     const activeDays = parseClassDays(cls.classDay);
-    // If it's a Private class, we always show it in the Kiosk so the
-    // instructor can select it regardless of the weekday.
-    if (!activeDays) return cls.classDay?.toLowerCase().includes("private");
+    if (!activeDays) return false;
     return activeDays.includes(todayWeekday);
   });
 }
@@ -122,7 +137,8 @@ export function computeMonthlyPunctuality(classes, shifts, instructorsById, year
   const allTrackableClasses = classes.filter((c) => c.startTime && validateHHmm(c.startTime));
 
   for (const cls of allTrackableClasses) {
-    const weekdays = parseClassDays(cls.classDay);
+    const isPrivate = isPrivateBatch(cls);
+    const weekdays = isPrivate ? null : parseClassDays(cls.classDay);
     const instructorShifts = shifts.filter((s) => s.userId === cls.instructorId);
 
     // For Private classes, we don't generate "Scheduled" sessions because

@@ -22,6 +22,11 @@ import { STAFF_STATUS_OPTIONS, STANDARD_BRANCHES } from "../staff/staffUtils";
 import { normalizeBranch } from "../../constants/branches";
 import { normalizeDivision } from "../../constants/divisions";
 import { getEnabledPrograms, getProgram, normalizeProgram } from "../../constants/programs";
+import {
+  normalizeBatchType,
+  getBatchTypeLabel,
+  getBatchTypeList,
+} from "../../constants/batchTypes";
 
 export default function UserForm({ formData, setFormData, editId, onSubmit }) {
   const isSelf = Boolean(editId && auth.currentUser && editId === auth.currentUser.uid);
@@ -365,15 +370,23 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                  Class Type (Jenis Kelas)
+                  Batch Type (Jenis Kelas)
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Reguler / Private"
-                  value={formData.classType || ""}
-                  onChange={(e) => field("classType", e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
+                <select
+                  value={normalizeBatchType(formData.batchType || formData.classType)}
+                  onChange={(e) => {
+                    const norm = normalizeBatchType(e.target.value);
+                    field("batchType", norm);
+                    field("classType", getBatchTypeLabel(norm));
+                  }}
+                  className="w-full p-2.5 border rounded-xl bg-white font-semibold"
+                >
+                  {getBatchTypeList().map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">

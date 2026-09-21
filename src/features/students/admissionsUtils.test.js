@@ -350,4 +350,51 @@ describe("sortPlacementBatches", () => {
     });
     expect(sorted[0].id).toBe("t1");
   });
+
+  it("prioritizes cohorts matching applicant's requested batchType without removing mismatched ones", () => {
+    const cRegular = {
+      id: "reg1",
+      className: "Gorontalo Reguler A",
+      branch: "Kota Gorontalo",
+      programId: "english_course",
+      classLevel: "warrior",
+      batchType: "reguler",
+    };
+    const cPrivate = {
+      id: "priv1",
+      className: "Gorontalo Private B",
+      branch: "Kota Gorontalo",
+      programId: "english_course",
+      classLevel: "warrior",
+      batchType: "private",
+    };
+    const cThreeRs = {
+      id: "3r1",
+      className: "Gorontalo 3Rs C",
+      branch: "Kota Gorontalo",
+      programId: "english_course",
+      classLevel: "warrior",
+      batchType: "the_three_rs",
+    };
+
+    const sortedForPrivate = sortPlacementBatches([cRegular, cPrivate, cThreeRs], {
+      selectedLevel: "warrior",
+      appBranch: "Kota Gorontalo",
+      appProgram: "english_course",
+      appBatchType: "Private",
+    });
+    // priv1 first, but all 3 batches remain present
+    expect(sortedForPrivate[0].id).toBe("priv1");
+    expect(sortedForPrivate.map((c) => c.id)).toContain("reg1");
+    expect(sortedForPrivate.map((c) => c.id)).toContain("3r1");
+    expect(sortedForPrivate).toHaveLength(3);
+
+    const sortedForThreeRs = sortPlacementBatches([cRegular, cPrivate, cThreeRs], {
+      selectedLevel: "warrior",
+      appBranch: "Kota Gorontalo",
+      appProgram: "english_course",
+      appBatchType: "3Rs",
+    });
+    expect(sortedForThreeRs[0].id).toBe("3r1");
+  });
 });
