@@ -14,6 +14,7 @@ import {
 import { LevelBadge } from "../shared";
 import BatchStatusPill from "./BatchStatusPill";
 import { normalizeBranch } from "../../constants/branches";
+import { getBatchProgram, getProgram } from "../../constants/programs";
 
 export default function AvailableBatchCard({
   batch,
@@ -27,6 +28,9 @@ export default function AvailableBatchCard({
   onCopyMarketingBlurb,
   onSetEnrollingBatch,
 }) {
+  const progId = getBatchProgram(batch);
+  const prog = getProgram(progId);
+
   return (
     <div
       className={`bg-white rounded-3xl border p-5 transition-all flex flex-col justify-between space-y-4 hover:shadow-md ${
@@ -38,7 +42,14 @@ export default function AvailableBatchCard({
       {/* Card Top: Level, Status & Actions */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <LevelBadge level={batch.classLevel || "warrior"} />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span
+              className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${prog.badgeBg}`}
+            >
+              {prog.shortLabel || prog.label}
+            </span>
+            <LevelBadge level={batch.classLevel || "warrior"} programId={progId} />
+          </div>
           <div className="flex items-center gap-1.5">
             <BatchStatusPill status={batch.computedStatus} seatsAvailable={batch.seatsAvailable} />
 

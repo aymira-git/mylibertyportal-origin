@@ -1,5 +1,6 @@
 import { getTodayWitaWeekday, validateHHmm, WITA_OFFSET_MS } from "../../utils/dateWita.js";
 import { normalizeBranch } from "../../constants/branches.js";
+import { parseClassDayNumbers } from "../../constants/scheduleDays.js";
 
 // Company policy: an instructor must clock in at least this many minutes
 // BEFORE the scheduled start time to count as "on time." Arriving after
@@ -7,68 +8,12 @@ import { normalizeBranch } from "../../constants/branches.js";
 // This is a pre-start cutoff, not a post-start grace period.
 const EARLY_CUTOFF_MINUTES = 15;
 
-// Maps common day names and abbreviations to JS Date.getDay() numbers.
-const DAY_NAME_TO_NUM = {
-  mon: 1,
-  monday: 1,
-  tue: 2,
-  tuesday: 2,
-  wed: 3,
-  wednesday: 3,
-  thu: 4,
-  thursday: 4,
-  fri: 5,
-  friday: 5,
-  sat: 6,
-  saturday: 6,
-  sun: 0,
-  sunday: 0,
-};
-
-// Known canonical patterns from the class frequency selector
-const KNOWN_CLASS_DAYS = {
-  "mon/wed": [1, 3],
-  "tue/thu": [2, 4],
-  "sat/sun": [6, 0],
-  "sat only": [6],
-  "sun only": [0],
-  "fri only": [5],
-  everyday: [6, 0, 1, 2, 3, 4], // School week: Saturday to Thursday (Friday is off)
-};
-
 /**
  * Parses a classDay string into a list of JS weekday numbers (0-6).
- * Supports patterns like "Mon/Wed", "Mon, Wed, Fri", "Saturday", "Sat Only", "Everyday", etc.
- * Returns null for "Private" or untracked formats.
+ * Delegates to canonical parseClassDayNumbers helper.
  */
 function parseClassDays(dayString) {
-  if (!dayString || typeof dayString !== "string") return null;
-  const clean = dayString.trim().toLowerCase();
-  if (clean.includes("private")) return null;
-
-  if (KNOWN_CLASS_DAYS[clean]) {
-    return KNOWN_CLASS_DAYS[clean];
-  }
-
-  if (clean.includes("everyday")) {
-    return [6, 0, 1, 2, 3, 4];
-  }
-
-  const withoutOnly = clean.replace(/\s+only$/i, "").trim();
-  if (DAY_NAME_TO_NUM[withoutOnly] !== undefined) {
-    return [DAY_NAME_TO_NUM[withoutOnly]];
-  }
-
-  // Split by common delimiters: /, ,, or spaces
-  const parts = clean.split(/[/,]/);
-  const nums = parts
-    .map((p) => p.trim().replace(/\s+only$/i, ""))
-    .map((p) =>
-      DAY_NAME_TO_NUM[p] !== undefined ? DAY_NAME_TO_NUM[p] : DAY_NAME_TO_NUM[p.slice(0, 3)]
-    )
-    .filter((n) => n !== undefined);
-
-  return nums.length > 0 ? Array.from(new Set(nums)) : null;
+  return parseClassDayNumbers(dayString);
 }
 
 // Which of an instructor's classes fall on today's weekday in WITA.

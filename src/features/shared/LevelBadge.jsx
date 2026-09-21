@@ -1,5 +1,6 @@
 import Badge from "./Badge";
 import { LEVELS, getStars } from "./levels";
+import { getProgram, getProgramLevel, normalizeProgram } from "../../constants/programs";
 
 const LEVEL_TONES = {
   warrior: "slate",
@@ -9,11 +10,18 @@ const LEVEL_TONES = {
   epic: "rose",
 };
 
-export default function LevelBadge({ level, showStars = false, showTier = false }) {
+export default function LevelBadge({
+  level,
+  programId = null,
+  showStars = false,
+  showTier = false,
+}) {
   const norm = (level || "").toLowerCase();
-  const config = LEVELS[norm];
-  const stars = getStars(norm);
-  const tone = LEVEL_TONES[norm] || "gray";
+  const progId = programId ? normalizeProgram(programId) : null;
+  const progLevel = progId ? getProgramLevel(progId, norm) : null;
+  const config = progLevel || LEVELS[norm];
+  const stars = config?.stars || getStars(norm);
+  const tone = LEVEL_TONES[norm] || (progId ? getProgram(progId)?.badgeTone : "gray") || "gray";
 
   return (
     <Badge tone={tone}>

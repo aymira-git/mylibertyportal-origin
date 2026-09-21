@@ -81,4 +81,30 @@ describe("isCompatible", () => {
       isCompatible("elite", { classLevel: "epic", minLevel: "warrior", maxLevel: "elite" })
     ).toBe(true);
   });
+
+  describe("multi-program compatibility (Rule 3)", () => {
+    it("rejects enrollment when student program and batch program do not match", () => {
+      const toeflBatch = { programId: "toefl", classLevel: "toefl_intermediate" };
+      expect(isCompatible("master", toeflBatch, "english_course")).toBe(false);
+      expect(isCompatible("toefl_intermediate", toeflBatch, "kids_course")).toBe(false);
+    });
+
+    it("evaluates compatibility within non-English programs like TOEFL", () => {
+      const toeflBatch = {
+        programId: "toefl",
+        minLevel: "toefl_intermediate",
+        maxLevel: "toefl_advanced",
+      };
+      expect(isCompatible("toefl_foundation", toeflBatch, "toefl")).toBe(false);
+      expect(isCompatible("toefl_intermediate", toeflBatch, "toefl")).toBe(true);
+      expect(isCompatible("toefl_advanced", toeflBatch, "toefl")).toBe(true);
+      expect(isCompatible("toefl_mastery", toeflBatch, "toefl")).toBe(false);
+    });
+
+    it("evaluates compatibility within Kids Course", () => {
+      const kidsBatch = { programId: "kids_course", classLevel: "starters" };
+      expect(isCompatible("starters", kidsBatch, "kids_course")).toBe(true);
+      expect(isCompatible("movers", kidsBatch, "kids_course")).toBe(false);
+    });
+  });
 });

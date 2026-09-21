@@ -77,6 +77,16 @@ describe("buildStudentRecord", () => {
     expect(buildStudentRecord({ branch: "Cabang Utama" }).branch).toBe("Kota Gorontalo");
     expect(buildStudentRecord({ branch: " limboto " }).branch).toBe("Limboto");
   });
+
+  it("sets programId and derives division on student record", () => {
+    const courseStudent = buildStudentRecord({ program: "English Course" });
+    expect(courseStudent.programId).toBe("english_course");
+    expect(courseStudent.division).toBe("courses");
+
+    const kidsStudent = buildStudentRecord({ program: "Kids School", currentLevel: "tk_a" });
+    expect(kidsStudent.programId).toBe("kids_school");
+    expect(kidsStudent.division).toBe("kindergarten");
+  });
 });
 
 describe("isActiveStudent", () => {

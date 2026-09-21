@@ -320,4 +320,58 @@ describe("checkDraftConflicts", () => {
       expect(checkDraftConflicts(draftSameBranch, existing).roomConflicts).toHaveLength(1);
     });
   });
+
+  describe("Mon - Fri schedule conflict handling", () => {
+    it("flags collision between Mon - Fri batch and Mon/Wed batch sharing teacher", () => {
+      const clsKindergarten = cls({
+        id: "kg1",
+        className: "Kindergarten A",
+        classDay: "Mon - Fri",
+        startTime: "08:30",
+        endTime: "11:00",
+        instructorId: "shared-teacher",
+        classRoom: "Room 1",
+      });
+      const clsEnglish = cls({
+        id: "eng1",
+        className: "English Morning",
+        classDay: "Mon/Wed",
+        startTime: "09:00",
+        endTime: "10:30",
+        instructorId: "shared-teacher",
+        classRoom: "Room 2",
+      });
+
+      const { teacherConflicts, roomConflicts } = findScheduleConflicts([clsKindergarten, clsEnglish]);
+      expect(teacherConflicts).toHaveLength(1);
+      expect(roomConflicts).toHaveLength(0);
+      expect(teacherConflicts[0].detail).toContain("Kindergarten A");
+      expect(teacherConflicts[0].detail).toContain("English Morning");
+    });
+
+    it("does not flag conflict between Mon - Fri batch and weekend Sat/Sun batch", () => {
+      const clsKindergarten = cls({
+        id: "kg1",
+        className: "Kindergarten A",
+        classDay: "Mon - Fri",
+        startTime: "09:00",
+        endTime: "11:00",
+        instructorId: "shared-teacher",
+        classRoom: "Room 1",
+      });
+      const clsWeekend = cls({
+        id: "wknd1",
+        className: "Weekend TOEFL",
+        classDay: "Sat/Sun",
+        startTime: "09:00",
+        endTime: "11:00",
+        instructorId: "shared-teacher",
+        classRoom: "Room 1",
+      });
+
+      const { teacherConflicts, roomConflicts } = findScheduleConflicts([clsKindergarten, clsWeekend]);
+      expect(teacherConflicts).toHaveLength(0);
+      expect(roomConflicts).toHaveLength(0);
+    });
+  });
 });

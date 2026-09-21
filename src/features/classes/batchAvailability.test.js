@@ -93,3 +93,30 @@ describe("getBatchAvailability", () => {
     expect(r.canEnroll).toBe(false);
   });
 });
+
+import { filterBatchesByProgram } from "./batchAvailability.js";
+
+describe("filterBatchesByProgram", () => {
+  const sampleBatches = [
+    { id: "b1", className: "English 1", programId: "english_course" },
+    { id: "b2", className: "Kids 1", programId: "kids_course" },
+    { id: "b3", className: "TOEFL 1", programId: "toefl" },
+    { id: "b4", className: "Legacy Batch" }, // no programId
+  ];
+
+  it("returns all batches when filter is 'all' or empty", () => {
+    expect(filterBatchesByProgram(sampleBatches, "all")).toHaveLength(4);
+    expect(filterBatchesByProgram(sampleBatches, "")).toHaveLength(4);
+  });
+
+  it("filters by programId and groups legacy batch under english_course", () => {
+    const english = filterBatchesByProgram(sampleBatches, "english_course");
+    expect(english.map((b) => b.id)).toEqual(["b1", "b4"]);
+
+    const kids = filterBatchesByProgram(sampleBatches, "kids_course");
+    expect(kids.map((b) => b.id)).toEqual(["b2"]);
+
+    const toefl = filterBatchesByProgram(sampleBatches, "toefl");
+    expect(toefl.map((b) => b.id)).toEqual(["b3"]);
+  });
+});

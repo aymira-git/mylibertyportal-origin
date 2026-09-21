@@ -18,6 +18,15 @@ const ManagerDashboard = lazy(() => import("./features/dashboard/ManagerDashboar
 const InstructorDashboard = lazy(() => import("./features/dashboard/InstructorDashboard"));
 const MarketingDashboard = lazy(() => import("./features/dashboard/MarketingDashboard"));
 const OfficeBoyDashboard = lazy(() => import("./features/dashboard/OfficeBoyDashboard"));
+const KidsFrontOfficeDashboard = lazy(() =>
+  import("./features/dashboard/kids/KidsFrontOfficeDashboard")
+);
+const KidsManagerDashboard = lazy(() => import("./features/dashboard/kids/KidsManagerDashboard"));
+const KidsInstructorDashboard = lazy(() =>
+  import("./features/dashboard/kids/KidsInstructorDashboard")
+);
+
+import { normalizeDivision, DEFAULT_DIVISION } from "./constants/divisions";
 
 function LoadingFallback() {
   return (
@@ -45,6 +54,7 @@ function App() {
   const toast = useToast();
   const [user, setUser] = useState(null);
   const [role, setRole] = useState("");
+  const [division, setDivision] = useState(DEFAULT_DIVISION);
   const [displayName, setDisplayName] = useState("");
   const [nickname, setNickname] = useState("");
   const [photoURL, setPhotoURL] = useState("");
@@ -57,6 +67,7 @@ function App() {
   const resetUserState = useCallback(() => {
     setUser(null);
     setRole("");
+    setDivision(DEFAULT_DIVISION);
     setDisplayName("");
     setNickname("");
     setPhotoURL("");
@@ -119,6 +130,7 @@ function App() {
           return false;
         }
         setRole(data.role || "student");
+        setDivision(normalizeDivision(data.division));
         setDisplayName(data.displayName || "");
         setNickname(data.nickname || data.displayName || "");
         setPhotoURL(data.photoURL || "");
@@ -311,7 +323,7 @@ function App() {
                     {nickname || displayName || user.email}
                   </h3>
                   <span className="text-[9px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.5 rounded uppercase">
-                    {role}
+                    {role} {division === "kindergarten" ? "· Kindergarten" : ""}
                   </span>
                 </div>
               </button>
@@ -340,7 +352,7 @@ function App() {
                   MY LIBERTY
                 </span>
                 <span className="text-[9px] bg-indigo-50 text-indigo-800 font-extrabold px-1.5 py-0.5 rounded-full border border-indigo-100 uppercase shrink-0">
-                  {role}
+                  {role} {division === "kindergarten" ? "· TK" : ""}
                 </span>
               </div>
             </div>
@@ -377,17 +389,29 @@ function App() {
             )}
             {role === "manager" && (
               <ErrorBoundary label="Manager dashboard">
-                <ManagerDashboard />
+                {division === "kindergarten" ? (
+                  <KidsManagerDashboard />
+                ) : (
+                  <ManagerDashboard />
+                )}
               </ErrorBoundary>
             )}
             {role === "instructor" && (
               <ErrorBoundary label="Instructor dashboard">
-                <InstructorDashboard />
+                {division === "kindergarten" ? (
+                  <KidsInstructorDashboard />
+                ) : (
+                  <InstructorDashboard />
+                )}
               </ErrorBoundary>
             )}
             {role === "frontoffice" && (
               <ErrorBoundary label="Front Office dashboard">
-                <FrontOfficeDashboard />
+                {division === "kindergarten" ? (
+                  <KidsFrontOfficeDashboard />
+                ) : (
+                  <FrontOfficeDashboard />
+                )}
               </ErrorBoundary>
             )}
             {role === "marketing" && (

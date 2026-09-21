@@ -13,6 +13,7 @@ export default function ReportsDashboard({
   isAdminView = false,
   isFrontOffice = false,
   canEdit = true,
+  division = "all",
 }) {
   const isActualAdmin = isAdminView && !isFrontOffice;
   const canPerformAdminActions = isActualAdmin && canEdit;
@@ -188,6 +189,7 @@ export default function ReportsDashboard({
           branchFilter={branchFilter}
           isAdminView={isAdminView}
           isFrontOffice={isFrontOffice}
+          division={division}
         />
       )}
 

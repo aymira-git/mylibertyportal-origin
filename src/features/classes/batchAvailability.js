@@ -43,3 +43,21 @@ export function getBatchAvailability(cls) {
     canEnroll,
   };
 }
+
+import { getBatchProgram, normalizeProgram } from "../../constants/programs.js";
+
+/**
+ * Filter batches by educational program.
+ * Legacy batches without programId fall back safely to english_course.
+ *
+ * @param {Array} batches
+ * @param {string} programFilter - "all" or programId
+ * @returns {Array}
+ */
+export function filterBatchesByProgram(batches, programFilter) {
+  if (!batches || !Array.isArray(batches)) return [];
+  if (!programFilter || programFilter === "all") return batches;
+  const normFilter = normalizeProgram(programFilter);
+  return batches.filter((b) => getBatchProgram(b) === normFilter);
+}
+

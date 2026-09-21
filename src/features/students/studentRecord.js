@@ -1,4 +1,6 @@
 import { normalizeBranch } from "../../constants/branches.js";
+import { normalizeProgram } from "../../constants/programs.js";
+import { divisionOfProgram } from "../../constants/divisions.js";
 
 function clean(value) {
   return (value || "").toString().trim();
@@ -22,6 +24,8 @@ export function buildStudentRecord(fields = {}) {
   const motherName = clean(fields.motherName);
   const fatherPhone = clean(fields.fatherPhone);
   const motherPhone = clean(fields.motherPhone);
+  const programId = normalizeProgram(fields.programId || fields.program);
+  const division = divisionOfProgram(fields.division || programId);
 
   return {
     displayName: clean(fields.displayName),
@@ -33,7 +37,9 @@ export function buildStudentRecord(fields = {}) {
     religion: clean(fields.religion),
     address: clean(fields.address),
     branch: normalizeBranch(fields.branch),
-    program: clean(fields.program),
+    program: clean(fields.program) || programId,
+    programId,
+    division,
     classType: clean(fields.classType),
     schoolOrJob: clean(fields.schoolOrJob),
     classOrSemester: clean(fields.classOrSemester),

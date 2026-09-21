@@ -5,6 +5,7 @@
  */
 
 import { BRANCHES, normalizeBranch, matchesBranchFilter } from "../../constants/branches.js";
+import { matchesDivisionFilter } from "../../constants/divisions.js";
 
 export const STAFF_ROLES = [
   "instructor",
@@ -133,8 +134,13 @@ export function filterStaffMembers({
   roleFilter = "all",
   statusFilter = "all",
   branchFilter = "all",
+  divisionFilter = "all",
 }) {
   let list = users.filter((u) => u.role !== "student");
+
+  if (divisionFilter !== "all") {
+    list = list.filter((u) => matchesDivisionFilter(u.division, divisionFilter));
+  }
 
   if (roleFilter !== "all") {
     list = list.filter((u) => u.role === roleFilter);

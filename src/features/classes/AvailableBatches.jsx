@@ -9,6 +9,7 @@ import { deleteClass } from "./classesRepository";
 import { copyText } from "../../utils/copyText";
 import { getRegistrationUrl } from "../../constants/externalLinks";
 import { BRANCHES, matchesBranchFilter } from "../../constants/branches";
+import { getBatchProgram, getEnabledPrograms } from "../../constants/programs";
 
 export default function AvailableBatches({
   classes = [],
@@ -24,6 +25,7 @@ export default function AvailableBatches({
   const confirm = useConfirm();
 
   const [search, setSearch] = useState("");
+  const [programFilter, setProgramFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
@@ -33,6 +35,8 @@ export default function AvailableBatches({
   const [editingBatch, setEditingBatch] = useState(null);
   const [enrollingBatch, setEnrollingBatch] = useState(null);
   const [copiedBatchId, setCopiedBatchId] = useState(null);
+
+  const enabledPrograms = useMemo(() => getEnabledPrograms(), []);
 
   // Strict role boundaries
   const canAdminister = role === "admin" && canEdit;
@@ -129,6 +133,7 @@ export default function AvailableBatches({
   const filteredBatches = useMemo(() => {
     return augmentedBatches
       .filter((b) => {
+        if (programFilter !== "all" && getBatchProgram(b) !== programFilter) return false;
         if (branchFilter !== "all" && !matchesBranchFilter(b.branch, branchFilter)) return false;
         if (tierFilter !== "all" && getTier(b.classLevel) !== tierFilter) return false;
         if (levelFilter !== "all" && b.classLevel !== levelFilter) return false;
@@ -156,7 +161,15 @@ export default function AvailableBatches({
           (b.classDay || "").toLowerCase().includes(q)
         );
       });
-  }, [augmentedBatches, tierFilter, levelFilter, statusFilter, branchFilter, search]);
+  }, [
+    augmentedBatches,
+    programFilter,
+    tierFilter,
+    levelFilter,
+    statusFilter,
+    branchFilter,
+    search,
+  ]);
 
   const handleOpenAddModal = () => {
     setEditingBatch(null);
@@ -324,6 +337,39 @@ export default function AvailableBatches({
             <p className="text-2xl font-black text-amber-900 mt-0.5">{stats.fillingFastCount}</p>
             <p className="text-[10px] text-amber-700 font-medium mt-0.5">High demand cohorts</p>
           </div>
+        </div>
+
+        {/* Program Filter Bar */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 pt-1">
+          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+            Program:
+          </span>
+          <button
+            onClick={() => setProgramFilter("all")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+              programFilter === "all"
+                ? "bg-[#1a3a8f] text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            All Programs
+          </button>
+          {enabledPrograms.map((prog) => {
+            const isSelected = programFilter === prog.id;
+            return (
+              <button
+                key={prog.id}
+                onClick={() => setProgramFilter(isSelected ? "all" : prog.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer border flex items-center gap-1.5 ${
+                  isSelected
+                    ? "bg-[#1a3a8f] text-white border-[#1a3a8f] shadow-xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <span>{prog.shortLabel || prog.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Filter and Search Controls */}

@@ -12,6 +12,8 @@ import {
 } from "./shiftsRepository";
 import { soundEffects } from "./soundEffects";
 import { triggerHaptic } from "../shared";
+import { isKindergartenDivision } from "../../constants/divisions.js";
+import { getTodayWitaWeekday } from "../../utils/dateWita.js";
 import {
   Camera,
   ScanLine,
@@ -254,6 +256,17 @@ export default function Kiosk({
                 "Badge Deactivated",
                 "error",
                 "This staff badge is no longer active. Please contact academy administration.",
+                userData.displayName
+              );
+            }
+
+            const isKindergartenStaff = isKindergartenDivision(userData.division);
+            const todayWitaDay = getTodayWitaWeekday();
+            if (isKindergartenStaff && (todayWitaDay === 0 || todayWitaDay === 6)) {
+              return showStatus(
+                "Weekend Off",
+                "info",
+                "Kids School (Kindergarten) is closed on weekends (Saturday & Sunday). Shifts operate Monday to Friday.",
                 userData.displayName
               );
             }

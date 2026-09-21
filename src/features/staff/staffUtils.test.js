@@ -118,6 +118,26 @@ describe("filterStaffMembers", () => {
     expect(names(filterStaffMembers({ users, branchFilter: "Kota Gorontalo" }))).toEqual(["Rina"]);
   });
 
+  it("filters by division (courses vs kindergarten)", () => {
+    const mixed = [
+      { id: "1", role: "instructor", displayName: "Course Teacher", division: "courses" },
+      { id: "2", role: "instructor", displayName: "TK Teacher", division: "kindergarten" },
+      { id: "3", role: "manager", displayName: "Legacy Staff" }, // legacy defaults to courses
+    ];
+    expect(names(filterStaffMembers({ users: mixed, divisionFilter: "kindergarten" }))).toEqual([
+      "TK Teacher",
+    ]);
+    expect(names(filterStaffMembers({ users: mixed, divisionFilter: "courses" }))).toEqual([
+      "Course Teacher",
+      "Legacy Staff",
+    ]);
+    expect(names(filterStaffMembers({ users: mixed, divisionFilter: "all" }))).toEqual([
+      "Course Teacher",
+      "Legacy Staff",
+      "TK Teacher",
+    ]);
+  });
+
   it("searches name, nickname, email and phone", () => {
     expect(names(filterStaffMembers({ users, search: "dede" }))).toEqual(["Andi"]);
     expect(names(filterStaffMembers({ users, search: "RINA@" }))).toEqual(["Rina"]);

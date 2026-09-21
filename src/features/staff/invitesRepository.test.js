@@ -47,6 +47,15 @@ describe("createInvite", () => {
     expect(fake.find(`invites/${MOCK_TOKEN}`).data.branch).toBe("Kota Gorontalo");
   });
 
+  it("stores canonical division, defaults to courses, and supports kindergarten", async () => {
+    await createInvite("a@b.id", "manager");
+    expect(fake.find(`invites/${MOCK_TOKEN}`).data.division).toBe("courses");
+
+    fake.reset();
+    await createInvite("k@b.id", "instructor", "Kota Gorontalo", "kindergarten");
+    expect(fake.find(`invites/${MOCK_TOKEN}`).data.division).toBe("kindergarten");
+  });
+
   it("throws validation error for invalid email or role", () => {
     expect(() => createInvite("not-an-email", "instructor")).toThrow();
     expect(() => createInvite("valid@school.id", "invalid_role")).toThrow();

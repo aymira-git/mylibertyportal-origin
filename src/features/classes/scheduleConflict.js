@@ -15,18 +15,7 @@
  */
 
 import { normalizeBranch } from "../../constants/branches.js";
-
-// ── Weekday Sets ────────────────────────────────────────────────────
-
-const DAY_MAP = {
-  "Mon/Wed": new Set(["mon", "wed"]),
-  "Tue/Thu": new Set(["tue", "thu"]),
-  "Fri Only": new Set(["fri"]),
-  "Sat Only": new Set(["sat"]),
-  "Sun Only": new Set(["sun"]),
-  "Sat/Sun": new Set(["sat", "sun"]),
-  Everyday: new Set(["sat", "sun", "mon", "tue", "wed", "thu"]),
-};
+import { doDaysOverlap as checkScheduleDaysOverlap } from "../../constants/scheduleDays.js";
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -43,41 +32,10 @@ export function parseTimeMinutes(timeStr) {
 
 /**
  * Do two classDay values share at least one weekday?
- * Falls back to generic "/" splitting for any future values not in DAY_MAP.
+ * Uses the canonical scheduleDays engine with fallback support.
  */
 export function doDaysOverlap(dayA, dayB) {
-  if (!dayA || !dayB) return false;
-
-  const setA = DAY_MAP[dayA] || parseDayString(dayA);
-  const setB = DAY_MAP[dayB] || parseDayString(dayB);
-
-  for (const d of setA) {
-    if (setB.has(d)) return true;
-  }
-  return false;
-}
-
-/** Fallback parser for unexpected classDay values. */
-function parseDayString(str) {
-  const clean = (str || "").trim().toLowerCase();
-  if (clean.includes("everyday")) {
-    return new Set(["sat", "sun", "mon", "tue", "wed", "thu"]);
-  }
-  if (clean === "sat only") return new Set(["sat"]);
-  if (clean === "sun only") return new Set(["sun"]);
-  if (clean === "fri only") return new Set(["fri"]);
-
-  return new Set(
-    clean
-      .split(/[/,]/)
-      .map((s) =>
-        s
-          .trim()
-          .replace(/\s+only$/i, "")
-          .slice(0, 3)
-      )
-      .filter(Boolean)
-  );
+  return checkScheduleDaysOverlap(dayA, dayB);
 }
 
 /**

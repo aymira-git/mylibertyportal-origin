@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback, useMemo, useImperativeHandle, forwardRef } from "react";
 import { fetchTodayScansData } from "../reportsRepository";
 import { getStartOfTodayWitaIso, getTodayWitaString, uniqueClasses } from "../reportsUtils";
+import { getTodayWitaWeekday } from "../../../utils/dateWita";
 import { getTodaysClasses } from "../../attendance";
 import { exportTableCSV, useToast } from "../../shared";
-import { Clock, CheckCircle2, XCircle, Search, RefreshCw } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, Search, RefreshCw, Calendar } from "lucide-react";
 import { normalizeBranch, matchesBranchFilter } from "../../../constants/branches";
+import { matchesDivisionFilter, divisionOfProgram } from "../../../constants/divisions";
 
 const TodayTab = forwardRef(
   /**
-   * @param {{ branchFilter?: string; isAdminView?: boolean; isFrontOffice?: boolean }} props
+   * @param {{ branchFilter?: string; isAdminView?: boolean; isFrontOffice?: boolean; division?: string }} props
    * @param {any} ref
    */
-  function TodayTab({ branchFilter = "all", isAdminView = false, isFrontOffice = false }, ref) {
+  function TodayTab({ branchFilter = "all", isAdminView = false, isFrontOffice = false, division = "all" }, ref) {
     const toast = useToast();
     const [todayScans, setTodayScans] = useState([]);
     const [todayClasses, setTodayClasses] = useState([]);
@@ -43,6 +45,11 @@ const TodayTab = forwardRef(
     // Today's Computed Metrics
     const todayComputed = useMemo(() => {
       let scheduledClasses = getTodaysClasses(todayClasses);
+      if (division !== "all") {
+        scheduledClasses = scheduledClasses.filter((cls) =>
+          matchesDivisionFilter(cls.division || divisionOfProgram(cls.programId || cls.program), division)
+        );
+      }
       if (branchFilter !== "all") {
         scheduledClasses = scheduledClasses.filter((cls) =>
           matchesBranchFilter(cls.branch, branchFilter)
@@ -51,6 +58,11 @@ const TodayTab = forwardRef(
       const scheduledStudentIds = new Set(scheduledClasses.flatMap((cls) => cls.studentIds || []));
 
       let expectedStudents = allStudentsList.filter((s) => scheduledStudentIds.has(s.id));
+      if (division !== "all") {
+        expectedStudents = expectedStudents.filter((s) =>
+          matchesDivisionFilter(s.division || divisionOfProgram(s.programId || s.program), division)
+        );
+      }
       if (branchFilter !== "all") {
         expectedStudents = expectedStudents.filter((s) =>
           matchesBranchFilter(s.branch, branchFilter)
@@ -70,7 +82,7 @@ const TodayTab = forwardRef(
         checkedInStudents,
         missingStudents,
       };
-    }, [todayClasses, todayScans, allStudentsList, branchFilter]);
+    }, [todayClasses, todayScans, allStudentsList, branchFilter, division]);
 
     // Filtered Today List
     const filteredTodayList = useMemo(() => {
@@ -123,6 +135,22 @@ const TodayTab = forwardRef(
 
     return (
       <div className="space-y-4">
+        {division === "kindergarten" &&
+          (getTodayWitaWeekday() === 0 || getTodayWitaWeekday() === 6) && (
+            <div className="p-4 rounded-2xl bg-cyan-50 border border-cyan-200 text-cyan-950 flex items-center gap-3">
+              <Calendar className="w-5 h-5 text-cyan-600 shrink-0" />
+              <div>
+                <p className="font-extrabold text-xs text-cyan-950">
+                  Kids School (Kindergarten) is Closed Today
+                </p>
+                <p className="text-[11px] text-cyan-800 font-medium mt-0.5">
+                  Kindergarten operates Monday through Friday. Saturdays and Sundays are official
+                  weekend rest days.
+                </p>
+              </div>
+            </div>
+          )}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">

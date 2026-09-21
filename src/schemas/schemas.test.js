@@ -18,6 +18,31 @@ describe("inviteSchema", () => {
     expect(result.branch).toBe("Kota Gorontalo");
   });
 
+  it("validates invite with division and defaults to courses", () => {
+    const defaultDiv = inviteSchema.parse({
+      email: "staff@myliberty.id",
+      role: "instructor",
+    });
+    expect(defaultDiv.division).toBe("courses");
+
+    const kidsDiv = inviteSchema.parse({
+      email: "kindergarten@myliberty.id",
+      role: "instructor",
+      division: "kindergarten",
+    });
+    expect(kidsDiv.division).toBe("kindergarten");
+  });
+
+  it("rejects marketing role for kindergarten division", () => {
+    expect(() =>
+      inviteSchema.parse({
+        email: "market@myliberty.id",
+        role: "marketing",
+        division: "kindergarten",
+      })
+    ).toThrow(/Marketing role is not available for Kindergarten division/);
+  });
+
   it("rejects invalid emails", () => {
     expect(() =>
       inviteSchema.parse({
@@ -90,6 +115,25 @@ describe("batchSchema", () => {
     expect(parsed.minQuorum).toBe(4);
     expect(parsed.status).toBe("open");
     expect(parsed.branch).toBe("Kota Gorontalo");
+    expect(parsed.programId).toBe("english_course");
+  });
+
+  it("normalizes programId and derives division in batch creation", () => {
+    const parsed = batchSchema.parse({
+      className: "TOEFL Prep 1",
+      classLevel: "toefl_intermediate",
+      programId: "TOEFL",
+    });
+    expect(parsed.programId).toBe("toefl");
+    expect(parsed.division).toBe("courses");
+
+    const kidsParsed = batchSchema.parse({
+      className: "TK-A Morning Cohort",
+      classLevel: "tk_a",
+      programId: "kids_school",
+    });
+    expect(kidsParsed.programId).toBe("kids_school");
+    expect(kidsParsed.division).toBe("kindergarten");
   });
 
   it("rejects batch missing name or level", () => {
@@ -121,6 +165,25 @@ describe("applicationSchema", () => {
     expect(parsed.currentLevel).toBe("elite");
     expect(parsed.role).toBe("student");
     expect(parsed.status).toBe("active");
+    expect(parsed.programId).toBe("english_course");
+    expect(parsed.division).toBe("courses");
+  });
+
+  it("normalizes program and derives division for student applications", () => {
+    const parsed = applicationSchema.parse({
+      displayName: "Child Student",
+      program: "Kids Course",
+    });
+    expect(parsed.program).toBe("Kids Course");
+    expect(parsed.programId).toBe("kids_course");
+    expect(parsed.division).toBe("courses");
+
+    const kindergartenApp = applicationSchema.parse({
+      displayName: "Little Timmy",
+      program: "Kids School",
+    });
+    expect(kindergartenApp.programId).toBe("kids_school");
+    expect(kindergartenApp.division).toBe("kindergarten");
   });
 
   it("rejects empty student displayName", () => {

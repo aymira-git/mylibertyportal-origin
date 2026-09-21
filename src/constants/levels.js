@@ -77,6 +77,13 @@ export const TIERS = {
 export const TIER_KEYS = Object.keys(TIERS);
 export const TIER_LIST = Object.values(TIERS);
 
+import {
+  getBatchProgram,
+  getProgramLevel,
+  getProgramLevels,
+  normalizeProgram,
+} from "./programs.js";
+
 export function getTier(level) {
   return LEVELS[level]?.tier || null;
 }
@@ -102,20 +109,44 @@ export function getNextLevel(level) {
  * Option B Compatibility Rule:
  * If batch specifies minLevel / maxLevel, compares studentOrder within that range.
  * If batch only specifies classLevel, falls back to exact match.
+ *
+ * Program Rule 3:
+ * If studentProgram is provided, student and batch must belong to the same program.
  */
-export function isCompatible(studentLevel, batch) {
+export function isCompatible(studentLevel, batch, studentProgram = null) {
   if (!studentLevel || !batch) return true;
-  const studentOrder = LEVELS[studentLevel]?.order;
-  if (!studentOrder) return true;
+
+  const batchProg = getBatchProgram(batch);
+
+  if (studentProgram) {
+    const normStudentProg = normalizeProgram(studentProgram);
+    if (batchProg !== normStudentProg) {
+      return false;
+    }
+  }
+
+  const studentLvlObj = getProgramLevel(batchProg, studentLevel) || LEVELS[studentLevel];
+  if (!studentLvlObj) return true;
+
+  const studentOrder = studentLvlObj.order;
 
   if (batch.minLevel || batch.maxLevel) {
-    const minOrder = batch.minLevel ? LEVELS[batch.minLevel]?.order || 1 : 1;
-    const maxOrder = batch.maxLevel ? LEVELS[batch.maxLevel]?.order || 5 : 5;
+    const progLevels = getProgramLevels(batchProg);
+    const minLvlObj = batch.minLevel
+      ? getProgramLevel(batchProg, batch.minLevel) || LEVELS[batch.minLevel]
+      : null;
+    const maxLvlObj = batch.maxLevel
+      ? getProgramLevel(batchProg, batch.maxLevel) || LEVELS[batch.maxLevel]
+      : null;
+
+    const minOrder = minLvlObj ? minLvlObj.order : 1;
+    const maxOrder = maxLvlObj ? maxLvlObj.order : progLevels.length || 5;
+
     return studentOrder >= minOrder && studentOrder <= maxOrder;
   }
 
   if (batch.classLevel) {
-    return batch.classLevel === studentLevel;
+    return String(batch.classLevel).toLowerCase() === String(studentLevel).toLowerCase();
   }
 
   return true;

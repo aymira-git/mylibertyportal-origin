@@ -13,48 +13,83 @@ import {
   Info,
 } from "lucide-react";
 import {
-  LEVELS,
-  LEVEL_KEYS,
-  TIERS,
   LevelBadge,
-  getStarText,
   useToast,
   uploadFileToCloudinary,
 } from "../shared";
 import { createClass, updateClass } from "./classesRepository";
 import { BRANCHES, DEFAULT_BRANCH, normalizeBranch } from "../../constants/branches";
+import {
+  getBatchProgram,
+  getEnabledPrograms,
+  getProgram,
+  getProgramLevels,
+  normalizeProgram,
+} from "../../constants/programs";
 
 function BatchForm({ batch, instructors, existingClasses = [], onClose, onSuccess = null }) {
   const toast = useToast();
   const isEditing = Boolean(batch?.id);
 
+  const [programId, setProgramId] = useState(
+    batch ? getBatchProgram(batch) : "english_course"
+  );
+  const currentProgram = useMemo(() => getProgram(programId), [programId]);
+  const currentLevels = useMemo(() => getProgramLevels(programId), [programId]);
+  const enabledPrograms = useMemo(() => getEnabledPrograms(), []);
+
   const [className, setClassName] = useState(batch?.className || "");
   const [branch, setBranch] = useState(
     batch?.branch ? normalizeBranch(batch.branch) : DEFAULT_BRANCH
   );
-  const [classLevel, setClassLevel] = useState(batch?.classLevel || "warrior");
-  const [minLevel, setMinLevel] = useState(batch?.minLevel || batch?.classLevel || "warrior");
-  const [maxLevel, setMaxLevel] = useState(batch?.maxLevel || batch?.classLevel || "warrior");
+  const [classLevel, setClassLevel] = useState(
+    batch?.classLevel || currentLevels[0]?.id || "warrior"
+  );
+  const [minLevel, setMinLevel] = useState(
+    batch?.minLevel || batch?.classLevel || currentLevels[0]?.id || "warrior"
+  );
+  const [maxLevel, setMaxLevel] = useState(
+    batch?.maxLevel || batch?.classLevel || currentLevels[0]?.id || "warrior"
+  );
   const [instructorId, setInstructorId] = useState(batch?.instructorId || "");
   const [substituteInstructorId, setSubstituteInstructorId] = useState(
     batch?.substituteInstructorId || ""
   );
-  const [classDay, setClassDay] = useState(batch?.classDay || "Mon/Wed");
+  const [classDay, setClassDay] = useState(batch?.classDay || currentProgram.defaultDay || "Mon/Wed");
   const [classStartDate, setClassStartDate] = useState(
     batch?.classStartDate || new Date().toISOString().slice(0, 10)
   );
-  const [startTime, setStartTime] = useState(batch?.startTime || "17:00");
-  const [endTime, setEndTime] = useState(batch?.endTime || "18:30");
+  const [startTime, setStartTime] = useState(batch?.startTime || currentProgram.defaultStartTime || "17:00");
+  const [endTime, setEndTime] = useState(batch?.endTime || currentProgram.defaultEndTime || "18:30");
   const [classRoom, setClassRoom] = useState(
     batch?.classRoom && batch.classRoom !== "N/A" ? batch.classRoom : ""
   );
-  const [maxCapacity, setMaxCapacity] = useState(batch?.maxCapacity || 15);
-  const [minQuorum, setMinQuorum] = useState(batch?.minQuorum ?? 4);
+  const [maxCapacity, setMaxCapacity] = useState(batch?.maxCapacity || currentProgram.defaultCapacity || 15);
+  const [minQuorum, setMinQuorum] = useState(batch?.minQuorum ?? currentProgram.minQuorum ?? 4);
   const [status, setStatus] = useState(batch?.status || "open");
   const [notes, setNotes] = useState(batch?.notes || "");
   const [worksheetUrl, setWorksheetUrl] = useState(batch?.worksheetUrl || "");
   const [selectedFile, setSelectedFile] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  const handleProgramChange = (newProgId) => {
+    const norm = normalizeProgram(newProgId);
+    setProgramId(norm);
+    const prog = getProgram(norm);
+    const levels = getProgramLevels(norm);
+    const defaultLvl = levels[0]?.id || "warrior";
+    setClassLevel(defaultLvl);
+    setMinLevel(defaultLvl);
+    setMaxLevel(defaultLvl);
+    if (!prog.allowedDays.includes(classDay)) {
+      setClassDay(prog.defaultDay || prog.allowedDays[0] || "Mon/Wed");
+    }
+    if (!isEditing) {
+      if (prog.defaultStartTime) setStartTime(prog.defaultStartTime);
+      if (prog.defaultEndTime) setEndTime(prog.defaultEndTime);
+      if (prog.defaultCapacity) setMaxCapacity(prog.defaultCapacity);
+    }
+  };
 
   // Exclude non-active instructors from assignment dropdown, but preserve the currently assigned instructor if already attached
   const assignableInstructors = useMemo(() => {
@@ -123,6 +158,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
 
       const payload = {
         className: className.trim(),
+        programId: normalizeProgram(programId),
         classLevel,
         minLevel: minLevel || classLevel,
         maxLevel: maxLevel || classLevel,
@@ -222,6 +258,43 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
           </div>
         )}
 
+        {/* Program Selection Row */}
+        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              Educational Program *
+            </label>
+            <span
+              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${currentProgram.badgeBg}`}
+            >
+              {currentProgram.label}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {enabledPrograms.map((prog) => (
+              <button
+                type="button"
+                key={prog.id}
+                onClick={() => handleProgramChange(prog.id)}
+                className={`p-2 rounded-xl text-xs font-bold border transition text-left ${
+                  programId === prog.id
+                    ? "bg-[#1a3a8f] text-white border-[#1a3a8f] shadow-xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <div className="truncate">{prog.shortLabel || prog.label}</div>
+                <div
+                  className={`text-[9px] font-normal truncate ${
+                    programId === prog.id ? "text-indigo-100" : "text-slate-400"
+                  }`}
+                >
+                  {prog.scheduleType === "daily_school" ? "Mon-Fri School" : "Course Cohort"}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Cohort Name, Level, & Branch */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="sm:col-span-2 space-y-1">
@@ -243,7 +316,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                 Level Track *
               </label>
-              <LevelBadge level={classLevel} showStars={true} showTier={true} />
+              <LevelBadge level={classLevel} programId={programId} showStars={true} />
             </div>
             <select
               value={classLevel}
@@ -257,9 +330,9 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               }}
               className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition capitalize"
             >
-              {LEVEL_KEYS.map((lvl) => (
-                <option key={lvl} value={lvl}>
-                  {LEVELS[lvl]?.label} ({getStarText(lvl)} {TIERS[LEVELS[lvl]?.tier]?.label})
+              {currentLevels.map((lvl) => (
+                <option key={lvl.id} value={lvl.id}>
+                  {lvl.label} {lvl.stars ? `(${"⭐".repeat(lvl.stars)})` : ""}
                 </option>
               ))}
             </select>
@@ -303,9 +376,9 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
                 onChange={(e) => setMinLevel(e.target.value)}
                 className="w-full p-2 border rounded-xl bg-white text-xs font-semibold capitalize"
               >
-                {LEVEL_KEYS.map((lvl) => (
-                  <option key={lvl} value={lvl}>
-                    {LEVELS[lvl]?.label} ({LEVELS[lvl]?.stars}★)
+                {currentLevels.map((lvl) => (
+                  <option key={lvl.id} value={lvl.id}>
+                    {lvl.label} {lvl.stars ? `(${lvl.stars}★)` : ""}
                   </option>
                 ))}
               </select>
@@ -319,9 +392,9 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
                 onChange={(e) => setMaxLevel(e.target.value)}
                 className="w-full p-2 border rounded-xl bg-white text-xs font-semibold capitalize"
               >
-                {LEVEL_KEYS.map((lvl) => (
-                  <option key={lvl} value={lvl}>
-                    {LEVELS[lvl]?.label} ({LEVELS[lvl]?.stars}★)
+                {currentLevels.map((lvl) => (
+                  <option key={lvl.id} value={lvl.id}>
+                    {lvl.label} {lvl.stars ? `(${lvl.stars}★)` : ""}
                   </option>
                 ))}
               </select>
@@ -402,12 +475,14 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               onChange={(e) => setClassDay(e.target.value)}
               className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white focus:border-[#1a3a8f] outline-none"
             >
-              <option value="Mon/Wed">Mon / Wed</option>
-              <option value="Tue/Thu">Tue / Thu</option>
-              <option value="Sat Only">Sat Only</option>
-              <option value="Sat/Sun">Sat / Sun (Weekend)</option>
-              <option value="Everyday">Sat - Thu (Intensive)</option>
-              {classDay === "Fri Only" && <option value="Fri Only">Fri Only (Legacy)</option>}
+              {currentProgram.allowedDays.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+              {!currentProgram.allowedDays.includes(classDay) && (
+                <option value={classDay}>{classDay} (Current / Legacy)</option>
+              )}
             </select>
           </div>
 

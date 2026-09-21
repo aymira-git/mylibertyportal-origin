@@ -1,32 +1,30 @@
 import { useState } from "react";
-import { auth } from "../../firebase";
-import { useDashboardData } from "./useDashboardData";
-import { AIAssistant, DashboardShell, WelcomeBanner, useToast } from "../shared";
-import { ReportsDashboard } from "../reports";
+import { auth } from "../../../firebase";
+import { useDashboardData } from "../useDashboardData";
+import { AIAssistant, DashboardShell, WelcomeBanner, useToast } from "../../shared";
+import { ReportsDashboard } from "../../reports";
 import {
   StudentApplications,
   StudentRoster,
   UserForm,
   BadgeModal,
   isActiveStudent,
-} from "../students";
-import { KioskModal, KioskSidebarButton } from "../attendance";
-import { ClassManager, AvailableBatches } from "../classes";
-import { TasksPanel } from "../staff";
+} from "../../students";
+import { KioskModal, KioskSidebarButton } from "../../attendance";
+import { ClassManager } from "../../classes";
+import { TasksPanel } from "../../staff";
 import {
   ScanLine,
-  FileText,
-  School,
-  BarChart3,
   Send,
   MessageCircle,
   UserPlus,
   GraduationCap,
   BookOpen,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 
-export default function FrontOfficeDashboard() {
+export default function KidsFrontOfficeDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [waPhone, setWaPhone] = useState("");
   const [kioskOpen, setKioskOpen] = useState(() => {
@@ -61,12 +59,15 @@ export default function FrontOfficeDashboard() {
     students,
     unenrolledStudents,
     pendingApplications,
-  } = useDashboardData({ restrictedRead: true, setActiveTab, division: "courses" });
+  } = useDashboardData({
+    restrictedRead: true,
+    setActiveTab,
+    division: "kindergarten",
+  });
 
   const sendWhatsAppInvite = (phone) => {
     if (!phone) return toast("Please enter a phone number first.", "error");
 
-    // Clean and format phone for international use (62 for Indonesia)
     let cleanPhone = phone.replace(/\D/g, "");
     if (cleanPhone.startsWith("0")) {
       cleanPhone = "62" + cleanPhone.substring(1);
@@ -74,7 +75,7 @@ export default function FrontOfficeDashboard() {
 
     const regUrl = window.location.origin + "/register";
     const message = encodeURIComponent(
-      `Hello! Greetings from My Liberty school. 🌟 Please complete your student registration here: ${regUrl}`
+      `Hello! Greetings from MY LIBERTY Kids School (Kindergarten). 🌟 Please complete your child's registration application here: ${regUrl}`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
     setWaPhone("");
@@ -83,10 +84,10 @@ export default function FrontOfficeDashboard() {
   const overviewTab = (
     <div className="space-y-6 w-full">
       <WelcomeBanner
-        portalLabel="Front Desk Portal"
-        roleLabel="Front Office Desk"
+        portalLabel="Kids School Front Desk"
+        roleLabel="Kindergarten Front Office"
         fallbackName="Duty Officer"
-        subtitle="Manage front-desk student registrations, class scheduling, parent inquiries, and daily reception attendance."
+        subtitle="Manage early childhood admissions, Nursery & TK classes, parent communications, and reception attendance."
         stats={[
           {
             label: "Pending Applications",
@@ -95,105 +96,74 @@ export default function FrontOfficeDashboard() {
             onClick: () => setActiveTab("applications"),
           },
           {
-            label: "Active Students",
+            label: "Active Children",
             value: students.filter(isActiveStudent).length,
             icon: GraduationCap,
             onClick: () => setActiveTab("students"),
           },
           {
-            label: "Active Classes",
+            label: "TK & Nursery Cohorts",
             value: classes.length,
             icon: BookOpen,
             onClick: () => setActiveTab("classes"),
           },
           {
-            label: "Unassigned Students",
+            label: "Unassigned Children",
             value: unenrolledStudents.length,
             icon: AlertCircle,
             onClick: () => setActiveTab("students"),
           },
         ]}
       />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-5 rounded-3xl border border-indigo-100 shadow-sm space-y-3">
-          <div className="flex items-center gap-2 text-indigo-900 font-extrabold text-sm">
+        <div className="bg-white p-5 rounded-3xl border border-cyan-100 shadow-xs space-y-3">
+          <div className="flex items-center gap-2 text-cyan-900 font-extrabold text-sm">
             <MessageCircle className="w-4 h-4 text-emerald-600" />
-            <span>Walk-in Student Registration</span>
+            <span>Walk-in Child Registration</span>
           </div>
           <p className="text-xs text-slate-500 font-medium">
-            Send an application form link directly to a parent&apos;s WhatsApp.
+            Send an application link directly to a parent's WhatsApp for Nursery, TK-A, or TK-B admission.
           </p>
           <div className="flex gap-2 pt-1">
             <input
               type="tel"
               value={waPhone}
               onChange={(e) => setWaPhone(e.target.value)}
-              placeholder="Parent's Phone (e.g. 0812...)"
+              placeholder="Parent's WhatsApp (e.g. 0812...)"
               className="flex-1 p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
             />
             <button
               onClick={() => sendWhatsAppInvite(waPhone)}
-              className="bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-xs transition flex items-center gap-1.5"
+              className="bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Send Link</span>
             </button>
           </div>
         </div>
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-extrabold text-slate-800 text-sm">Quick Actions</h4>
-            <button
-              onClick={handleAddStudent}
-              className="text-[11px] font-bold text-[#1a3a8f] hover:underline inline-flex items-center gap-1"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>+ Add Walk-in</span>
-            </button>
+
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-slate-800 font-extrabold text-sm">
+              <Sparkles className="w-4 h-4 text-cyan-600" />
+              <span>Kindergarten Schedule Policy</span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-1">
+              Kids School operates on a formal academic schedule: <strong>Monday to Friday (Mon–Fri)</strong> daily. Saturday and Sunday are strictly OFF.
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <button
-              onClick={() => setActiveTab("applications")}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
-            >
-              <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span className="truncate">Applications</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("classes")}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
-            >
-              <School className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="truncate">Manage Classes</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("reports")}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
-            >
-              <BarChart3 className="w-4 h-4 text-blue-600 shrink-0" />
-              <span className="truncate">Open Reports</span>
-            </button>
+          <div className="pt-3">
             <button
               onClick={() => setKioskOpen(true)}
-              className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200/80 text-xs font-bold text-[#1a3a8f] hover:bg-indigo-100 transition flex items-center gap-2"
+              className="w-full py-2.5 px-4 bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              <ScanLine className="w-4 h-4 text-[#1a3a8f] shrink-0" />
-              <span className="truncate">Reception Mode</span>
+              <ScanLine className="w-4 h-4 text-cyan-600" />
+              <span>Launch Daily Kiosk Station</span>
             </button>
           </div>
         </div>
       </div>
-
-      {/* Available Batches & Capacity Openings */}
-      <AvailableBatches
-        classes={classes}
-        instructors={instructors}
-        users={users}
-        canEdit={false}
-        role="frontoffice"
-        isOverviewWidget={true}
-        onNavigateToClasses={() => setActiveTab("classes")}
-      />
     </div>
   );
 
@@ -202,7 +172,7 @@ export default function FrontOfficeDashboard() {
     {
       id: "applications",
       label: "Applications",
-      badge: pendingApplications > 0 ? pendingApplications : null,
+      badge: pendingApplications || null,
       component: (
         <StudentApplications
           applications={applications}
@@ -215,7 +185,9 @@ export default function FrontOfficeDashboard() {
     },
     {
       id: "students",
-      label: "Students",
+      label: "Learners",
+      badge: unenrolledStudents.length ? `${unenrolledStudents.length} unassigned` : null,
+      badgeDot: unenrolledStudents.length > 0,
       component: (
         <StudentRoster
           students={students}
@@ -232,7 +204,7 @@ export default function FrontOfficeDashboard() {
     },
     {
       id: "classes",
-      label: "Classes",
+      label: "Classes & Rooms",
       component: (
         <ClassManager
           classes={classes}
@@ -247,10 +219,12 @@ export default function FrontOfficeDashboard() {
     {
       id: "reports",
       label: "Reports",
-      component: <ReportsDashboard isAdminView={false} isFrontOffice={true} />,
+      component: (
+        <ReportsDashboard isAdminView={false} isFrontOffice={true} division="kindergarten" />
+      ),
     },
     {
-      id: "misc",
+      id: "tasks",
       label: "Tasks",
       badge: todos.filter((t) => !t.completed).length || null,
       component: (
@@ -265,14 +239,9 @@ export default function FrontOfficeDashboard() {
       ),
     },
     { id: "aiAssistant", label: "AI Assistant", component: <AIAssistant /> },
-    // 👈 Not in the sidebar — reachable via "Add Student" and via "Edit" on a
-    // student in the roster (both go through handleAddStudent/handleEdit,
-    // which always set role: "student"). UserForm locks the Role field to a
-    // read-only badge whenever formData.role === "student" (add OR edit), so
-    // this can never expose the staff-role picker or create staff accounts.
     {
       id: "addUser",
-      label: editId ? "Edit Student" : "Add Student",
+      label: editId ? "Edit Learner" : "Register Learner",
       hidden: true,
       component: (
         <UserForm
@@ -291,22 +260,29 @@ export default function FrontOfficeDashboard() {
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        title="Front Office"
+        title="Kids School — Front Desk"
         extraSidebarContent={
-          <KioskSidebarButton onClick={() => setKioskOpen(true)} label="Reception Kiosk" />
+          <div className="space-y-2">
+            <div className="px-2 pt-1">
+              <span className="inline-flex items-center gap-1.5 bg-cyan-50 text-cyan-800 text-[11px] font-black px-2.5 py-0.5 rounded-full border border-cyan-200">
+                Kindergarten Division
+              </span>
+            </div>
+            <KioskSidebarButton onClick={() => setKioskOpen(true)} label="Reception Kiosk" />
+          </div>
         }
       />
 
-      {/* Standalone Full-Screen Kiosk Station */}
       <KioskModal
         isOpen={kioskOpen}
         onClose={() => setKioskOpen(false)}
-        title="Front Office Student Scan Station"
+        title="Kids School Reception Scanner"
         studentsOnly={true}
       />
 
-      {/* ID Badge Modal */}
-      <BadgeModal person={selectedStudent} onClose={() => setSelectedStudent(null)} />
+      {selectedStudent && (
+        <BadgeModal person={selectedStudent} onClose={() => setSelectedStudent(null)} />
+      )}
     </div>
   );
 }

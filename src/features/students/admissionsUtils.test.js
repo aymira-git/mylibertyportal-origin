@@ -330,4 +330,24 @@ describe("sortPlacementBatches", () => {
     });
     expect(sorted[0].id).toBe("g1");
   });
+
+  it("prioritizes cohorts matching the applicant's program first", () => {
+    const cEnglish = {
+      id: "e1",
+      className: "English Warrior",
+      programId: "english_course",
+      classLevel: "warrior",
+    };
+    const cToefl = {
+      id: "t1",
+      className: "TOEFL Batch",
+      programId: "toefl",
+      classLevel: "toefl_foundation",
+    };
+    const sorted = sortPlacementBatches([cEnglish, cToefl], {
+      selectedLevel: "toefl_foundation",
+      appProgram: "toefl",
+    });
+    expect(sorted[0].id).toBe("t1");
+  });
 });

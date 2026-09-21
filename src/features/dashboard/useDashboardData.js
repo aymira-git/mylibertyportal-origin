@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { auth, db } from "../../firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useToast, useConfirm } from "../shared";
@@ -11,6 +11,12 @@ import {
   deleteUserProfile,
 } from "./usersRepository";
 import { DEFAULT_BRANCH, normalizeBranch } from "../../constants/branches";
+import {
+  DEFAULT_DIVISION,
+  normalizeDivision,
+  divisionOfProgram,
+  matchesDivisionFilter,
+} from "../../constants/divisions";
 
 const emptyFormData = {
   firstName: "",
@@ -36,6 +42,7 @@ const emptyFormData = {
   religion: "",
   address: "",
   branch: DEFAULT_BRANCH,
+  division: DEFAULT_DIVISION,
   program: "",
   classType: "",
   schoolOrJob: "",
@@ -67,7 +74,11 @@ const emptyFormData = {
  * handleEdit/handleSave need to jump the *caller's* tab state to the right
  * screen after an edit/save, and each dashboard has its own tab list.
  */
-export function useDashboardData({ restrictedRead = false, setActiveTab = null } = {}) {
+export function useDashboardData({
+  restrictedRead = false,
+  setActiveTab = null,
+  division = null,
+} = {}) {
   const toast = useToast();
   const confirm = useConfirm(); // 👈 shadows native window.confirm on purpose — same call shape, styled modal, just needs "await"
 
@@ -156,6 +167,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
           religion: formData.religion,
           address: formData.address,
           branch: formData.branch,
+          division: formData.division,
           program: formData.program,
           classType: formData.classType,
           schoolOrJob: formData.schoolOrJob,
@@ -194,6 +206,7 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
           educationLevel: formData.educationLevel,
           email: formData.email,
           branch: normalizeBranch(formData.branch),
+          division: normalizeDivision(formData.division),
           status: formData.status || "active",
           photoURL: formData.photoURL || "",
         };
@@ -228,10 +241,13 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
 
   const handleAddStudent = () => {
     setEditId(null);
+    const isKindergarten = division === "kindergarten";
     setFormData({
       ...emptyFormData,
       role: "student",
-      currentLevel: "warrior",
+      division: isKindergarten ? "kindergarten" : "courses",
+      program: isKindergarten ? "kids_school" : "english_course",
+      currentLevel: isKindergarten ? "nursery" : "warrior",
       paymentPlan: "monthly",
       status: "active",
     });
@@ -264,6 +280,9 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
       religion: user.religion || "",
       address: user.address || "",
       branch: normalizeBranch(user.branch),
+      division: normalizeDivision(
+        user.division || (user.role === "student" ? divisionOfProgram(user.programId || user.program) : "courses")
+      ),
       program: user.program || "",
       classType: user.classType || "",
       schoolOrJob: user.schoolOrJob || "",
@@ -334,9 +353,14 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
     }
   };
 
-  const handleCreateInvite = async (email, role, branch = DEFAULT_BRANCH) => {
+  const handleCreateInvite = async (
+    email,
+    role,
+    branch = DEFAULT_BRANCH,
+    division = DEFAULT_DIVISION
+  ) => {
     try {
-      await createInvite(email, role, branch);
+      await createInvite(email, role, branch, division);
       toast("Invitation link generated successfully!", "success");
       return true;
     } catch (err) {
@@ -368,23 +392,58 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
       }));
   };
 
-  const instructors = users.filter((u) => u.role === "instructor");
-  const activeInstructors = users.filter(
-    (u) => u.role === "instructor" && (u.status || "active") === "active"
-  );
-  const students = users.filter((u) => u.role === "student");
-  const enrolledStudentIds = classes.flatMap((cls) => cls.studentIds || []);
-  const unenrolledStudents = students.filter(
-    (s) => isActiveStudent(s) && !enrolledStudentIds.includes(s.id)
-  );
-  const pendingApplications = applications.filter(
-    (application) => (application.status || "pending") === "pending"
-  ).length;
+  const scopedClasses = useMemo(() => {
+    if (!division || division === "all") return classes;
+    return classes.filter((c) =>
+      matchesDivisionFilter(c.division || divisionOfProgram(c.programId || c.program), division)
+    );
+  }, [classes, division]);
+
+  const scopedApplications = useMemo(() => {
+    if (!division || division === "all") return applications;
+    return applications.filter((a) =>
+      matchesDivisionFilter(a.division || divisionOfProgram(a.programId || a.program), division)
+    );
+  }, [applications, division]);
+
+  const scopedStudents = useMemo(() => {
+    const raw = users.filter((u) => u.role === "student");
+    if (!division || division === "all") return raw;
+    return raw.filter((s) =>
+      matchesDivisionFilter(s.division || divisionOfProgram(s.programId || s.program), division)
+    );
+  }, [users, division]);
+
+  const instructors = useMemo(() => {
+    const raw = users.filter((u) => u.role === "instructor");
+    if (!division || division === "all") return raw;
+    return raw.filter((u) => matchesDivisionFilter(u.division, division));
+  }, [users, division]);
+
+  const activeInstructors = useMemo(() => {
+    return instructors.filter((u) => (u.status || "active") === "active");
+  }, [instructors]);
+
+  const enrolledStudentIds = useMemo(() => {
+    return scopedClasses.flatMap((cls) => cls.studentIds || []);
+  }, [scopedClasses]);
+
+  const unenrolledStudents = useMemo(() => {
+    return scopedStudents.filter(
+      (s) => isActiveStudent(s) && !enrolledStudentIds.includes(s.id)
+    );
+  }, [scopedStudents, enrolledStudentIds]);
+
+  const pendingApplications = useMemo(() => {
+    return scopedApplications.filter(
+      (application) => (application.status || "pending") === "pending"
+    ).length;
+  }, [scopedApplications]);
 
   return {
     users,
-    classes,
-    applications,
+    classes: scopedClasses,
+    applications: scopedApplications,
     invites,
     todos,
     editId,
@@ -406,8 +465,10 @@ export function useDashboardData({ restrictedRead = false, setActiveTab = null }
     getStudentClasses,
     instructors,
     activeInstructors,
-    students,
+    students: scopedStudents,
     unenrolledStudents,
     pendingApplications,
+    allClasses: classes,
+    allUsers: users,
   };
 }

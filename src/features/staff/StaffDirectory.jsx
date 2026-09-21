@@ -21,6 +21,7 @@ import {
   filterStaffMembers,
   getDistinctStaffBranches,
 } from "./staffUtils";
+import { DIVISION_BADGES, normalizeDivision } from "../../constants/divisions.js";
 import {
   Search,
   UserPlus,
@@ -56,6 +57,7 @@ export default function StaffDirectory({
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
+  const [divisionFilter, setDivisionFilter] = useState("all");
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
 
   // Overall KPIs (Counting active staff to prevent metric inflation)
@@ -90,8 +92,9 @@ export default function StaffDirectory({
       roleFilter,
       statusFilter,
       branchFilter,
+      divisionFilter,
     });
-  }, [users, search, roleFilter, statusFilter, branchFilter]);
+  }, [users, search, roleFilter, statusFilter, branchFilter, divisionFilter]);
 
   // Pagination (20 staff per page)
   const { page, setPage, totalPages, pageItems, from, to, total } = usePagination(
@@ -342,8 +345,56 @@ export default function StaffDirectory({
           </div>
         </div>
 
+        {/* Division Filter Chips */}
+        <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold pt-1">
+          <span className="text-[10px] uppercase tracking-wider text-slate-400 mr-1">Division:</span>
+          <button
+            type="button"
+            onClick={() => {
+              setDivisionFilter("all");
+              setPage(1);
+            }}
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+              divisionFilter === "all"
+                ? "bg-[#1a3a8f] text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            All Divisions
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDivisionFilter("courses");
+              setPage(1);
+            }}
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+              divisionFilter === "courses"
+                ? "bg-indigo-600 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Course Academy
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setDivisionFilter("kindergarten");
+              setPage(1);
+            }}
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer ${
+              divisionFilter === "kindergarten"
+                ? "bg-cyan-600 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            Kids School (Kindergarten)
+          </button>
+        </div>
+
         {/* Role Filter Chips */}
         <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-bold pt-1">
+          <span className="text-[10px] uppercase tracking-wider text-slate-400 mr-1">Role:</span>
           <button
             type="button"
             onClick={() => {
@@ -466,6 +517,14 @@ export default function StaffDirectory({
                           }`}
                         >
                           {STAFF_ROLE_LABELS[u.role] || u.role}
+                        </span>
+
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                            DIVISION_BADGES[normalizeDivision(u.division)].tone
+                          }`}
+                        >
+                          {DIVISION_BADGES[normalizeDivision(u.division)].label}
                         </span>
 
                         <span

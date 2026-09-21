@@ -9,6 +9,11 @@ import { useState, useMemo } from "react";
 import { useToast } from "../shared";
 import { getDistinctStaffBranches } from "./staffUtils";
 import { DEFAULT_BRANCH } from "../../constants/branches.js";
+import {
+  DEFAULT_DIVISION,
+  DIVISION_BADGES,
+  normalizeDivision,
+} from "../../constants/divisions.js";
 import { copyText } from "../../utils/copyText";
 import {
   Mail,
@@ -75,6 +80,7 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("instructor");
   const [inviteBranch, setInviteBranch] = useState(DEFAULT_BRANCH);
+  const [inviteDivision, setInviteDivision] = useState(DEFAULT_DIVISION);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -95,13 +101,20 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
     );
   }, [cleanEmail, invites]);
 
+  const handleDivisionChange = (newDiv) => {
+    setInviteDivision(newDiv);
+    if (newDiv === "kindergarten" && inviteRole === "marketing") {
+      setInviteRole("instructor");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!cleanEmail) return;
 
     setIsSubmitting(true);
     try {
-      const ok = await onCreateInvite(cleanEmail, inviteRole, inviteBranch);
+      const ok = await onCreateInvite(cleanEmail, inviteRole, inviteBranch, inviteDivision);
       if (ok) {
         setInviteEmail("");
       }
@@ -170,7 +183,7 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="sm:col-span-2 md:col-span-2">
+          <div className="sm:col-span-2 md:col-span-1">
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
               Staff Email Address *
             </label>
@@ -189,6 +202,20 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
 
           <div>
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+              Division *
+            </label>
+            <select
+              value={inviteDivision}
+              onChange={(e) => handleDivisionChange(e.target.value)}
+              className="w-full py-2.5 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:border-[#1a3a8f] outline-none cursor-pointer transition"
+            >
+              <option value="courses">Course Academy</option>
+              <option value="kindergarten">Kids School (Kindergarten)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
               Assigned Role *
             </label>
             <select
@@ -198,9 +225,13 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
             >
               <option value="instructor">Instructor / Teacher</option>
               <option value="manager">Campus Manager</option>
-              <option value="marketing">Marketing Specialist</option>
               <option value="frontoffice">Front Office / Admin</option>
-              <option value="officeboy">Office Support Staff</option>
+              {inviteDivision !== "kindergarten" && (
+                <>
+                  <option value="marketing">Marketing Specialist</option>
+                  <option value="officeboy">Office Support Staff</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -296,6 +327,7 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
                 label: inv.role,
                 tone: "bg-slate-100 text-slate-600 border-slate-200",
               };
+              const divBadge = DIVISION_BADGES[normalizeDivision(inv.division)];
               const expiry = getExpiryInfo(inv.expiresAt);
               const createdStr = inv.createdAt
                 ? new Date(inv.createdAt).toLocaleDateString("id-ID", {
@@ -319,6 +351,11 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
                         className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${roleConfig.tone}`}
                       >
                         {roleConfig.label}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${divBadge.tone}`}
+                      >
+                        {divBadge.label}
                       </span>
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${expiry.tone}`}

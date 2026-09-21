@@ -5,6 +5,7 @@ import { getBatchAvailability } from "../../classes";
 import { exportTableCSV } from "../../shared";
 import { TrendingUp, School, RefreshCw, Search, Users } from "lucide-react";
 import { normalizeBranch, matchesBranchFilter } from "../../../constants/branches";
+import { getProgram, getStudentProgram } from "../../../constants/programs";
 
 const AdmissionsTab = forwardRef(
   /**
@@ -92,7 +93,7 @@ const AdmissionsTab = forwardRef(
         ];
         const rows = (admissionsCalculated.filteredApps || []).map((a) => [
           a.fullName || a.studentName || "Prospective Student",
-          a.program || a.courseType || "General English",
+          a.program || getProgram(getStudentProgram(a)).label,
           normalizeBranch(a.branch),
           a.status || "pending",
           a.submittedAt ? new Date(a.submittedAt).toLocaleDateString() : "",
@@ -276,7 +277,7 @@ const AdmissionsTab = forwardRef(
                         <span>{a.phone || "No Phone"}</span>
                         <span>·</span>
                         <span className="text-indigo-700 font-medium">
-                          {a.program || a.courseType || "General English"}
+                          {a.program || getProgram(getStudentProgram(a)).label}
                         </span>
                         <span>·</span>
                         <span>

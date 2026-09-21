@@ -20,6 +20,7 @@ import { normalizeBranch, matchesBranchFilter } from "../../constants/branches";
 import { LevelBadge, PAYMENT_PLAN_LIST, isCompatible } from "../shared";
 import { getBatchAvailability } from "../classes/batchAvailability";
 import { sortPlacementBatches } from "./admissionsUtils";
+import { getStudentProgram, getProgram, getProgramLevels } from "../../constants/programs";
 
 function formatDobAndAge(dob) {
   if (!dob) return "—";
@@ -46,7 +47,13 @@ export default function ApplicationPlacementModal({
   onClose,
   onConfirm,
 }) {
-  const [selectedLevel, setSelectedLevel] = useState("warrior");
+  const appProgId = useMemo(() => getStudentProgram(app), [app]);
+  const appProgram = useMemo(() => getProgram(appProgId), [appProgId]);
+  const appLevels = useMemo(() => getProgramLevels(appProgId), [appProgId]);
+
+  const [selectedLevel, setSelectedLevel] = useState(
+    app?.currentLevel || appLevels[0]?.id || "warrior"
+  );
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedPlan, setSelectedPlan] = useState("monthly");
   const [openProfile, setOpenProfile] = useState(false);
@@ -57,13 +64,14 @@ export default function ApplicationPlacementModal({
     return classes.filter((cls) => getBatchAvailability(cls).canEnroll);
   }, [classes]);
 
-  // Sort batches: applicant's branch first, then compatible with selectedLevel, then by name
+  // Sort batches: applicant's program first, branch, then compatible with selectedLevel, then by name
   const sortedClasses = useMemo(() => {
     return sortPlacementBatches(enrollableClasses, {
       selectedLevel,
       appBranch: app.branch,
+      appProgram: appProgId,
     });
-  }, [enrollableClasses, selectedLevel, app.branch]);
+  }, [enrollableClasses, selectedLevel, app.branch, appProgId]);
 
   const selectedClass = useMemo(() => {
     if (!selectedClassId) return null;
@@ -178,7 +186,9 @@ export default function ApplicationPlacementModal({
                 </p>
                 <p>
                   Program:{" "}
-                  <span className="font-semibold text-slate-800">{app.program || "General"}</span>
+                  <span className="font-semibold text-slate-800">
+                    {app.program || appProgram.label}
+                  </span>
                 </p>
                 {app.schoolOrJob && (
                   <p className="sm:col-span-2">
@@ -263,7 +273,12 @@ export default function ApplicationPlacementModal({
               <label className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                 <span>⭐</span> Academic Placement Level *
               </label>
-              <LevelBadge level={effectiveLevel} showStars={true} showTier={true} />
+              <LevelBadge
+                level={effectiveLevel}
+                programId={appProgId}
+                showStars={true}
+                showTier={appProgId === "english_course"}
+              />
             </div>
 
             <select
@@ -272,19 +287,25 @@ export default function ApplicationPlacementModal({
               disabled={levelLockedByBatch}
               className={`w-full p-2.5 border rounded-xl font-bold text-xs bg-white text-slate-800 focus:border-[#1a3a8f] outline-none ${levelLockedByBatch ? "opacity-60 bg-slate-100 cursor-not-allowed" : ""}`}
             >
-              {TIER_KEYS.map((tierKey) => {
-                const tier = TIERS[tierKey];
-                const levelsInTier = LEVEL_LIST.filter((l) => l.tier === tierKey);
-                return (
-                  <optgroup key={tierKey} label={`${tier.starText} ${tier.label} Tier`}>
-                    {levelsInTier.map((lvl) => (
-                      <option key={lvl.id} value={lvl.id}>
-                        {lvl.label} ({lvl.starText} {tier.label})
-                      </option>
-                    ))}
-                  </optgroup>
-                );
-              })}
+              {appProgId === "english_course"
+                ? TIER_KEYS.map((tierKey) => {
+                    const tier = TIERS[tierKey];
+                    const levelsInTier = LEVEL_LIST.filter((l) => l.tier === tierKey);
+                    return (
+                      <optgroup key={tierKey} label={`${tier.starText} ${tier.label} Tier`}>
+                        {levelsInTier.map((lvl) => (
+                          <option key={lvl.id} value={lvl.id}>
+                            {lvl.label} ({lvl.starText} {tier.label})
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })
+                : appLevels.map((lvl) => (
+                    <option key={lvl.id} value={lvl.id}>
+                      {lvl.label} {lvl.stars ? `(${"⭐".repeat(lvl.stars)})` : ""}
+                    </option>
+                  ))}
             </select>
 
             {levelLockedByBatch && (
@@ -311,7 +332,7 @@ export default function ApplicationPlacementModal({
               <option value="">No batch yet (enroll later)</option>
               {sortedClasses.map((cls) => {
                 const avail = getBatchAvailability(cls);
-                const compat = isCompatible(selectedLevel, cls);
+                const compat = isCompatible(selectedLevel, cls, appProgId);
                 const branchName = normalizeBranch(cls.branch);
                 return (
                   <option key={cls.id} value={cls.id}>

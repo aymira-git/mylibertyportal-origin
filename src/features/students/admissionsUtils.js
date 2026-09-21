@@ -6,6 +6,11 @@
 import { normalizeWhatsAppNumber } from "../finance/receiptMessages";
 import { BRANCHES, normalizeBranch, matchesBranchFilter } from "../../constants/branches";
 import { isCompatible } from "../../constants/levels";
+import {
+  getBatchProgram,
+  getStudentProgram,
+  normalizeProgram,
+} from "../../constants/programs";
 
 export function isPending(app) {
   return (app?.status || "pending") === "pending";
@@ -161,7 +166,11 @@ export function filterApplications({
   }
 
   if (program && program !== "all") {
-    list = list.filter((a) => (a.program || "").toLowerCase() === program.toLowerCase());
+    const normTarget = normalizeProgram(program);
+    list = list.filter((a) => {
+      const aProg = (a.program || "").trim().toLowerCase();
+      return aProg === program.toLowerCase() || getStudentProgram(a) === normTarget;
+    });
   }
 
   const q = (search || "").trim().toLowerCase();
@@ -221,9 +230,17 @@ export function getDistinctValues(apps = [], field) {
  */
 export function sortPlacementBatches(
   classes = [],
-  { selectedLevel = "warrior", appBranch = "" } = {}
+  { selectedLevel = "warrior", appBranch = "", appProgram = null } = {}
 ) {
   return [...classes].sort((a, b) => {
+    if (appProgram) {
+      const targetProg = normalizeProgram(appProgram);
+      const aProgMatch = getBatchProgram(a) === targetProg;
+      const bProgMatch = getBatchProgram(b) === targetProg;
+      if (aProgMatch && !bProgMatch) return -1;
+      if (!aProgMatch && bProgMatch) return 1;
+    }
+
     if (appBranch) {
       const aBranchMatch = matchesBranchFilter(a.branch, appBranch);
       const bBranchMatch = matchesBranchFilter(b.branch, appBranch);
@@ -231,8 +248,8 @@ export function sortPlacementBatches(
       if (!aBranchMatch && bBranchMatch) return 1;
     }
 
-    const aComp = isCompatible(selectedLevel, a);
-    const bComp = isCompatible(selectedLevel, b);
+    const aComp = isCompatible(selectedLevel, a, appProgram);
+    const bComp = isCompatible(selectedLevel, b, appProgram);
     if (aComp && !bComp) return -1;
     if (!aComp && bComp) return 1;
 

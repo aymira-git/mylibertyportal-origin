@@ -24,6 +24,7 @@ import {
 import ApplicationPlacementModal from "./ApplicationPlacementModal";
 import ApplicationRejectModal from "./ApplicationRejectModal";
 import { STUDENT_APPLICATIONS_SHEET_URL } from "../../constants/externalLinks";
+import { getProgram, getStudentProgram } from "../../constants/programs";
 import {
   Check,
   X,
@@ -396,7 +397,11 @@ export default function StudentApplications({
                           {app.branch || "General Branch"}
                         </span>
                         {app.program && (
-                          <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                              getProgram(getStudentProgram(app)).badgeBg
+                            }`}
+                          >
                             {app.program}
                           </span>
                         )}

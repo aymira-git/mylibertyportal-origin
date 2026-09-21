@@ -20,6 +20,7 @@ import {
 } from "../shared";
 import { STAFF_STATUS_OPTIONS, STANDARD_BRANCHES } from "../staff/staffUtils";
 import { normalizeBranch } from "../../constants/branches";
+import { getEnabledPrograms, getProgram, normalizeProgram } from "../../constants/programs";
 
 export default function UserForm({ formData, setFormData, editId, onSubmit }) {
   const isSelf = Boolean(editId && auth.currentUser && editId === auth.currentUser.uid);
@@ -303,13 +304,26 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
                   Program
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. English for Teens / VIP"
-                  value={formData.program || ""}
-                  onChange={(e) => field("program", e.target.value)}
-                  className="w-full p-2.5 border rounded-xl"
-                />
+                <select
+                  value={formData.programId || normalizeProgram(formData.program)}
+                  onChange={(e) => {
+                    const chosenId = e.target.value;
+                    const prog = getProgram(chosenId);
+                    field("programId", chosenId);
+                    field("program", prog.label);
+                  }}
+                  className="w-full p-2.5 border rounded-xl bg-white font-semibold text-xs text-slate-800"
+                >
+                  {getEnabledPrograms().map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                  {formData.program &&
+                    !getEnabledPrograms().some(
+                      (p) => p.id === formData.programId || p.label === formData.program
+                    ) && <option value={formData.program}>{formData.program}</option>}
+                </select>
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
