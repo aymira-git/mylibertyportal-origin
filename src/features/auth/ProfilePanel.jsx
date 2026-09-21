@@ -10,7 +10,7 @@ function getInitials(name) {
   return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join("");
 }
 
-export default function ProfilePanel({ onClose, onUpdated }) {
+export default function ProfilePanel({ onClose, onUpdated, onLogout }) {
   const toast = useToast();
   const uid = auth.currentUser?.uid;
   const email = auth.currentUser?.email;
@@ -134,6 +134,19 @@ export default function ProfilePanel({ onClose, onUpdated }) {
         )}
 
         <InstallButton variant="full" showText={true} />
+
+        {onLogout && (
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onLogout();
+            }}
+            className="min-h-12 w-full bg-rose-50 text-rose-700 p-2 rounded-xl font-bold border border-rose-200 hover:bg-rose-100 transition active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>Log Out</span>
+          </button>
+        )}
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import {
   recordStudentAttendance,
 } from "./shiftsRepository";
 import { soundEffects } from "./soundEffects";
+import { triggerHaptic } from "../shared";
 import {
   Camera,
   ScanLine,
@@ -50,8 +51,12 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
     setStatus({ message, type, detail, personName });
     if (type === "success") {
       soundEffects.playSuccess();
+      triggerHaptic("success");
+    } else if (type === "info") {
+      // Info notices: gentle display without error sound or vibration
     } else {
       soundEffects.playError();
+      triggerHaptic("error");
     }
     // Auto-clear after 4.5 seconds
     setTimeout(() => {

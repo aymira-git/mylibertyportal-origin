@@ -39,7 +39,7 @@ export default function KioskModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1000] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-start p-4 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-[1000] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex flex-col items-center justify-start p-4 sm:p-6 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] overflow-y-auto overscroll-contain">
       {/* Top Header Control Bar */}
       <div className="w-full max-w-xl flex items-center justify-between mb-4 shrink-0">
         <div className="flex items-center gap-2 text-white">

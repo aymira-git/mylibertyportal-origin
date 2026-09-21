@@ -202,8 +202,8 @@ function App() {
     <div className="bg-gray-50 min-h-screen flex flex-col justify-between">
       <ConnectivityBanner />
       <div>
-        <div className="bg-white p-3.5 sm:p-4 md:px-6 shadow-xs border-b border-slate-200/80">
-          {/* Top Navigation Bar */}
+        {/* Desktop Top Navigation Bar (md and above - 100% untouched) */}
+        <div className="hidden md:block bg-white p-3.5 sm:p-4 md:px-6 shadow-xs border-b border-slate-200/80">
           <div className="flex justify-between items-center w-full mx-auto gap-4">
             {/* Top Left: School Branding */}
             <div className="flex items-center gap-2.5 shrink-0">
@@ -244,6 +244,42 @@ function App() {
           </div>
         </div>
 
+        {/* Mobile Unified Top App Bar (< md) with safe-area support */}
+        <div className="md:hidden bg-white/95 backdrop-blur-md px-3.5 py-2.5 border-b border-slate-200/80 pt-safe sticky top-0 z-30 shadow-2xs">
+          <div className="flex justify-between items-center w-full gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <img
+                src={schoolLogo}
+                alt="My Liberty Logo"
+                className="w-7 h-7 rounded-lg object-contain bg-slate-50 border border-slate-200/80 p-0.5 shadow-2xs shrink-0"
+              />
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-black text-[#1a3a8f] text-xs tracking-tight truncate">
+                  MY LIBERTY
+                </span>
+                <span className="text-[9px] bg-indigo-50 text-indigo-800 font-extrabold px-1.5 py-0.5 rounded-full border border-indigo-100 uppercase shrink-0">
+                  {role}
+                </span>
+              </div>
+            </div>
+
+            {/* Mobile Right: Avatar Button opening ProfilePanel */}
+            <button
+              onClick={() => setProfileOpen(true)}
+              className="flex items-center gap-1.5 text-left active:scale-95 transition shrink-0 p-0.5 cursor-pointer"
+              aria-label="Open user profile"
+            >
+              {photoURL ? (
+                <img src={photoURL} alt="Profile" className="w-7 h-7 rounded-full object-cover border border-slate-200" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-[#1a3a8f] text-white flex items-center justify-center font-extrabold text-[10px] shadow-2xs">
+                  {getInitials(nickname || displayName)}
+                </div>
+              )}
+            </button>
+          </div>
+        </div>
+
         <div className="p-3 sm:p-4 md:p-6 w-full">
           {/* Dynamic Role Router Switcher — each branch is its own chunk,
               only the matching one is ever fetched for a given user */}
@@ -275,8 +311,8 @@ function App() {
         </div>
       </div>
 
-      {/* Global Application Footer */}
-      <footer className="mt-auto border-t border-slate-200/80 bg-white/80 py-4 px-4 sm:px-6">
+      {/* Global Application Footer (Desktop only) */}
+      <footer className="hidden md:block mt-auto border-t border-slate-200/80 bg-white/80 py-4 px-4 sm:px-6">
         <div className="w-full mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-slate-500 text-xs">
           <div className="flex flex-col gap-0.5 text-left">
             <span>&copy; {new Date().getFullYear()} MY LIBERTY International English School</span>
@@ -303,6 +339,7 @@ function App() {
           <ProfilePanel
             onClose={() => setProfileOpen(false)}
             onUpdated={() => refreshProfile(user.uid)}
+            onLogout={() => signOut(auth).then(() => setUser(null))}
           />
         </ErrorBoundary>
       )}

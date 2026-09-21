@@ -31,11 +31,11 @@ export default function ToastProvider({ children }) {
     <ToastContext.Provider value={toast}>
       {children}
 
-      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-xs w-full">
+      <div className="fixed bottom-20 md:bottom-4 right-4 left-4 sm:left-auto z-[9999] flex flex-col gap-2 max-w-xs w-auto sm:w-full pointer-events-none pb-safe">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`p-3.5 rounded-xl shadow-lg text-sm font-semibold text-white ${
+            className={`p-3.5 rounded-xl shadow-xl text-sm font-semibold text-white pointer-events-auto animate-in fade-in zoom-in-95 duration-150 ${
               t.type === "error" ? "bg-rose-600" : "bg-[#1a3a8f]"
             }`}
           >

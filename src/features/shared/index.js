@@ -43,3 +43,4 @@ export { usePagination } from "./usePagination";
 export { useNetworkStatus } from "./useNetworkStatus";
 export { default as ConnectivityBanner } from "./ConnectivityBanner";
 export { default as WelcomeBanner } from "./WelcomeBanner";
+export { triggerHaptic } from "./mobileUtils";
