@@ -113,9 +113,21 @@ export default function AvailableBatchCard({
                 batch.instructorId ? "text-slate-800" : "text-amber-700"
               }`}
             >
-              {batch.instructorName}
+              {batch.instructorName || "TBA"}
             </span>
           </div>
+
+          {batch.substituteInstructorId && (
+            <div className="flex items-center justify-between text-amber-800 bg-amber-50/80 px-2 py-1 rounded-xl border border-amber-200/60">
+              <span className="text-[10px] font-extrabold uppercase flex items-center gap-1">
+                <span>🔄</span>
+                <span>Substitute</span>
+              </span>
+              <span className="font-extrabold text-[11px] truncate max-w-[140px] text-right">
+                {batch.substituteInstructorName || "Covering"}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Notes / Description (if available) */}

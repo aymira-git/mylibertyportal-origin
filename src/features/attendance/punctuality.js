@@ -1,3 +1,5 @@
+import { getTodayWitaWeekday, validateHHmm } from "../../utils/dateWita.js";
+
 // Company policy: an instructor must clock in at least this many minutes
 // BEFORE the scheduled start time to count as "on time." Arriving after
 // that cutoff — even if technically before class starts — counts as late.
@@ -33,9 +35,9 @@ function parseClassDays(dayString) {
   return nums.length > 0 ? nums : null;
 }
 
-// Which of an instructor's classes fall on today's weekday.
+// Which of an instructor's classes fall on today's weekday in WITA.
 export function getTodaysClasses(classes) {
-  const todayWeekday = new Date().getDay();
+  const todayWeekday = getTodayWitaWeekday();
   return classes.filter(cls => {
     const activeDays = parseClassDays(cls.classDay);
     // If it's a Private class, we always show it in the Kiosk so the
@@ -47,7 +49,7 @@ export function getTodaysClasses(classes) {
 
 // Computes on-time/late status for a clock-in happening RIGHT NOW.
 export function getInstantPunctuality(classRecord, clockInDate) {
-  if (!classRecord?.startTime) {
+  if (!classRecord?.startTime || !validateHHmm(classRecord.startTime)) {
     return { status: "Unscheduled", scheduledStart: null, requiredArrival: null, minutesEarlyOrLate: null };
   }
   const [hours, minutes] = classRecord.startTime.split(":").map(Number);
@@ -106,7 +108,7 @@ export function computeMonthlyPunctuality(classes, shifts, instructorsById, year
   const usedShiftIds = new Set();
 
   // Support for both recurring scheduled classes and "Private" lessons.
-  const allTrackableClasses = classes.filter(c => c.startTime);
+  const allTrackableClasses = classes.filter(c => c.startTime && validateHHmm(c.startTime));
 
   for (const cls of allTrackableClasses) {
     const weekdays = parseClassDays(cls.classDay);

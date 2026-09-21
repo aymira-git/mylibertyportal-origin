@@ -159,7 +159,11 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
         scanner.clear();
         setKioskScanning(false);
         try {
-          const userData = await fetchUserById(uid);
+          const rawId = typeof uid === "string" ? uid.trim() : "";
+          if (!rawId || rawId.includes("/") || rawId.length < 5) {
+            return showStatus("Invalid Pass", "error", "The scanned QR code is not a recognized MY LIBERTY badge.");
+          }
+          const userData = await fetchUserById(rawId);
           if (!userData) {
             return showStatus("Invalid Pass", "error", "No user profile found matching this QR badge.");
           }
@@ -241,6 +245,15 @@ export default function Kiosk({ title = "Reception Kiosk Station", studentsOnly 
               if (todayClasses.length > 0) {
                 setPendingClockIn({ uid, userData, classes: todayClasses });
               } else {
+                if (userData.role === "instructor") {
+                  return showStatus(
+                    "No Class Scheduled",
+                    "error",
+                    "You have no classes scheduled today. If you are substituting, please ask an administrator to assign you to the class first.",
+                    userData.displayName
+                  );
+                }
+
                 await clockIn({
                   uid,
                   displayName: userData.displayName,

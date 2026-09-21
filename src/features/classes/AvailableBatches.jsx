@@ -433,7 +433,9 @@ export default function AvailableBatches({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredBatches.map((batch) => {
             const isAssignedToCurrentUser =
-              currentUserId && batch.instructorId === currentUserId;
+              currentUserId &&
+              (batch.instructorId === currentUserId ||
+                batch.substituteInstructorId === currentUserId);
 
             return (
               <AvailableBatchCard

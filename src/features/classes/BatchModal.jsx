@@ -32,6 +32,9 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
   const [minLevel, setMinLevel] = useState(batch?.minLevel || batch?.classLevel || "warrior");
   const [maxLevel, setMaxLevel] = useState(batch?.maxLevel || batch?.classLevel || "warrior");
   const [instructorId, setInstructorId] = useState(batch?.instructorId || "");
+  const [substituteInstructorId, setSubstituteInstructorId] = useState(
+    batch?.substituteInstructorId || ""
+  );
   const [classDay, setClassDay] = useState(batch?.classDay || "Mon/Wed");
   const [classStartDate, setClassStartDate] = useState(
     batch?.classStartDate || new Date().toISOString().slice(0, 10)
@@ -94,6 +97,11 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
         ? selectedInstructor.displayName || selectedInstructor.name || selectedInstructor.email || ""
         : "";
 
+      const selectedSub = instructors.find((i) => i.id === substituteInstructorId);
+      const substituteInstructorName = selectedSub
+        ? selectedSub.displayName || selectedSub.name || selectedSub.email || ""
+        : "";
+
       const payload = {
         className: className.trim(),
         classLevel,
@@ -101,6 +109,8 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
         maxLevel: maxLevel || classLevel,
         instructorId: instructorId || "",
         instructorName: instructorName || "",
+        substituteInstructorId: substituteInstructorId || null,
+        substituteInstructorName: substituteInstructorName || null,
         classDay,
         classStartDate,
         startTime,
@@ -277,8 +287,8 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
           </div>
         </div>
 
-        {/* Instructor & Room */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Instructor, Substitute & Room */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1">
             <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
               <User className="w-3.5 h-3.5 text-[#1a3a8f]" />
@@ -289,16 +299,37 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
               onChange={(e) => setInstructorId(e.target.value)}
               className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
             >
-              <option value="">-- Leave Unassigned (TBA) --</option>
+              <option value="">-- Unassigned (TBA) --</option>
               {assignableInstructors.map((inst) => {
                 const isInactive = inst.status && inst.status !== "active";
                 return (
                   <option key={inst.id} value={inst.id}>
                     {inst.displayName || inst.name || inst.email}
-                    {isInactive ? " (Inactive / Currently Assigned)" : ` (${inst.role || "Instructor"})`}
+                    {isInactive ? " (Inactive / Assigned)" : ` (${inst.role || "Instructor"})`}
                   </option>
                 );
               })}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
+              <User className="w-3.5 h-3.5 text-amber-600" />
+              <span>Substitute (Optional)</span>
+            </label>
+            <select
+              value={substituteInstructorId}
+              onChange={(e) => setSubstituteInstructorId(e.target.value)}
+              className="w-full p-2.5 border border-amber-200 rounded-xl text-xs sm:text-sm font-semibold bg-amber-50/40 focus:bg-white focus:border-amber-600 outline-none transition"
+            >
+              <option value="">-- No Substitute --</option>
+              {assignableInstructors
+                .filter((inst) => inst.id !== instructorId)
+                .map((inst) => (
+                  <option key={inst.id} value={inst.id}>
+                    {inst.displayName || inst.name || inst.email}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -309,7 +340,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
             </label>
             <input
               type="text"
-              placeholder="e.g. Studio Lab 2 / Oxford Hall"
+              placeholder="e.g. Studio Lab 2"
               value={classRoom}
               onChange={(e) => setClassRoom(e.target.value)}
               className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"

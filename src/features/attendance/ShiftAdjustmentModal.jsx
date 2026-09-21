@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, ShieldAlert, Check } from "lucide-react";
 import { adjustShiftWithAudit } from "./shiftsRepository";
 import { useToast } from "../shared";
+import { formatWitaForInput, parseWitaInputToUtcIso } from "../../utils/dateWita";
 
 const REASON_CODES = [
   { id: "forgot_clock_out", label: "Forgot to Clock Out" },
@@ -19,10 +20,10 @@ export default function ShiftAdjustmentModal({
 }) {
   const toast = useToast();
   const [clockIn, setClockIn] = useState(
-    shift?.clockIn ? new Date(shift.clockIn).toISOString().slice(0, 16) : ""
+    shift?.clockIn ? formatWitaForInput(shift.clockIn) : ""
   );
   const [clockOut, setClockOut] = useState(
-    shift?.clockOut ? new Date(shift.clockOut).toISOString().slice(0, 16) : ""
+    shift?.clockOut ? formatWitaForInput(shift.clockOut) : ""
   );
   const [reasonCode, setReasonCode] = useState(
     shift?.autoClosed ? "forgot_clock_out" : "other"
@@ -41,9 +42,18 @@ export default function ShiftAdjustmentModal({
 
     try {
       setSaving(true);
+      const parsedClockIn = parseWitaInputToUtcIso(clockIn);
+      const parsedClockOut = clockOut ? parseWitaInputToUtcIso(clockOut) : null;
+
+      if (!parsedClockIn) {
+        toast("Invalid clock-in date/time format.", "error");
+        setSaving(false);
+        return;
+      }
+
       const afterData = {
-        clockIn: new Date(clockIn).toISOString(),
-        clockOut: clockOut ? new Date(clockOut).toISOString() : null,
+        clockIn: parsedClockIn,
+        clockOut: parsedClockOut,
       };
 
       await adjustShiftWithAudit({
@@ -68,7 +78,7 @@ export default function ShiftAdjustmentModal({
   };
 
   const handleForceClockOut = () => {
-    setClockOut(new Date().toISOString().slice(0, 16));
+    setClockOut(formatWitaForInput(new Date().toISOString()));
     setReasonCode("forgot_clock_out");
     setNote((prev) => prev || "Force closed by admin at current time.");
   };

@@ -35,16 +35,38 @@ export function useInstructorRoster() {
 
     // Classes drive the loading state — they're what the UI blocks on, and
     // what the "no classes assigned yet" message is decided from.
+    let primaryClasses = [];
+    let subClasses = [];
+
+    const mergeClasses = () => {
+      const map = new Map();
+      primaryClasses.forEach((cls) => map.set(cls.id, cls));
+      subClasses.forEach((cls) => map.set(cls.id, cls));
+      setClasses(Array.from(map.values()));
+      setLoading(false);
+    };
+
     const unsubClasses = onSnapshot(
       query(collection(db, "classes"), where("instructorId", "==", uid)),
-      snap => {
-        setClasses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        setLoading(false);
+      (snap) => {
+        primaryClasses = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        mergeClasses();
       },
-      err => {
+      (err) => {
         console.error("instructor classes listener:", err);
         setError(err.message);
         setLoading(false);
+      }
+    );
+
+    const unsubSubClasses = onSnapshot(
+      query(collection(db, "classes"), where("substituteInstructorId", "==", uid)),
+      (snap) => {
+        subClasses = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        mergeClasses();
+      },
+      (err) => {
+        console.error("instructor substitute classes listener:", err);
       }
     );
 
@@ -63,7 +85,7 @@ export function useInstructorRoster() {
       err => console.error("instructor profile listener:", err)
     );
 
-    return () => { unsubClasses(); unsubStudents(); unsubMe(); };
+    return () => { unsubClasses(); unsubSubClasses(); unsubStudents(); unsubMe(); };
   }, [uid]);
 
   return { uid, classes, students, instructorName, loading, error };

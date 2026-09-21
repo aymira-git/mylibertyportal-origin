@@ -26,8 +26,23 @@ export async function fetchOpenShiftFor(uid) {
 }
 
 export async function fetchInstructorClasses(uid) {
-  const snap = await getDocs(query(collection(db, "classes"), where("instructorId", "==", uid)));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const [primarySnap, subSnap] = await Promise.all([
+    getDocs(query(collection(db, "classes"), where("instructorId", "==", uid))),
+    getDocs(query(collection(db, "classes"), where("substituteInstructorId", "==", uid))),
+  ]);
+
+  const classMap = new Map();
+  primarySnap.docs.forEach((d) => classMap.set(d.id, { id: d.id, ...d.data() }));
+  subSnap.docs.forEach((d) => classMap.set(d.id, { id: d.id, ...d.data() }));
+  return Array.from(classMap.values());
+}
+
+export function setClassSubstitute(classId, { substituteId = null, substituteName = null }) {
+  return updateDoc(doc(db, "classes", classId), {
+    substituteInstructorId: substituteId || null,
+    substituteInstructorName: substituteName || null,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export function clockIn({
