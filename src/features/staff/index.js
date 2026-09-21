@@ -1,4 +1,3 @@
-export { default as StaffDashboard } from "./StaffDashboard";
 export { default as StaffDirectory } from "./StaffDirectory";
 export { default as InvitesPanel } from "./InvitesPanel";
 export { default as TasksPanel } from "./TasksPanel";

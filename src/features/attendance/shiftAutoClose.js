@@ -1,8 +1,7 @@
 import { db } from "../../firebase";
 import { doc, updateDoc } from "firebase/firestore";
 
-import { isShiftStale, GRACE_HOURS, EXPECTED_MINUTES } from "./shiftStatus";
-export { isShiftStale, GRACE_HOURS, EXPECTED_MINUTES };
+import { EXPECTED_MINUTES } from "./shiftStatus";
 
 // Writes an estimated clock-out to a stale shift and flags it.
 // Returns the estimated ISO clock-out time.

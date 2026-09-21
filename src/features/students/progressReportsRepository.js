@@ -36,7 +36,7 @@ export async function fetchPendingPromotions() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function clearPromotionEligibility(reportId) {
+async function clearPromotionEligibility(reportId) {
   if (!reportId) return;
   const reportRef = doc(db, "progressReports", reportId);
   await updateDoc(reportRef, {
