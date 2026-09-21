@@ -1,5 +1,7 @@
 import { db } from "../../firebase";
 import { collection, addDoc, deleteDoc, doc, updateDoc, arrayUnion, writeBatch } from "firebase/firestore";
+import { getBatchAvailability } from "./batchAvailability";
+import { todayWita } from "../../utils/dateWita.js";
 
 /**
  * All direct Firestore writes for the `classes` collection — and the
@@ -73,10 +75,22 @@ export async function transferStudentBetweenClasses({
   targetClassId,
   targetClass,
   studentId,
-  dateTransferred = new Date().toISOString().slice(0, 10),
+  dateTransferred = todayWita(),
   newLevel,
   transferReason = "",
 }) {
+  if (sourceClass && sourceClass.id === targetClassId) {
+    throw new Error("Cannot transfer a student to the same class.");
+  }
+
+  if (sourceClass && Array.isArray(sourceClass.studentIds) && !sourceClass.studentIds.includes(studentId)) {
+    throw new Error("Student is not enrolled in the source class.");
+  }
+
+  if (targetClass && !getBatchAvailability(targetClass).canEnroll) {
+    throw new Error("Target class is full or unavailable for enrollment.");
+  }
+
   const batch = writeBatch(db);
   const now = new Date().toISOString();
 

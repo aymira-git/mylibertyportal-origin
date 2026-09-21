@@ -3,8 +3,11 @@
 // attendance, analytics) needs to leave the app as a spreadsheet file
 // instead of a printed page.
 function csvEscape(value) {
-  const str = String(value ?? "");
-  if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+  let str = String(value ?? "");
+  if (str.startsWith("=")) {
+    str = `'${str}`;
+  }
+  if (/[",\n\r]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
   return str;
 }
 

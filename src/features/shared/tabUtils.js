@@ -43,7 +43,7 @@ export function getTabIcon(tab) {
     return CheckSquare;
   }
   if (id === "reports" || label.includes("report")) return BarChart3;
-  if (id === "ai" || id === "aiassistant" || label.includes("ai")) return Sparkles;
+  if (id === "ai" || id === "aiassistant" || /\bai\b/i.test(label)) return Sparkles;
   if (id === "settings" || label.includes("setting")) return Settings;
 
   return Layers;
@@ -84,7 +84,7 @@ export function getTabCategory(tab) {
   if (
     ["reports", "ai", "aiassistant", "settings"].includes(id) ||
     label.includes("report") ||
-    label.includes("ai") ||
+    /\bai\b/i.test(label) ||
     label.includes("setting")
   ) {
     return "System";

@@ -59,7 +59,7 @@ describe("getTabIcon", () => {
   // Latent, open to debate: the last label rule uses includes("ai"), which also
   // matches ordinary words like "Available". No current tab reaches this rule
   // (they all have ids that match first), but a future one could.
-  it.fails("does not give a tab the AI sparkle just because its label contains 'ai'", () => {
+  it("does not give a tab the AI sparkle just because its label contains 'ai'", () => {
     expect(getTabIcon({ id: "batches", label: "Available Batches" })).not.toBe(Sparkles);
   });
 });

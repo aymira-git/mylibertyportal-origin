@@ -66,7 +66,7 @@ describe("exportTableCSV", () => {
   // Open to debate: names come from a public registration form. A name that
   // starts with "=" is run as a formula when the CSV is opened in Excel/Sheets.
   // A common defence is to prefix such cells with an apostrophe.
-  it.fails("does not let a cell that starts with '=' become a spreadsheet formula", async () => {
+  it("does not let a cell that starts with '=' become a spreadsheet formula", async () => {
     exportTableCSV("x", ["Name"], [["=1+1"]]);
     const { text } = await read();
     expect(text.split("\r\n")[1].startsWith("=")).toBe(false);

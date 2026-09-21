@@ -95,19 +95,19 @@ describe("transferStudentBetweenClasses", () => {
   // Proposed extra safety at the database layer (the UI in TransferModal already
   // checks some of these). Open to debate whether they belong here or only in the UI.
   describe("guards the repository could add", () => {
-    it.fails("rejects a student who is not in the source class", async () => {
+    it("rejects a student who is not in the source class", async () => {
       await expect(
         transferStudentBetweenClasses({ sourceClass: source, targetClassId: "B", targetClass: target, studentId: "ghost" })
       ).rejects.toThrow();
     });
 
-    it.fails("rejects a transfer into the same class", async () => {
+    it("rejects a transfer into the same class", async () => {
       await expect(
         transferStudentBetweenClasses({ sourceClass: source, targetClassId: "A", targetClass: source, studentId: "s1" })
       ).rejects.toThrow();
     });
 
-    it.fails("rejects a transfer into a full class", async () => {
+    it("rejects a transfer into a full class", async () => {
       const full = { id: "B", classLevel: "elite", maxCapacity: 2, studentIds: ["x", "y"] };
       await expect(
         transferStudentBetweenClasses({ sourceClass: source, targetClassId: "B", targetClass: full, studentId: "s1" })

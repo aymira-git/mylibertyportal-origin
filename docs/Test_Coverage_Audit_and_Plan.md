@@ -124,4 +124,14 @@ _Answered already: Friday is always off (kindergarten will be a separate app); "
 
 _Accepted / adjusted / declined items, with reasons. Anything in this document that turned out to be wrong._
 
--
+- **F1 & F10 (School week Sat–Thu, "Everyday", "Sat Only", "Fri Only" legacy)**: **Accepted & Resolved.** Defined Saturday–Thursday (Friday off) across `scheduleConflict.js`, `punctuality.js`, and `BatchModal.jsx`. "Everyday" now maps to Sat–Thu; "Sat Only", "Sun Only", and legacy "Fri Only" are fully recognized. All 8 tests passed.
+- **F2 (Punctuality status format & minute signs)**: **Accepted & Resolved.** Normalized status checking in `managerUtils.js` with case-insensitivity and `Math.abs(Math.round(mins))` for minute labels. Test passed.
+- **F3 (Draft conflict scoping)**: **Accepted & Resolved.** Filtered `checkDraftConflicts` in `scheduleConflict.js` to only return pairs involving the draft class. Test passed.
+- **F4 (CSV formula injection)**: **Accepted & Resolved.** Prefix cells starting with `=` with an apostrophe in `csvExport.js`. Test passed.
+- **F5 (Punctuality timezone immunity)**: **Accepted & Resolved.** Computed `scheduledStart` in `getInstantPunctuality` via `WITA_OFFSET_MS` UTC math. Timezone-independent test passed.
+- **F6 (WITA calendar days on writes)**: **Accepted & Resolved.** Used `todayWita()` in `recordPayment` and `approveApplication` so early-morning WITA records do not get previous-day UTC stamps. Tests passed.
+- **F7 (Receipt & reminder date formatting)**: **Accepted & Resolved.** Added `formatReceiptDate` in `receiptMessages.js` with explicit WITA timezone / midday UTC parsing to eliminate device timezone offsets. Test passed.
+- **F8 (Class transfer guards)**: **Accepted & Resolved.** Added repository-level guards to `transferStudentBetweenClasses` (cannot transfer to same class, student must be enrolled in source, target must have open seats via `getBatchAvailability`). Default `dateTransferred` also set to `todayWita()`. All 3 tests passed.
+- **F9 (AI tab matching)**: **Accepted & Resolved.** Refined `getTabIcon` and `getTabCategory` with word boundary regex `/\bai\b/i` so labels like "Available Batches" are not misidentified as AI tabs. Test passed.
+- **G4 (CI automatic testing)**: **Accepted & Resolved.** Added `npm test` step to both `.github/workflows/firebase-hosting-merge.yml` and `firebase-hosting-pull-request.yml`. All 386 tests must pass before build/deploy.
+- **Suite status**: 23 test files, 386 tests, 0 failures, 0 expected-fail. Everything green!
