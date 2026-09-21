@@ -16,7 +16,7 @@ jobs:
           node-version: '22'
       - run: npm ci && npm test && npm run build
         env:
-          VITE_AI_WORKER_URL: ${{ vars.VITE_AI_WORKER_URL }}
+          VITE_AI_WORKER_URL: ${{ vars.VITE_AI_WORKER_URL || 'https://myliberty-ai-proxy.kifryh.workers.dev' }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

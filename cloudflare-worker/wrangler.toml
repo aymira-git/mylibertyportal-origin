@@ -6,4 +6,4 @@ compatibility_date = "2026-09-01"
 # (e.g. "https://mylibertyies-f2f38.web.app"). "*" works for now while
 # you're testing, but locking it down is a good follow-up later.
 [vars]
-ALLOWED_ORIGIN = "https://mylibertyies-f2f38.web.app,https://mylibertyies-f2f38.firebaseapp.com,http://localhost:5173"
+ALLOWED_ORIGIN = "https://mylibertyies-f2f38.web.app,https://mylibertyies-f2f38.firebaseapp.com,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173"

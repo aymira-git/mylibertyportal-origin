@@ -6,7 +6,9 @@ import { copyText } from "../../utils/copyText";
 // This is just a URL (like a web address) — not a secret. It's safe for it
 // to be public. The actual Gemini API key lives only on the Cloudflare
 // Worker server and is never sent to the browser.
-const AI_WORKER_URL = import.meta.env.VITE_AI_WORKER_URL || "";
+const AI_WORKER_URL =
+  import.meta.env.VITE_AI_WORKER_URL ||
+  "https://myliberty-ai-proxy.kifryh.workers.dev";
 
 const MODES = {
   draft: {
