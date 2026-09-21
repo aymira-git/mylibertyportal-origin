@@ -23,6 +23,7 @@ import {
 } from "./admissionsUtils";
 import ApplicationPlacementModal from "./ApplicationPlacementModal";
 import ApplicationRejectModal from "./ApplicationRejectModal";
+import { STUDENT_APPLICATIONS_SHEET_URL } from "../../constants/externalLinks";
 import {
   Check,
   X,
@@ -203,7 +204,7 @@ export default function StudentApplications({
         </div>
 
         <a
-          href="https://docs.google.com/spreadsheets/d/12FfhjJ_gxXLhII8LYLhOyeIbwcxXLNIlvZ2RbtdVgqQ/edit?resourcekey=&gid=800855144#gid=800855144"
+          href={STUDENT_APPLICATIONS_SHEET_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-2xs shrink-0"

@@ -13,6 +13,7 @@ dist-ssr/
 .env.local
 .env.*.local
 !.env.example
+.gitconfig
 
 # Firebase Tooling & Emulator Cache
 .firebase/

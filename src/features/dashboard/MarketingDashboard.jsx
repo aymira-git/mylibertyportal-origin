@@ -6,6 +6,7 @@ import { UserPlus, BookOpen, Users, Copy, Check, ExternalLink } from "lucide-rea
 import { copyText } from "../../utils/copyText";
 import { AvailableBatches } from "../classes";
 import { useStaffDirectives, StaffDirectivesWidget } from "../staff";
+import { getRegistrationUrl } from "../../constants/externalLinks";
 
 function MarketingOverview({
   leadCount,
@@ -17,10 +18,7 @@ function MarketingOverview({
   const toast = useToast();
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const registrationLink =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/register`
-      : "https://myliberty.id/register";
+  const registrationLink = getRegistrationUrl();
 
   const handleCopyLink = async () => {
     const res = await copyText(registrationLink);

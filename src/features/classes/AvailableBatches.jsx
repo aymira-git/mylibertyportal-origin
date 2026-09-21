@@ -19,6 +19,7 @@ import BatchesOverviewWidget from "./BatchesOverviewWidget";
 import AvailableBatchCard from "./AvailableBatchCard";
 import { deleteClass } from "./classesRepository";
 import { copyText } from "../../utils/copyText";
+import { getRegistrationUrl } from "../../constants/externalLinks";
 
 export default function AvailableBatches({
   classes = [],
@@ -182,7 +183,7 @@ export default function AvailableBatches({
   };
 
   const handleCopyMarketingBlurb = async (batch) => {
-    const regUrl = typeof window !== "undefined" ? `${window.location.origin}/register` : "https://myliberty.id/register";
+    const regUrl = getRegistrationUrl();
     const levelName = LEVELS[batch.classLevel]?.label || batch.classLevel || "Standard";
 
     const text = [

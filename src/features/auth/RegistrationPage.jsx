@@ -7,10 +7,9 @@ import {
   Loader2,
   ExternalLink
 } from "lucide-react";
+import { REGISTRATION_GOOGLE_FORM_URL } from "../../constants/externalLinks";
 
-// Your live "MY LIBERTY REGISTRATION FORM"
-const GOOGLE_FORM_EMBED_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLScYE1ZzBSa-qd4k_PVvFhZFyr8WIFzg3KCZlGrtAsaJXLe-dg/viewform?embedded=true";
+const GOOGLE_FORM_EMBED_URL = REGISTRATION_GOOGLE_FORM_URL;
 
 export default function RegistrationPage() {
   const [iframeLoading, setIframeLoading] = useState(true);
