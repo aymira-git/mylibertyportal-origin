@@ -239,7 +239,7 @@ describe("schoolOutreachRepository", () => {
   });
 
   describe("listenToOutreachVisits", () => {
-    it("subscribes to all visits across schools via collectionGroup", () => {
+    it("subscribes to all visits across schools via collectionGroup and extracts schoolId from path", () => {
       fake.seed("schoolOutreach/school-1/visits", [
         { id: "v1", visitDate: "2026-09-21", contactName: "Ibu Siti", flyersHandedOut: 20 },
       ]);
@@ -254,7 +254,124 @@ describe("schoolOutreachRepository", () => {
 
       expect(receivedVisits.length).toBe(2);
       expect(receivedVisits[0].id).toBe("v2"); // Sorted descending
+      expect(receivedVisits[0].schoolId).toBe("school-2");
       expect(receivedVisits[1].id).toBe("v1");
+      expect(receivedVisits[1].schoolId).toBe("school-1");
+      unsub();
+    });
+
+    it("correctly extracts schoolId from deeper nested paths and rejects non-schoolOutreach parents", () => {
+      fake.seed("regions/sulawesi/schoolOutreach/school-deep/visits", [
+        { id: "v-deep", visitDate: "2026-09-23", contactName: "Pak Dani" },
+      ]);
+      fake.seed("corporateEvents/event-1/visits", [
+        { id: "v-corp", visitDate: "2026-09-20", contactName: "Client A" },
+      ]);
+      fake.seed("corporateEvents/event-2/visits", [
+        { id: "v-corp-school", visitDate: "2026-09-19", schoolId: "explicit-school-id" },
+      ]);
+
+      let receivedVisits = [];
+      const unsub = listenToOutreachVisits((visits) => {
+        receivedVisits = visits;
+      });
+
+      const deepVisit = receivedVisits.find((v) => v.id === "v-deep");
+      expect(deepVisit?.schoolId).toBe("school-deep");
+
+      const corpVisit = receivedVisits.find((v) => v.id === "v-corp");
+      expect(corpVisit?.schoolId).toBe(""); // Not schoolOutreach, so does not treat event-1 as schoolId
+
+      const corpWithExplicit = receivedVisits.find((v) => v.id === "v-corp-school");
+      expect(corpWithExplicit?.schoolId).toBe("explicit-school-id"); // Falls back to d.data().schoolId
+
+      unsub();
+    });
+
+    it("falls back to d.data().schoolId when path does not contain parent school or when ref is missing", () => {
+      // 1. Visit in collection without schoolOutreach parent (path: "visits/v-root")
+      fake.seed("visits", [
+        { id: "v-root", visitDate: "2026-09-24", schoolId: "fallback-school-123" },
+        { id: "v-no-school", visitDate: "2026-09-24" },
+      ]);
+
+      let receivedVisits = [];
+      const unsub = listenToOutreachVisits((visits) => {
+        receivedVisits = visits;
+      });
+
+      const rootVisit = receivedVisits.find((v) => v.id === "v-root");
+      expect(rootVisit?.schoolId).toBe("fallback-school-123");
+
+      const noSchoolVisit = receivedVisits.find((v) => v.id === "v-no-school");
+      expect(noSchoolVisit?.schoolId).toBe("");
+
+      unsub();
+    });
+
+    it("falls back to d.data().schoolId when d.ref is undefined", () => {
+      const { firestoreModule } = fake;
+      // Use fake's firestoreModule to test snapshot docs lacking ref
+      const originalOnSnapshot = firestoreModule?.onSnapshot;
+      try {
+        let capturedCallback;
+        if (originalOnSnapshot) {
+          firestoreModule.onSnapshot = vi.fn((_q, onNext) => {
+            capturedCallback = onNext;
+            return () => {};
+          });
+        }
+
+        let received = [];
+        const unsub = listenToOutreachVisits((visits) => {
+          received = visits;
+        });
+
+        if (capturedCallback) {
+          capturedCallback({
+            docs: [
+              {
+                id: "v-no-ref",
+                data: () => ({ visitDate: "2026-09-25", schoolId: "school-from-data-fallback" }),
+              },
+            ],
+          });
+          expect(received.length).toBe(1);
+          expect(received[0].schoolId).toBe("school-from-data-fallback");
+        }
+        unsub();
+      } finally {
+        if (originalOnSnapshot && firestoreModule) {
+          firestoreModule.onSnapshot = originalOnSnapshot;
+        }
+      }
+    });
+
+    it("applies query constraints: date filters, officer filter, and limit", () => {
+      fake.seed("schoolOutreach/school-1/visits", [
+        { id: "v-mon", visitDate: "2026-09-21", createdBy: "officer-a" },
+        { id: "v-tue", visitDate: "2026-09-22", createdBy: "officer-a" },
+        { id: "v-wed", visitDate: "2026-09-23", createdBy: "officer-b" },
+        { id: "v-old", visitDate: "2026-09-10", createdBy: "officer-a" },
+      ]);
+
+      // Filter by officer-a and startDate >= 2026-09-21
+      let filtered = [];
+      const unsub = listenToOutreachVisits(
+        (visits) => {
+          filtered = visits;
+        },
+        null,
+        {
+          officerId: "officer-a",
+          startDate: "2026-09-21",
+          limitCount: 1,
+        }
+      );
+
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].id).toBe("v-tue"); // Most recent of officer-a
+      expect(filtered[0].createdBy).toBe("officer-a");
       unsub();
     });
   });

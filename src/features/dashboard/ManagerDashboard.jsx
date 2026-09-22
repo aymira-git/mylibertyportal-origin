@@ -10,6 +10,7 @@ import {
   ClassesAndCoverageTab,
   StaffDirectivesTab,
   MarketingOutreachTracker,
+  getFollowUpSchools,
 } from "./manager";
 import { listenToSchools, listenToOutreachVisits } from "./marketing";
 
@@ -25,8 +26,11 @@ export default function ManagerDashboard() {
   const [todosPermission, setTodosPermission] = useState(true);
   const [schools, setSchools] = useState([]);
   const [visits, setVisits] = useState([]);
-  const [outreachLoading, setOutreachLoading] = useState(true);
+  const [schoolsLoading, setSchoolsLoading] = useState(true);
+  const [visitsLoading, setVisitsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+
+  const outreachLoading = schoolsLoading || visitsLoading;
 
   useEffect(() => {
     const unsubUsers = onSnapshot(
@@ -87,17 +91,23 @@ export default function ManagerDashboard() {
     const unsubSchools = listenToSchools(
       (data) => {
         setSchools(data);
-        setOutreachLoading(false);
+        setSchoolsLoading(false);
       },
       (err) => {
         console.warn("manager schools listener:", err);
-        setOutreachLoading(false);
+        setSchoolsLoading(false);
       }
     );
 
     const unsubVisits = listenToOutreachVisits(
-      (data) => setVisits(data),
-      (err) => console.warn("manager visits listener:", err)
+      (data) => {
+        setVisits(data);
+        setVisitsLoading(false);
+      },
+      (err) => {
+        console.warn("manager visits listener:", err);
+        setVisitsLoading(false);
+      }
     );
 
     return () => {
@@ -231,7 +241,7 @@ export default function ManagerDashboard() {
   };
 
   const followUpSchoolsCount = useMemo(() => {
-    return schools.filter((s) => s.status === "follow_up" || s.nextActionDate).length;
+    return getFollowUpSchools(schools).length;
   }, [schools]);
 
   const tabs = [

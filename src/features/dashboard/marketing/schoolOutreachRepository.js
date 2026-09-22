@@ -9,6 +9,10 @@ import {
   onSnapshot,
   serverTimestamp,
   writeBatch,
+  query,
+  where,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import { schoolMasterSchema, schoolVisitSchema } from "../../../schemas/schoolOutreachSchema.js";
 import { WITA_OFFSET_MS } from "../../../utils/dateWita.js";
@@ -102,25 +106,90 @@ export function getEndOfWeekWita(date = new Date()) {
 
 /**
  * Subscribes to visits history across all schools using collectionGroup.
- * Used for Manager Dashboard reporting and cross-school analytics.
+ * Supports date range, officer filtering, server-side ordering, and limits to prevent
+ * unbounded collectionGroup streaming.
  *
- * @param {function(Array<object>): void} onData
- * @param {function(Error): void} [onError]
+ * @param {function(Array<object>): void|object} arg1 - onData callback OR options object
+ * @param {function(Error): void|function(Array<object>): void|object} [arg2] - onError callback OR onData callback OR options object
+ * @param {object|function(Error): void} [arg3] - options object OR onError callback
  * @returns {function(): void} Unsubscribe function
  */
-export function listenToOutreachVisits(onData, onError) {
+export function listenToOutreachVisits(arg1, arg2, arg3) {
+  let onData;
+  let onError;
+  let options = {};
+
+  if (typeof arg1 === "function") {
+    onData = arg1;
+    if (typeof arg2 === "function") {
+      onError = arg2;
+      options = arg3 || {};
+    } else if (typeof arg2 === "object" && arg2 !== null) {
+      options = arg2;
+      onError = typeof arg3 === "function" ? arg3 : undefined;
+    } else {
+      onError = undefined;
+      options = arg3 || {};
+    }
+  } else if (typeof arg1 === "object" && arg1 !== null) {
+    options = arg1;
+    onData = arg2;
+    onError = arg3;
+  }
+
+  const constraints = [];
+
+  // Filter by marketing officer if specified
+  if (options.officerId && options.officerId !== "all") {
+    constraints.push(where("createdBy", "==", options.officerId));
+  }
+
+  // Filter by date range if specified
+  if (options.startDate) {
+    constraints.push(where("visitDate", ">=", options.startDate));
+  }
+  if (options.endDate) {
+    constraints.push(where("visitDate", "<=", options.endDate));
+  }
+
+  // Server-side ordering by visitDate descending (or specified direction)
+  const orderDirection = options.orderDirection || "desc";
+  constraints.push(orderBy("visitDate", orderDirection));
+
+  // Limit to avoid unbounded streaming (defaults to 100 unless explicitly null/false)
+  const maxLimit = options.limitCount ?? options.limit ?? 100;
+  if (typeof maxLimit === "number" && maxLimit > 0) {
+    constraints.push(limit(maxLimit));
+  }
+
   const visitsGroup = collectionGroup(db, "visits");
+  const q = constraints.length > 0 ? query(visitsGroup, ...constraints) : visitsGroup;
+
   return onSnapshot(
-    visitsGroup,
+    q,
     (snap) => {
       const visits = snap.docs
         .map((d) => {
-          const pathParts = d.ref?.path ? d.ref.path.split("/") : [];
-          const schoolId = pathParts.length >= 4 ? pathParts[1] : (d.data().schoolId || "");
+          let schoolId = "";
+          if (d.ref?.path) {
+            const pathParts = d.ref.path.split("/").filter(Boolean);
+            const visitsIdx = pathParts.lastIndexOf("visits");
+            if (visitsIdx >= 2 && pathParts[visitsIdx - 2] === COLLECTION_NAME) {
+              schoolId = pathParts[visitsIdx - 1];
+            }
+          } else if (
+            d.ref?.parent?.id === "visits" &&
+            d.ref?.parent?.parent?.parent?.id === COLLECTION_NAME
+          ) {
+            schoolId = d.ref.parent.parent.id;
+          }
+          if (!schoolId) {
+            schoolId = d.data?.()?.schoolId || d.data?.schoolId || "";
+          }
           return {
             id: d.id,
-            schoolId,
             ...d.data(),
+            schoolId,
           };
         })
         .sort((a, b) => (b.visitDate || "").localeCompare(a.visitDate || ""));

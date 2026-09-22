@@ -42,6 +42,36 @@ export default function MarketingOutreachTracker({
     return map;
   }, [users]);
 
+  // Fast school lookup map (id -> school)
+  const schoolMap = useMemo(() => {
+    const map = new Map();
+    schools.forEach((s) => {
+      map.set(s.id, s);
+    });
+    return map;
+  }, [schools]);
+
+  // Group visits by schoolId (schoolId -> visits[])
+  const visitsBySchoolId = useMemo(() => {
+    const map = new Map();
+    visits.forEach((v) => {
+      if (!v.schoolId) return;
+      const list = map.get(v.schoolId);
+      if (list) {
+        list.push(v);
+      } else {
+        map.set(v.schoolId, [v]);
+      }
+    });
+    return map;
+  }, [visits]);
+
+  // Visits for currently viewed school in modal
+  const activeSchoolVisits = useMemo(() => {
+    if (!viewSchool?.id) return [];
+    return visitsBySchoolId.get(viewSchool.id) || [];
+  }, [viewSchool, visitsBySchoolId]);
+
   // Current week WITA range
   const startOfWeek = useMemo(() => getStartOfWeekWita(), []);
   const endOfWeek = useMemo(() => getEndOfWeekWita(), []);
@@ -76,13 +106,13 @@ export default function MarketingOutreachTracker({
     if (!searchQuery.trim()) return filteredVisits;
     const q = searchQuery.toLowerCase();
     return filteredVisits.filter((v) => {
-      const school = schools.find((s) => s.id === v.schoolId);
+      const school = schoolMap.get(v.schoolId);
       const schoolName = (school?.name || "").toLowerCase();
       const contact = (v.contactName || "").toLowerCase();
       const outcome = (v.outcome || "").toLowerCase();
       return schoolName.includes(q) || contact.includes(q) || outcome.includes(q);
     });
-  }, [filteredVisits, searchQuery, schools]);
+  }, [filteredVisits, searchQuery, schoolMap]);
 
   if (loading) {
     return (
@@ -304,7 +334,7 @@ export default function MarketingOutreachTracker({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {searchedVisits.slice(0, 20).map((v) => {
-                  const school = schools.find((s) => s.id === v.schoolId);
+                  const school = schoolMap.get(v.schoolId);
                   const officerName = userMap.get(v.createdBy) || "Marketing Officer";
 
                   return (
@@ -392,27 +422,25 @@ export default function MarketingOutreachTracker({
                   Visit History Records
                 </h4>
                 <div className="space-y-2">
-                  {visits
-                    .filter((v) => v.schoolId === viewSchool.id)
-                    .map((v) => (
-                      <div
-                        key={v.id}
-                        className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1"
-                      >
-                        <div className="flex items-center justify-between font-bold text-slate-800">
-                          <span>{v.visitDate}</span>
-                          <span className="text-slate-500 font-normal">
-                            Officer: {userMap.get(v.createdBy) || "Marketing"}
-                          </span>
-                        </div>
-                        <p className="text-slate-600">
-                          Contact: <b>{v.contactName}</b> ({v.contactRole})
-                        </p>
-                        {v.outcome && <p className="text-slate-600 italic">"{v.outcome}"</p>}
-                        {v.notes && <p className="text-slate-500 text-[11px]">{v.notes}</p>}
+                  {activeSchoolVisits.map((v) => (
+                    <div
+                      key={v.id}
+                      className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between font-bold text-slate-800">
+                        <span>{v.visitDate}</span>
+                        <span className="text-slate-500 font-normal">
+                          Officer: {userMap.get(v.createdBy) || "Marketing"}
+                        </span>
                       </div>
-                    ))}
-                  {visits.filter((v) => v.schoolId === viewSchool.id).length === 0 && (
+                      <p className="text-slate-600">
+                        Contact: <b>{v.contactName}</b> ({v.contactRole})
+                      </p>
+                      {v.outcome && <p className="text-slate-600 italic">"{v.outcome}"</p>}
+                      {v.notes && <p className="text-slate-500 text-[11px]">{v.notes}</p>}
+                    </div>
+                  ))}
+                  {activeSchoolVisits.length === 0 && (
                     <p className="text-xs text-slate-400 italic">No visit records found.</p>
                   )}
                 </div>

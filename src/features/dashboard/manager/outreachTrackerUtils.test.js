@@ -4,6 +4,7 @@ import {
   filterVisitsByOfficer,
   calculateWeeklyMetrics,
   getFollowUpSchools,
+  normalizeVisitDate,
 } from "./outreachTrackerUtils.js";
 
 describe("outreachTrackerUtils", () => {
@@ -86,6 +87,77 @@ describe("outreachTrackerUtils", () => {
       expect(res.visitsCount).toBe(0);
       expect(res.flyersCount).toBe(0);
       expect(res.leadsCount).toBe(0);
+    });
+
+    it("defensively handles ISO strings, Date objects, and Timestamp objects without miscounting", () => {
+      const visits = [
+        {
+          id: "v-iso",
+          visitDate: "2026-09-27T18:30:00.000Z", // End of week with time component
+          flyersHandedOut: 15,
+          leadsCollected: 5,
+        },
+        {
+          id: "v-date",
+          visitDate: new Date(2026, 8, 22), // Sep 22, 2026 (local date)
+          flyersHandedOut: 20,
+          leadsCollected: 8,
+        },
+        {
+          id: "v-timestamp",
+          visitDate: { toDate: () => new Date("2026-09-25T10:00:00Z") },
+          flyersHandedOut: 10,
+          leadsCollected: 2,
+        },
+        {
+          id: "v-invalid",
+          visitDate: "not-a-valid-date",
+          flyersHandedOut: 99,
+          leadsCollected: 99,
+        },
+        {
+          id: "v-outside",
+          visitDate: "2026-09-28T01:00:00.000Z", // Next week Monday
+          flyersHandedOut: 50,
+          leadsCollected: 20,
+        },
+      ];
+
+      const res = calculateWeeklyMetrics(visits, "2026-09-21", "2026-09-27");
+      expect(res.visitsCount).toBe(3);
+      expect(res.flyersCount).toBe(45);
+      expect(res.leadsCount).toBe(15);
+      expect(res.weeklyVisits.map((v) => v.id)).toEqual(["v-iso", "v-date", "v-timestamp"]);
+    });
+  });
+
+  describe("normalizeVisitDate", () => {
+    it("returns YYYY-MM-DD for standard date strings", () => {
+      expect(normalizeVisitDate("2026-09-21")).toBe("2026-09-21");
+      expect(normalizeVisitDate("  2026-12-05  ")).toBe("2026-12-05");
+    });
+
+    it("extracts leading YYYY-MM-DD from ISO strings", () => {
+      expect(normalizeVisitDate("2026-09-27T18:30:00.000Z")).toBe("2026-09-27");
+      expect(normalizeVisitDate("2026-09-21 14:00:00")).toBe("2026-09-21");
+    });
+
+    it("handles Date instances, Timestamp objects, and epoch timestamps", () => {
+      const d = new Date(2026, 8, 23);
+      expect(normalizeVisitDate(d)).toBe("2026-09-23");
+
+      const ts = { toDate: () => new Date(2026, 8, 24) };
+      expect(normalizeVisitDate(ts)).toBe("2026-09-24");
+
+      const secTs = { seconds: Math.floor(new Date(2026, 8, 25).getTime() / 1000) };
+      expect(normalizeVisitDate(secTs)).toBe("2026-09-25");
+    });
+
+    it("returns null for invalid or empty inputs", () => {
+      expect(normalizeVisitDate(null)).toBeNull();
+      expect(normalizeVisitDate(undefined)).toBeNull();
+      expect(normalizeVisitDate("")).toBeNull();
+      expect(normalizeVisitDate("invalid-date-string")).toBeNull();
     });
   });
 

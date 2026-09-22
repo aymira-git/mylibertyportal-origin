@@ -71,14 +71,14 @@ function runQuery(q) {
     for (const [colName, col] of store.entries()) {
       if (colName === q.path || colName.endsWith("/" + q.path)) {
         for (const [id, data] of col.entries()) {
-          rows.push({ id, data });
+          rows.push({ id, data, path: `${colName}/${id}` });
         }
       }
     }
   } else {
     const colName = q.path ?? q.collectionPath;
     const col = store.get(colName) ?? new Map();
-    rows = [...col.entries()].map(([id, data]) => ({ id, data }));
+    rows = [...col.entries()].map(([id, data]) => ({ id, data, path: `${colName}/${id}` }));
   }
 
   for (const c of q.constraints ?? []) {
@@ -94,7 +94,25 @@ function runQuery(q) {
       return true;
     });
   }
-  const docs = rows.map((r) => ({ id: r.id, data: () => r.data }));
+
+  for (const c of q.constraints ?? []) {
+    if (c.type === "orderBy") {
+      rows.sort((a, b) => {
+        const valA = a.data[c.field] ?? "";
+        const valB = b.data[c.field] ?? "";
+        const cmp = String(valA).localeCompare(String(valB));
+        return c.direction === "desc" ? -cmp : cmp;
+      });
+    }
+  }
+
+  for (const c of q.constraints ?? []) {
+    if (c.type === "limit") {
+      rows = rows.slice(0, c.n);
+    }
+  }
+
+  const docs = rows.map((r) => ({ id: r.id, data: () => r.data, ref: refOf(r.path) }));
   return { docs, empty: docs.length === 0 };
 }
 
@@ -112,17 +130,18 @@ export const firestoreModule = {
     constraints,
   })),
   where: vi.fn((field, op, value) => ({ type: "where", field, op, value })),
+  orderBy: vi.fn((field, direction = "asc") => ({ type: "orderBy", field, direction })),
   limit: vi.fn((n) => ({ type: "limit", n })),
   documentId: vi.fn(() => ({ __isDocId: true })),
   onSnapshot: vi.fn((q, onNext) => {
-    const res = q.path && !q.isCollectionGroup && !q.isCollection
+    const res = q.path && !q.isCollectionGroup && !q.isCollection && !q.constraints
       ? snapshotOf(q.path)
-      : runQuery(q.isCollection || q.isCollectionGroup ? { path: q.path, isCollectionGroup: q.isCollectionGroup } : q);
+      : runQuery(q);
     onNext(res);
     return () => {};
   }),
   getDocs: vi.fn(async (q) =>
-    runQuery(q.isCollection || q.isCollectionGroup ? { path: q.path, isCollectionGroup: q.isCollectionGroup } : q)
+    runQuery(q)
   ),
   getDoc: vi.fn(async (ref) => snapshotOf(ref.path)),
   addDoc: vi.fn((col, data) =>

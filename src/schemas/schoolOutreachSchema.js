@@ -14,7 +14,7 @@ export const CONTACT_ROLES = [
   "Other",
 ];
 
-const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 
 export const schoolMasterSchema = z.object({
   name: z.string().trim().min(1, "School name is required."),
