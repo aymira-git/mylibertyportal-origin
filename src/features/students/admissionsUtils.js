@@ -10,6 +10,8 @@ import {
   getBatchProgram,
   getStudentProgram,
   normalizeProgram,
+  getEnabledPrograms,
+  getProgram,
 } from "../../constants/programs";
 import { normalizeBatchType } from "../../constants/batchTypes";
 
@@ -212,11 +214,22 @@ export function filterApplications({
 }
 
 export function getDistinctValues(apps = [], field) {
-  const set = new Set(field === "branch" ? BRANCHES : []);
+  const initial =
+    field === "branch"
+      ? BRANCHES
+      : field === "program"
+        ? getEnabledPrograms().map((p) => p.label)
+        : [];
+  const set = new Set(initial);
   for (const a of apps) {
     const rawVal = (a[field] || "").toString().trim();
     if (rawVal) {
-      const val = field === "branch" ? normalizeBranch(rawVal) : rawVal;
+      const val =
+        field === "branch"
+          ? normalizeBranch(rawVal)
+          : field === "program"
+            ? getProgram(normalizeProgram(rawVal))?.label || rawVal
+            : rawVal;
       set.add(val);
     }
   }

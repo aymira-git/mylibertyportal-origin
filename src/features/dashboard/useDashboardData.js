@@ -17,6 +17,7 @@ import {
   divisionOfProgram,
   matchesDivisionFilter,
 } from "../../constants/divisions";
+import { getProgram, normalizeProgram } from "../../constants/programs";
 
 const emptyFormData = {
   firstName: "",
@@ -43,6 +44,7 @@ const emptyFormData = {
   address: "",
   branch: DEFAULT_BRANCH,
   division: DEFAULT_DIVISION,
+  programId: "",
   program: "",
   batchType: "reguler",
   classType: "",
@@ -169,6 +171,7 @@ export function useDashboardData({
           address: formData.address,
           branch: formData.branch,
           division: formData.division,
+          programId: formData.programId,
           program: formData.program,
           batchType: formData.batchType || formData.classType || "reguler",
           classType: formData.classType,
@@ -247,11 +250,14 @@ export function useDashboardData({
   const handleAddStudent = () => {
     setEditId(null);
     const isKindergarten = division === "kindergarten";
+    const defaultProgramId = isKindergarten ? "kids_school" : "english_course";
+    const defaultProg = getProgram(defaultProgramId);
     setFormData({
       ...emptyFormData,
       role: "student",
       division: isKindergarten ? "kindergarten" : "courses",
-      program: isKindergarten ? "kids_school" : "english_course",
+      programId: defaultProgramId,
+      program: defaultProg?.label || (isKindergarten ? "Kids School (Kindergarten)" : "English Course"),
       currentLevel: isKindergarten ? "nursery" : "warrior",
       paymentPlan: "monthly",
       status: "active",
@@ -261,6 +267,12 @@ export function useDashboardData({
 
   const handleEdit = (user) => {
     setEditId(user.id);
+    const canonicalProg = user.programId
+      ? getProgram(user.programId)
+      : user.program
+        ? getProgram(normalizeProgram(user.program))
+        : null;
+
     setFormData({
       firstName: user.firstName || user.displayName?.split(" ")[0] || "",
       lastName: user.lastName || user.displayName?.split(" ").slice(1).join(" ") || "",
@@ -286,9 +298,10 @@ export function useDashboardData({
       address: user.address || "",
       branch: normalizeBranch(user.branch),
       division: normalizeDivision(
-        user.division || (user.role === "student" ? divisionOfProgram(user.programId || user.program) : "courses")
+        user.division || (user.role === "student" ? divisionOfProgram(canonicalProg?.id || user.programId || user.program) : "courses")
       ),
-      program: user.program || "",
+      programId: canonicalProg?.id || user.programId || "",
+      program: canonicalProg?.label || user.program || "",
       batchType: user.batchType || user.classType || "reguler",
       classType: user.classType || "",
       schoolOrJob: user.schoolOrJob || "",

@@ -83,11 +83,22 @@ describe("buildStudentRecord", () => {
   it("sets programId and derives division on student record", () => {
     const courseStudent = buildStudentRecord({ program: "English Course" });
     expect(courseStudent.programId).toBe("english_course");
+    expect(courseStudent.program).toBe("English Course");
     expect(courseStudent.division).toBe("courses");
 
     const kidsStudent = buildStudentRecord({ program: "Kids School", currentLevel: "tk_a" });
     expect(kidsStudent.programId).toBe("kids_school");
     expect(kidsStudent.division).toBe("kindergarten");
+  });
+
+  it("converts raw program ID to display label while preserving canonical programId", () => {
+    const rawStudent = buildStudentRecord({ program: "english_course" });
+    expect(rawStudent.programId).toBe("english_course");
+    expect(rawStudent.program).toBe("English Course");
+
+    const rawKids = buildStudentRecord({ program: "kids_school" });
+    expect(rawKids.programId).toBe("kids_school");
+    expect(rawKids.program).toBe("Kids School (Kindergarten)");
   });
 
   it("normalizes batchType from classType or explicit batchType", () => {

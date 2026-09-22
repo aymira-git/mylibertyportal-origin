@@ -364,7 +364,10 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                   ))}
                   {formData.program &&
                     !getEnabledPrograms().some(
-                      (p) => p.id === formData.programId || p.label === formData.program
+                      (p) =>
+                        p.id === formData.programId ||
+                        p.label === formData.program ||
+                        p.id === formData.program
                     ) && <option value={formData.program}>{formData.program}</option>}
                 </select>
               </div>
@@ -424,22 +427,24 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                 />
               </div>
               <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                    Student Lifecycle Status *
-                  </label>
-                  <select
-                    value={formData.status || "active"}
-                    onChange={(e) => field("status", e.target.value)}
-                    className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs capitalize text-slate-800 focus:border-[#1a3a8f] outline-none"
-                  >
-                    <option value="active">🟢 Active (Currently Enrolled &amp; Attending)</option>
-                    <option value="on_leave">🟡 On Leave (Temporary Pause / Break)</option>
-                    <option value="graduated">🟣 Graduated (Completed Course / Program)</option>
-                    <option value="inactive">⚪ Inactive (Withdrawn / Dropped Out)</option>
-                  </select>
-                </div>
-                <div>
+                {editId && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      Student Lifecycle Status *
+                    </label>
+                    <select
+                      value={formData.status || "active"}
+                      onChange={(e) => field("status", e.target.value)}
+                      className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs capitalize text-slate-800 focus:border-[#1a3a8f] outline-none"
+                    >
+                      <option value="active">🟢 Active (Currently Enrolled &amp; Attending)</option>
+                      <option value="on_leave">🟡 On Leave (Temporary Pause / Break)</option>
+                      <option value="graduated">🟣 Graduated (Completed Course / Program)</option>
+                      <option value="inactive">⚪ Inactive (Withdrawn / Dropped Out)</option>
+                    </select>
+                  </div>
+                )}
+                <div className={editId ? "" : "sm:col-span-2"}>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
                     Tuition Payment Plan Preference
                   </label>
@@ -568,7 +573,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
               <span>📝</span> Administrative & Evaluation
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="md:col-span-2">
+              <div className="md:col-span-3">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
                   Information Source (Dari Mana Tahu MyLiberty)
                 </label>
@@ -579,25 +584,6 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
                   onChange={(e) => field("referralSource", e.target.value)}
                   className="w-full p-2.5 border rounded-xl"
                 />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                  Fluency Tier (Evaluated)
-                </label>
-                <select
-                  value={String(getStars(formData.currentLevel) || "1")}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "1") setAcademicLevel("warrior");
-                    else if (val === "2") setAcademicLevel("master");
-                    else if (val === "3") setAcademicLevel("epic");
-                  }}
-                  className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs"
-                >
-                  <option value="1">⭐ 1 Star (Beginner)</option>
-                  <option value="2">⭐⭐ 2 Stars (Intermediate)</option>
-                  <option value="3">⭐⭐⭐ 3 Stars (Fluent)</option>
-                </select>
               </div>
               <div className="md:col-span-3">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">

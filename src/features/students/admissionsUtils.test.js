@@ -265,15 +265,42 @@ describe("filterApplications", () => {
 });
 
 describe("getDistinctValues", () => {
-  it("returns sorted unique non-empty values for a field", () => {
+  it("returns sorted unique non-empty values for a generic field", () => {
     const apps = [
-      { program: "IELTS" },
-      { program: " General " },
-      { program: "IELTS" },
-      { program: "" },
+      { customField: "B" },
+      { customField: " A " },
+      { customField: "B" },
+      { customField: "" },
       {},
     ];
-    expect(getDistinctValues(apps, "program")).toEqual(["General", "IELTS"]);
+    expect(getDistinctValues(apps, "customField")).toEqual(["A", "B"]);
+  });
+
+  it("pre-seeds branch field with default branches", () => {
+    const values = getDistinctValues([], "branch");
+    expect(values).toContain("Kota Gorontalo");
+    expect(values).toContain("Limboto");
+    expect(values).toContain("Pohuwato");
+    expect(values).toContain("Bone Bolango");
+  });
+
+  it("pre-seeds program field with all enabled company programs", () => {
+    const values = getDistinctValues([], "program");
+    expect(values).toContain("English Course");
+    expect(values).toContain("Kids Course");
+    expect(values).toContain("Kids School (Kindergarten)");
+    expect(values).toContain("Professional School");
+    expect(values).toContain("TOEFL Preparation");
+  });
+
+  it("normalizes legacy program names in applications", () => {
+    const apps = [
+      { program: "toefl" },
+      { program: "english_course" },
+    ];
+    const values = getDistinctValues(apps, "program");
+    expect(values).toContain("English Course");
+    expect(values).toContain("TOEFL Preparation");
   });
 });
 
