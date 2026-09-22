@@ -68,15 +68,63 @@ export default function Kiosk({
   };
 
   const createShift = async () => {
-    const selectedClass = pendingClockIn?.classes.find((cls) => cls.id === selectedClassId);
-    if (!pendingClockIn || !selectedClass) return;
+    if (!pendingClockIn) return;
+    const isEvent =
+      pendingClockIn.matchedEvent &&
+      selectedClassId === `corporate_event:${pendingClockIn.matchedEvent.id}`;
+    const selectedClass = isEvent
+      ? null
+      : pendingClockIn.classes.find((cls) => cls.id === selectedClassId);
+
+    if (!isEvent && !selectedClass) return;
+
     try {
       const clockInAt = new Date();
+      const isLeave = (pendingClockIn.userData.status || "active") === "on_leave";
+      const name = pendingClockIn.userData.displayName;
+
+      if (isEvent) {
+        const event = pendingClockIn.matchedEvent;
+        await clockIn({
+          uid: pendingClockIn.uid,
+          displayName: name,
+          role: pendingClockIn.userData.role,
+          classId: `corporate_event:${event.id}`,
+          className: event.name,
+          clockInAt,
+          shiftType: "corporate_event",
+          eventId: event.id,
+          punctuality: {
+            status: "Present",
+            scheduledStart: null,
+            requiredArrival: null,
+            minutesEarlyOrLate: 0,
+          },
+        });
+
+        setPendingClockIn(null);
+        setSelectedClassId("");
+        showStatus(
+          isLeave ? "Event Duty Started (On Leave)" : "Event Duty Started",
+          "success",
+          isLeave
+            ? `Clocked in for ${event.name} (Note: Marked on Leave).`
+            : `Clocked in for ${event.name}.`,
+          name
+        );
+        return setLastScanned({
+          name,
+          role: pendingClockIn.userData.role,
+          time: new Date(),
+          type: `Clock In (${event.name})`,
+        });
+      }
+
       const punctuality = getInstantPunctuality(selectedClass, clockInAt);
 
       await clockIn({
         uid: pendingClockIn.uid,
-        displayName: pendingClockIn.userData.displayName,
+        displayName: name,
         role: pendingClockIn.userData.role,
         classId: selectedClass.id,
         className: selectedClass.className,
@@ -84,8 +132,6 @@ export default function Kiosk({
         punctuality,
       });
 
-      const isLeave = (pendingClockIn.userData.status || "active") === "on_leave";
-      const name = pendingClockIn.userData.displayName;
       setPendingClockIn(null);
       setSelectedClassId("");
       showStatus(
@@ -302,7 +348,7 @@ export default function Kiosk({
                 const todayClasses = getTodaysClasses(instructorClasses);
 
                 if (todayClasses.length > 0) {
-                  return setPendingClockIn({ uid, userData, classes: todayClasses });
+                  return setPendingClockIn({ uid, userData, classes: todayClasses, matchedEvent });
                 }
 
                 // Instructor has no classes scheduled today.
@@ -639,7 +685,10 @@ export default function Kiosk({
                 <span className="font-bold text-slate-900">
                   {pendingClockIn.userData.displayName}
                 </span>
-                ! Select the class cohort you are teaching right now:
+                !{" "}
+                {pendingClockIn.matchedEvent
+                  ? "Select your scheduled class or corporate event:"
+                  : "Select the class cohort you are teaching right now:"}
               </p>
             </div>
 
@@ -648,7 +697,12 @@ export default function Kiosk({
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="w-full p-3 border border-slate-200 rounded-xl text-xs font-semibold bg-white text-slate-800 outline-none focus:border-[#1a3a8f] focus:ring-1 focus:ring-[#1a3a8f]"
             >
-              <option value="">Select today&apos;s scheduled class...</option>
+              <option value="">Select today&apos;s scheduled class or event...</option>
+              {pendingClockIn.matchedEvent && (
+                <option value={`corporate_event:${pendingClockIn.matchedEvent.id}`}>
+                  📌 Event: {pendingClockIn.matchedEvent.name}
+                </option>
+              )}
               {pendingClockIn.classes.map((cls) => (
                 <option key={cls.id} value={cls.id}>
                   {cls.className} ({cls.startTime || "Schedule not set"})
