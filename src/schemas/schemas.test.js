@@ -6,6 +6,8 @@ import {
   batchSchema,
   applicationSchema,
   corporateEventSchema,
+  schoolMasterSchema,
+  schoolVisitSchema,
 } from "./index.js";
 
 describe("inviteSchema", () => {
@@ -329,5 +331,66 @@ describe("corporateEventSchema", () => {
         audienceType: "all",
       })
     ).toThrow(/YYYY-MM-DD/);
+  });
+});
+
+describe("schoolMasterSchema", () => {
+  it("validates a valid school master payload with defaults", () => {
+    const valid = schoolMasterSchema.parse({
+      name: "SMAN 1 Gorontalo",
+      lat: 0.5512,
+      lng: 123.0583,
+    });
+    expect(valid.name).toBe("SMAN 1 Gorontalo");
+    expect(valid.municipality).toBe("Kota Gorontalo");
+    expect(valid.tier).toBe("SMA");
+    expect(valid.status).toBe("pending");
+    expect(valid.active).toBe(true);
+  });
+
+  it("rejects coordinates outside geographic limits", () => {
+    expect(() =>
+      schoolMasterSchema.parse({
+        name: "Out of Bounds",
+        lat: 91,
+        lng: 123,
+      })
+    ).toThrow(/Latitude must be between -90 and 90/);
+
+    expect(() =>
+      schoolMasterSchema.parse({
+        name: "Out of Bounds",
+        lat: 0.5,
+        lng: -185,
+      })
+    ).toThrow(/Longitude must be between -180 and 180/);
+  });
+});
+
+describe("schoolVisitSchema", () => {
+  it("validates a complete visit log", () => {
+    const visit = schoolVisitSchema.parse({
+      visitDate: "2026-09-23",
+      contactName: "Ibu Nurhayati",
+      contactRole: "Guru BK",
+      flyersHandedOut: 40,
+      leadsCollected: 15,
+    });
+    expect(visit.visitDate).toBe("2026-09-23");
+    expect(visit.contactName).toBe("Ibu Nurhayati");
+    expect(visit.flyersHandedOut).toBe(40);
+    expect(visit.leadsCollected).toBe(15);
+    expect(visit.statusAfterVisit).toBe("visited");
+  });
+
+  it("rejects negative flyer and lead counts", () => {
+    expect(() =>
+      schoolVisitSchema.parse({
+        visitDate: "2026-09-23",
+        contactName: "Ibu Nurhayati",
+        contactRole: "Guru BK",
+        flyersHandedOut: -1,
+      })
+    ).toThrow(/Flyers count cannot be negative/);
   });
 });

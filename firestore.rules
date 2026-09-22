@@ -209,6 +209,27 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    match /schoolOutreach/{schoolId} {
+      allow read: if isStaff();
+      allow create: if (isAdmin() || isManager() || hasRole('marketing'))
+        && request.resource.data.name is string
+        && request.resource.data.lat is number
+        && request.resource.data.lng is number;
+      allow update: if (isAdmin() || isManager() || hasRole('marketing'))
+        && (!('createdBy' in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
+        && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+      allow delete: if isAdmin();
+
+      match /visits/{visitId} {
+        allow read: if isStaff();
+        allow create: if (isAdmin() || isManager() || hasRole('marketing'))
+          && request.resource.data.visitDate is string
+          && request.resource.data.contactName is string
+          && request.resource.data.contactRole is string;
+        allow update, delete: if isAdmin();
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

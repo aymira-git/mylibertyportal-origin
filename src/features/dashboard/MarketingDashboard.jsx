@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { WelcomeBanner, DashboardShell, useToast } from "../shared";
 import { UserPlus, BookOpen, Users, Copy, Check, ExternalLink } from "lucide-react";
@@ -7,8 +7,13 @@ import { copyText } from "../../utils/copyText";
 import { AvailableBatches } from "../classes";
 import { useStaffDirectives, StaffDirectivesWidget } from "../staff";
 import { getRegistrationUrl } from "../../constants/externalLinks";
+import {
+  SchoolOutreachTab,
+  OutreachProgressWidget,
+  listenToSchools,
+} from "./marketing";
 
-function MarketingOverview({ leadCount, loading, classes, openSeats, onNavigate }) {
+function MarketingOverview({ leadCount, loading, classes, openSeats, schools, onNavigate }) {
   const toast = useToast();
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -94,6 +99,13 @@ function MarketingOverview({ leadCount, loading, classes, openSeats, onNavigate 
         </div>
       </div>
 
+      {/* ── Gorontalo School Outreach Progress Widget ── */}
+      <OutreachProgressWidget
+        schools={schools || []}
+        isCompact={true}
+        onNavigateToMap={() => onNavigate("visits")}
+      />
+
       {/* ── Attendance & Reception Note ── */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs space-y-1.5">
         <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">
@@ -122,6 +134,7 @@ export default function MarketingDashboard() {
   const [leadCount, setLeadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState([]);
+  const [schools, setSchools] = useState([]);
 
   const {
     activeDirectives,
@@ -157,9 +170,14 @@ export default function MarketingDashboard() {
       }
     );
 
+    const unsubSchools = listenToSchools((data) => {
+      setSchools(data);
+    });
+
     return () => {
       unsubApplications();
       unsubClasses();
+      unsubSchools();
     };
   }, []);
 
@@ -171,6 +189,10 @@ export default function MarketingDashboard() {
     }, 0);
   }, [classes]);
 
+  const scheduledSchoolsCount = useMemo(() => {
+    return schools.filter((s) => s.status === "scheduled").length;
+  }, [schools]);
+
   const tabs = [
     {
       id: "overview",
@@ -181,8 +203,19 @@ export default function MarketingDashboard() {
           loading={loading}
           classes={classes}
           openSeats={openSeats}
+          schools={schools}
           onNavigate={setActiveTab}
         />
+      ),
+    },
+    {
+      id: "visits",
+      label: "School Visits & Map",
+      badge: scheduledSchoolsCount > 0 ? `${scheduledSchoolsCount} scheduled` : null,
+      component: (
+        <div className="w-full">
+          <SchoolOutreachTab currentUser={auth.currentUser} />
+        </div>
       ),
     },
     {
