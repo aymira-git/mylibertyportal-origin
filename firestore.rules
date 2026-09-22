@@ -230,6 +230,10 @@ service cloud.firestore {
       }
     }
 
+    match /{path=**}/visits/{visitId} {
+      allow read: if isStaff();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

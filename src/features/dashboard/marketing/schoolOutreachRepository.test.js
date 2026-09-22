@@ -5,6 +5,9 @@ import {
   updateSchool,
   createSchoolVisit,
   seedInitialSchoolsIfEmpty,
+  listenToOutreachVisits,
+  getStartOfWeekWita,
+  getEndOfWeekWita,
 } from "./schoolOutreachRepository.js";
 
 vi.mock(
@@ -232,6 +235,41 @@ describe("schoolOutreachRepository", () => {
       expect(result.count).toBe(1);
 
       expect(fake.opsOf("set").length).toBe(0);
+    });
+  });
+
+  describe("listenToOutreachVisits", () => {
+    it("subscribes to all visits across schools via collectionGroup", () => {
+      fake.seed("schoolOutreach/school-1/visits", [
+        { id: "v1", visitDate: "2026-09-21", contactName: "Ibu Siti", flyersHandedOut: 20 },
+      ]);
+      fake.seed("schoolOutreach/school-2/visits", [
+        { id: "v2", visitDate: "2026-09-22", contactName: "Pak Budi", flyersHandedOut: 30 },
+      ]);
+
+      let receivedVisits = [];
+      const unsub = listenToOutreachVisits((visits) => {
+        receivedVisits = visits;
+      });
+
+      expect(receivedVisits.length).toBe(2);
+      expect(receivedVisits[0].id).toBe("v2"); // Sorted descending
+      expect(receivedVisits[1].id).toBe("v1");
+      unsub();
+    });
+  });
+
+  describe("WITA week calculations", () => {
+    it("calculates correct Monday and Sunday for WITA dates", () => {
+      // Tuesday 2026-09-22 10:00 WITA -> Monday is 2026-09-21, Sunday is 2026-09-27
+      const tuesday = new Date("2026-09-22T02:00:00.000Z"); // 10:00 WITA
+      expect(getStartOfWeekWita(tuesday)).toBe("2026-09-21");
+      expect(getEndOfWeekWita(tuesday)).toBe("2026-09-27");
+
+      // Sunday 2026-09-27 20:00 WITA
+      const sunday = new Date("2026-09-27T12:00:00.000Z"); // 20:00 WITA
+      expect(getStartOfWeekWita(sunday)).toBe("2026-09-21");
+      expect(getEndOfWeekWita(sunday)).toBe("2026-09-27");
     });
   });
 });

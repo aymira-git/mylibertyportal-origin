@@ -14,7 +14,8 @@ Build a **School Visits & Outreach Map** inside the existing Marketing Portal so
 - filter schools by outreach status;
 - open a school record and log a visit quickly from the field;
 - record contact person, contact role, WhatsApp/phone, flyers handed out, leads collected, notes, and next action date;
-- see outreach progress at a glance; and
+- see outreach progress at a glance;
+- let the Manager Portal track marketing outreach progress in read-only form; and
 - open turn-by-turn navigation for a selected school.
 
 The feature should be additive. It should not restructure the existing dashboard, authentication flow, Firebase setup, or other domains.
@@ -153,7 +154,74 @@ This keeps the map fast while preserving historical outreach data.
 
 ---
 
-## 5. Validation
+## 5. Manager Progress Tracking
+
+The Manager Portal should be able to **monitor the marketing officer's outreach progress without becoming a second data-entry screen**. The current Manager Portal already uses `DashboardShell` tabs, so add one dedicated read-only tab instead of embedding a large map into the existing command center.
+
+### [MODIFY] `src/features/dashboard/ManagerDashboard.jsx`
+
+Add a new tab:
+
+```text
+Marketing Outreach
+```
+
+The tab should show a manager-facing progress view with:
+
+- total active target schools;
+- visited / total and visited percentage;
+- scheduled schools;
+- schools needing follow-up;
+- unvisited/pending schools;
+- visits completed in the current week;
+- flyers handed out in the current week;
+- leads collected in the current week;
+- upcoming follow-up dates; and
+- most recently visited schools.
+
+### Marketing-officer progress
+
+The manager view should support a **marketing officer filter** when more than one marketing user exists. For the initial workflow, the default can show all marketing outreach activity, with a selector for a specific officer.
+
+Do not infer officer ownership from the current logged-in manager. Use the `createdBy` field on visit records and school updates as the source for attribution.
+
+### Read-only behavior
+
+The manager tracking screen should not expose the normal `Log Visit`, `Add School`, or direct school-edit controls. A manager may open a school detail/history view if useful, but the source-of-truth write flow remains in the Marketing Portal.
+
+The manager can still navigate to the marketing map if the product later decides to provide a shared read-only map, but that is **not required for the MVP**. The first manager release should prioritize progress/coverage tracking over duplicating the field map.
+
+### Recommended manager components
+
+#### [NEW] `src/features/dashboard/manager/MarketingOutreachTracker.jsx`
+
+A compact manager-facing dashboard containing summary cards, progress bars, follow-up queue, and recent activity.
+
+#### [NEW] `src/features/dashboard/manager/MarketingOutreachTracker.test.jsx`
+
+Component-level tests for metric calculation, officer filtering, empty states, and follow-up display.
+
+### Data required by the manager view
+
+Because the manager needs cross-school historical metrics, add a repository method based on Firestore `collectionGroup()` for the `visits` subcollection:
+
+```js
+listenToOutreachVisits(filters, callback)
+```
+
+Recommended filters:
+
+```text
+officerId: optional
+startDate: optional YYYY-MM-DD
+endDate: optional YYYY-MM-DD
+```
+
+Use the existing WITA date utilities when calculating the current-week window. Avoid loading every visit document for every historical date when only a current-week summary is needed.
+
+For the manager's first version, it is acceptable to load the active school master records plus the current reporting window of visits, then calculate the displayed metrics client-side. If the outreach dataset grows materially, introduce a denormalized reporting summary rather than repeatedly scanning an unbounded visit history.
+
+## 6. Validation
 
 ### [NEW] `src/schemas/schoolOutreachSchema.js`
 
@@ -183,7 +251,7 @@ Validation should cover at minimum:
 
 ---
 
-## 6. Repository Layer
+## 7. Repository Layer
 
 ### [NEW] `src/features/dashboard/marketing/schoolOutreachRepository.js`
 
@@ -197,7 +265,20 @@ addSchool(schoolData)
 updateSchool(schoolId, updateData)
 createSchoolVisit(schoolId, visitData)
 listenToSchoolVisits(schoolId, callback)
+listenToOutreachVisits(filters, callback)
 ```
+
+### Manager reporting behavior
+
+`listenToOutreachVisits(filters, callback)`
+
+- use `collectionGroup(db, "visits")` to read visit history across all schools;
+- optionally filter by `createdBy`;
+- limit the initial reporting window to the manager's selected/current reporting period;
+- return only fields needed for reporting;
+- document any required Firestore composite index if date + officer filters require one.
+
+The manager dashboard should consume this repository API rather than issuing its own raw Firestore queries inside `ManagerDashboard.jsx`.
 
 ### Repository behavior
 
@@ -247,7 +328,7 @@ If a developer wants a repeatable seed command later, add it as a separate tooli
 
 ---
 
-## 7. UI Structure
+## 8. UI Structure
 
 Create a new role-scoped folder consistent with the existing feature layout:
 
@@ -325,7 +406,7 @@ The map is useful visually, but a searchable list is faster when the officer alr
 
 ---
 
-## 8. Marketing Dashboard Integration
+## 9. Marketing Dashboard Integration
 
 ### [MODIFY] `src/features/dashboard/MarketingDashboard.jsx`
 
@@ -351,7 +432,63 @@ Do not duplicate the entire map or visit table on the overview screen.
 
 ---
 
-## 9. Map Dependency and Tile Policy
+## 10. Manager Dashboard Integration
+
+### [MODIFY] `src/features/dashboard/ManagerDashboard.jsx`
+
+Add a new `Marketing Outreach` tab alongside the existing manager tabs. The current Manager Portal already follows a tab-based `DashboardShell` architecture, so this is an additive integration rather than a manager-dashboard rewrite.
+
+Suggested tab shape:
+
+```js
+{
+  id: "marketing-outreach",
+  label: "Marketing Outreach",
+  component: (
+    <MarketingOutreachTracker
+      schools={...}
+      visits={...}
+      loading={...}
+      marketingUsers={...}
+    />
+  ),
+}
+```
+
+### Manager overview card
+
+Also add one compact card to `ManagerOverview` / Command Center showing real calculated values for: 
+
+```text
+Marketing Outreach
+[visited] / [total] schools visited
+[follow-ups] follow-ups due
+[weekly visits] visits this week
+```
+
+The card should navigate to the `Marketing Outreach` tab using the same `onNavigate` pattern already used by the manager dashboard.
+
+### Keep responsibilities separated
+
+**Marketing Dashboard**
+
+- creates/updates schools;
+- logs visits;
+- records field notes and contact data;
+- uses the interactive map;
+- owns the operational outreach workflow.
+
+**Manager Dashboard**
+
+- monitors progress;
+- checks weekly activity;
+- sees outstanding follow-ups;
+- filters progress by marketing officer;
+- reviews school/visit history read-only.
+
+This separation makes the manager feature useful for oversight without creating two competing operational workflows.
+
+## 11. Map Dependency and Tile Policy
 
 ### [MODIFY] `package.json`
 
@@ -391,7 +528,7 @@ Those behaviors can violate public tile-provider usage policies.
 
 ---
 
-## 10. Navigation Link
+## 12. Navigation Link
 
 The popup/card may include:
 
@@ -405,7 +542,7 @@ Open it in a new tab/window where appropriate for the current mobile UX.
 
 ---
 
-## 11. Security & Firestore Rules
+## 13. Security & Firestore Rules
 
 ### [MODIFY] `firestore.rules`
 
@@ -455,7 +592,7 @@ This follows the existing repository's RBAC style while making the new collectio
 
 ---
 
-## 12. Testing Strategy
+## 14. Testing Strategy
 
 The repo already has Vitest configured for `src/**/*.test.js` and uses a Firestore fake for repository tests.
 
@@ -478,6 +615,17 @@ Follow the existing repository-test pattern instead of introducing a new test ha
 
 If schema logic becomes non-trivial, add a small `schoolOutreachSchema.test.js` alongside it.
 
+### Manager tracking tests
+
+Add tests covering:
+
+1. visited percentage is calculated from active schools only;
+2. current-week metrics respect WITA date boundaries;
+3. officer filtering changes counts correctly;
+4. follow-up queue excludes inactive/completed records appropriately;
+5. empty/no-visit states render cleanly;
+6. the manager component never exposes write actions.
+
 ### Verification commands
 
 Run the repository's actual scripts:
@@ -497,7 +645,7 @@ npm run test:e2e
 
 ---
 
-## 13. Manual Verification Checklist
+## 15. Manual Verification Checklist
 
 ### Map
 
@@ -540,6 +688,17 @@ npm run test:e2e
 - unauthenticated access is denied;
 - normal users cannot rewrite historical visit records.
 
+### Manager tracking
+
+- `Marketing Outreach` appears as a Manager Portal tab;
+- Command Center summary links to the tab;
+- counts update after a marketing officer logs a new visit;
+- weekly visit/flyer/lead totals use WITA boundaries;
+- manager can filter by marketing officer;
+- follow-up queue shows the correct upcoming dates;
+- manager view is read-only;
+- manager still cannot edit school or visit records through the tracking UI.
+
 ### Responsive field use
 
 Test at a mobile viewport and verify:
@@ -552,39 +711,43 @@ Test at a mobile viewport and verify:
 
 ---
 
-## 14. Implementation Order
+## 16. Implementation Order
 
 1. Add Zod schema(s) and export them through `src/schemas/index.js`.
 2. Add `leaflet` dependency.
-3. Create `schoolOutreachRepository.js` and repository tests.
-4. Add Firestore rules for `schoolOutreach` and its `visits` subcollection.
-5. Add a verified Kota Gorontalo starter dataset through a controlled seed process.
-6. Build `GorontaloOutreachMap.jsx`.
-7. Build `SchoolVisitModal.jsx`.
-8. Build `OutreachProgressWidget.jsx`.
-9. Add the optional searchable school list if the map-only flow proves slow on mobile.
-10. Add the new tab and small overview widget to `MarketingDashboard.jsx`.
-11. Run automated verification and production build.
-12. Perform mobile/manual field-flow verification.
+3. Create `schoolOutreachRepository.js`, including the school listeners, visit creation flow, and manager reporting listener.
+4. Add repository/schema tests.
+5. Add Firestore rules for `schoolOutreach` and its `visits` subcollection.
+6. Add a verified Kota Gorontalo starter dataset through a controlled seed process.
+7. Build `GorontaloOutreachMap.jsx`.
+8. Build `SchoolVisitModal.jsx`.
+9. Build `OutreachProgressWidget.jsx`.
+10. Add the optional searchable school list if the map-only flow proves slow on mobile.
+11. Add the new tab and small overview widget to `MarketingDashboard.jsx`.
+12. Build `MarketingOutreachTracker.jsx` and connect it to the repository's `collectionGroup()` reporting listener.
+13. Add the `Marketing Outreach` tab and Command Center summary card to `ManagerDashboard.jsx` / `ManagerOverview`.
+14. Verify manager read-only permissions and Firestore rule behavior.
+15. Run automated verification and production build.
+16. Perform mobile/manual field-flow verification for both Marketing and Manager portals.
 
 Keep each step small enough that the existing portal remains buildable after each meaningful change.
 
 ---
 
-## 15. Open Decisions Before Implementation
+## 17. Open Decisions Before Implementation
 
 Only a few business choices are still needed:
 
 1. **Starter school list:** which schools should be included in the first Kota Gorontalo seed set?
 2. **Visit outcomes:** what standard outcome labels should the officer choose from, if any, instead of relying only on free-text notes?
 3. **Lead meaning:** does `leadsCollected` mean student leads, school partnership leads, or a combined count?
-4. **Manager role:** should managers be allowed to create/update outreach data, or should they be read-only with marketing/admin retaining write access?
+4. **Manager role:** recommended default is **read-only for outreach tracking**. Managers only need write access if the business explicitly wants them to log or correct visits.
 
 These decisions do not block the core architecture; they mainly determine final validation, UI labels, and Firestore rule boundaries.
 
 ---
 
-## 16. Files Summary
+## 18. Files Summary
 
 ### New
 
@@ -595,6 +758,8 @@ src/features/dashboard/marketing/schoolOutreachRepository.test.js
 src/features/dashboard/marketing/GorontaloOutreachMap.jsx
 src/features/dashboard/marketing/SchoolVisitModal.jsx
 src/features/dashboard/marketing/OutreachProgressWidget.jsx
+src/features/dashboard/manager/MarketingOutreachTracker.jsx
+src/features/dashboard/manager/MarketingOutreachTracker.test.jsx
 ```
 
 Optional:
@@ -609,6 +774,8 @@ src/features/dashboard/marketing/SchoolOutreachList.jsx
 package.json
 src/schemas/index.js
 src/features/dashboard/MarketingDashboard.jsx
+src/features/dashboard/ManagerDashboard.jsx
+src/features/dashboard/manager/ManagerOverview.jsx
 firestore.rules
 ```
 
@@ -620,7 +787,7 @@ src/features/dashboard/marketing/...
 
 ---
 
-## 17. Main Revisions From the Earlier Plan
+## 19. Main Revisions From the Earlier Plan
 
 | Earlier plan | Revision | Reason |
 |---|---|---|
@@ -636,7 +803,7 @@ src/features/dashboard/marketing/...
 
 ---
 
-## 18. Definition of Done
+## 20. Definition of Done
 
 The feature is ready for normal use when:
 
@@ -646,6 +813,9 @@ The feature is ready for normal use when:
 - a visit can be logged in under a minute on a mobile viewport;
 - repeat visits remain historically available;
 - progress counts update from Firestore in real time;
+- the Manager Portal shows the marketing outreach tracking tab and Command Center summary;
+- manager metrics can be filtered by marketing officer and use WITA reporting boundaries;
+- manager outreach views are read-only;
 - Firestore rules prevent unauthorized or unsafe writes;
 - `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` pass;
 - the production Vite build still displays Leaflet markers correctly; and

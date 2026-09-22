@@ -5,7 +5,13 @@ import { AIAssistant, DashboardShell, useToast } from "../shared";
 import { ReportsDashboard } from "../reports";
 import { createTodo, deleteTodo, toggleTodoComplete } from "../staff";
 import { getShiftStatus } from "../attendance";
-import { ManagerOverview, ClassesAndCoverageTab, StaffDirectivesTab } from "./manager";
+import {
+  ManagerOverview,
+  ClassesAndCoverageTab,
+  StaffDirectivesTab,
+  MarketingOutreachTracker,
+} from "./manager";
+import { listenToSchools, listenToOutreachVisits } from "./marketing";
 
 export default function ManagerDashboard() {
   const toast = useToast();
@@ -17,6 +23,9 @@ export default function ManagerDashboard() {
   const [shifts, setShifts] = useState([]);
   const [todos, setTodos] = useState([]);
   const [todosPermission, setTodosPermission] = useState(true);
+  const [schools, setSchools] = useState([]);
+  const [visits, setVisits] = useState([]);
+  const [outreachLoading, setOutreachLoading] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,12 +84,30 @@ export default function ManagerDashboard() {
       }
     );
 
+    const unsubSchools = listenToSchools(
+      (data) => {
+        setSchools(data);
+        setOutreachLoading(false);
+      },
+      (err) => {
+        console.warn("manager schools listener:", err);
+        setOutreachLoading(false);
+      }
+    );
+
+    const unsubVisits = listenToOutreachVisits(
+      (data) => setVisits(data),
+      (err) => console.warn("manager visits listener:", err)
+    );
+
     return () => {
       unsubUsers();
       unsubClasses();
       unsubApplications();
       unsubShifts();
       unsubTodos();
+      unsubSchools();
+      unsubVisits();
     };
   }, []);
 
@@ -203,6 +230,10 @@ export default function ManagerDashboard() {
     staff: activeStaff.length,
   };
 
+  const followUpSchoolsCount = useMemo(() => {
+    return schools.filter((s) => s.status === "follow_up" || s.nextActionDate).length;
+  }, [schools]);
+
   const tabs = [
     {
       id: "overview",
@@ -219,6 +250,21 @@ export default function ManagerDashboard() {
           classes={classes}
           users={users}
           currentUserId={auth.currentUser?.uid}
+          schools={schools}
+          visits={visits}
+        />
+      ),
+    },
+    {
+      id: "marketing-outreach",
+      label: "Marketing Outreach",
+      badge: followUpSchoolsCount > 0 ? `${followUpSchoolsCount} follow-up` : null,
+      component: (
+        <MarketingOutreachTracker
+          schools={schools}
+          visits={visits}
+          loading={outreachLoading}
+          users={users}
         />
       ),
     },

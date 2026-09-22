@@ -66,9 +66,21 @@ function snapshotOf(path) {
 }
 
 function runQuery(q) {
-  const colName = q.path ?? q.collectionPath;
-  const col = store.get(colName) ?? new Map();
-  let rows = [...col.entries()].map(([id, data]) => ({ id, data }));
+  let rows = [];
+  if (q.isCollectionGroup) {
+    for (const [colName, col] of store.entries()) {
+      if (colName === q.path || colName.endsWith("/" + q.path)) {
+        for (const [id, data] of col.entries()) {
+          rows.push({ id, data });
+        }
+      }
+    }
+  } else {
+    const colName = q.path ?? q.collectionPath;
+    const col = store.get(colName) ?? new Map();
+    rows = [...col.entries()].map(([id, data]) => ({ id, data }));
+  }
+
   for (const c of q.constraints ?? []) {
     if (c.type !== "where") continue;
     rows = rows.filter(({ id, data }) => {
@@ -88,20 +100,30 @@ function runQuery(q) {
 
 export const firestoreModule = {
   collection: vi.fn((_db, name) => ({ path: name, isCollection: true })),
+  collectionGroup: vi.fn((_db, name) => ({ path: name, isCollectionGroup: true })),
   doc: vi.fn((first, ...rest) => {
     if (first?.isCollection) return refOf(`${first.path}/${newId()}`);
     return refOf(rest.join("/"));
   }),
-  query: vi.fn((col, ...constraints) => ({ collectionPath: col.path, constraints })),
+  query: vi.fn((col, ...constraints) => ({
+    collectionPath: col.path,
+    path: col.path,
+    isCollectionGroup: col.isCollectionGroup,
+    constraints,
+  })),
   where: vi.fn((field, op, value) => ({ type: "where", field, op, value })),
   limit: vi.fn((n) => ({ type: "limit", n })),
   documentId: vi.fn(() => ({ __isDocId: true })),
   onSnapshot: vi.fn((q, onNext) => {
-    const res = q.path ? snapshotOf(q.path) : runQuery(q.isCollection ? { path: q.path } : q);
+    const res = q.path && !q.isCollectionGroup && !q.isCollection
+      ? snapshotOf(q.path)
+      : runQuery(q.isCollection || q.isCollectionGroup ? { path: q.path, isCollectionGroup: q.isCollectionGroup } : q);
     onNext(res);
     return () => {};
   }),
-  getDocs: vi.fn(async (q) => runQuery(q.isCollection ? { path: q.path } : q)),
+  getDocs: vi.fn(async (q) =>
+    runQuery(q.isCollection || q.isCollectionGroup ? { path: q.path, isCollectionGroup: q.isCollectionGroup } : q)
+  ),
   getDoc: vi.fn(async (ref) => snapshotOf(ref.path)),
   addDoc: vi.fn((col, data) =>
     record("add", refOf(`${col.path}/${newId()}`), data, null, "direct")

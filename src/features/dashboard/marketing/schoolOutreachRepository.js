@@ -1,6 +1,7 @@
 import { db } from "../../../firebase";
 import {
   collection,
+  collectionGroup,
   doc,
   addDoc,
   updateDoc,
@@ -10,6 +11,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { schoolMasterSchema, schoolVisitSchema } from "../../../schemas/schoolOutreachSchema.js";
+import { WITA_OFFSET_MS } from "../../../utils/dateWita.js";
 import { KOTA_GORONTALO_SEEDS } from "./seedSchoolsData.js";
 
 const COLLECTION_NAME = "schoolOutreach";
@@ -65,6 +67,67 @@ export function listenToSchoolVisits(schoolId, onData, onError) {
     },
     (err) => {
       console.error(`listenToSchoolVisits error for school ${schoolId}:`, err);
+      if (onError) onError(err);
+    }
+  );
+}
+
+/**
+ * Returns the Monday YYYY-MM-DD string for the current WITA week.
+ * @param {Date} [date=new Date()]
+ * @returns {string}
+ */
+export function getStartOfWeekWita(date = new Date()) {
+  const w = new Date(date.getTime() + WITA_OFFSET_MS);
+  const day = w.getUTCDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(w.getTime() + diffToMonday * 86400000);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${monday.getUTCFullYear()}-${pad(monday.getUTCMonth() + 1)}-${pad(monday.getUTCDate())}`;
+}
+
+/**
+ * Returns the Sunday YYYY-MM-DD string for the current WITA week.
+ * @param {Date} [date=new Date()]
+ * @returns {string}
+ */
+export function getEndOfWeekWita(date = new Date()) {
+  const w = new Date(date.getTime() + WITA_OFFSET_MS);
+  const day = w.getUTCDay();
+  const diffToSunday = day === 0 ? 0 : 7 - day;
+  const sunday = new Date(w.getTime() + diffToSunday * 86400000);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${sunday.getUTCFullYear()}-${pad(sunday.getUTCMonth() + 1)}-${pad(sunday.getUTCDate())}`;
+}
+
+/**
+ * Subscribes to visits history across all schools using collectionGroup.
+ * Used for Manager Dashboard reporting and cross-school analytics.
+ *
+ * @param {function(Array<object>): void} onData
+ * @param {function(Error): void} [onError]
+ * @returns {function(): void} Unsubscribe function
+ */
+export function listenToOutreachVisits(onData, onError) {
+  const visitsGroup = collectionGroup(db, "visits");
+  return onSnapshot(
+    visitsGroup,
+    (snap) => {
+      const visits = snap.docs
+        .map((d) => {
+          const pathParts = d.ref?.path ? d.ref.path.split("/") : [];
+          const schoolId = pathParts.length >= 4 ? pathParts[1] : (d.data().schoolId || "");
+          return {
+            id: d.id,
+            schoolId,
+            ...d.data(),
+          };
+        })
+        .sort((a, b) => (b.visitDate || "").localeCompare(a.visitDate || ""));
+      onData(visits);
+    },
+    (err) => {
+      console.error("listenToOutreachVisits error:", err);
       if (onError) onError(err);
     }
   );
@@ -152,6 +215,7 @@ export async function createSchoolVisit(schoolId, rawVisit, creatorUid) {
   const visitRef = doc(visitsCol);
 
   const visitData = {
+    schoolId,
     visitDate: validated.visitDate,
     contactName: validated.contactName,
     contactRole: validated.contactRole,

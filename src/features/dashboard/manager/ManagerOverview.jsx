@@ -1,7 +1,16 @@
 import { WelcomeBanner } from "../../shared";
-import { GraduationCap, BookOpen, UserPlus, Users } from "lucide-react";
+import { GraduationCap, BookOpen, UserPlus, Users, MapPin } from "lucide-react";
 import { AvailableBatches } from "../../classes";
 import { formatTime, formatPunctuality } from "./managerUtils";
+import {
+  calculateCoverage,
+  calculateWeeklyMetrics,
+  getFollowUpSchools,
+} from "./outreachTrackerUtils";
+import {
+  getStartOfWeekWita,
+  getEndOfWeekWita,
+} from "../marketing/schoolOutreachRepository";
 
 export function ManagerOverview({
   stats,
@@ -14,9 +23,17 @@ export function ManagerOverview({
   classes = [],
   users = [],
   currentUserId = null,
+  schools = [],
+  visits = [],
 }) {
   const totalBottlenecks =
     pendingApplications.length + unenrolledStudents.length + classesWithIssues.length;
+
+  const coverage = calculateCoverage(schools);
+  const followUpCount = getFollowUpSchools(schools).length;
+  const startOfWeek = getStartOfWeekWita();
+  const endOfWeek = getEndOfWeekWita();
+  const { visitsCount: weeklyVisitsCount } = calculateWeeklyMetrics(visits, startOfWeek, endOfWeek);
 
   return (
     <div className="w-full space-y-6">
@@ -384,6 +401,59 @@ export function ManagerOverview({
             })}
           </div>
         )}
+      </div>
+
+      {/* ── Marketing Outreach Operational Summary Card ── */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-[#1a3a8f]" />
+              <span>Marketing Outreach &amp; School Admissions</span>
+              {followUpCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-purple-100 text-purple-700">
+                  {followUpCount} Follow-ups
+                </span>
+              )}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Live school coverage, admissions campaign progress, and weekly field visits.
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate("marketing-outreach")}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#1a3a8f] font-extrabold text-xs transition self-start sm:self-auto"
+          >
+            View Outreach Tracker &rarr;
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <span className="text-[11px] font-bold text-slate-500">School Coverage</span>
+            <div className="text-xl font-black text-slate-800 mt-0.5">
+              {coverage.visited} / {coverage.total}{" "}
+              <span className="text-xs text-emerald-600 font-bold">({coverage.percentage}%)</span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">Target schools visited</p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200">
+            <span className="text-[11px] font-bold text-purple-700">Follow-ups Due</span>
+            <div className="text-xl font-black text-purple-900 mt-0.5">
+              {followUpCount}
+            </div>
+            <p className="text-[10px] text-purple-600 mt-0.5">Schools awaiting next action</p>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200">
+            <span className="text-[11px] font-bold text-emerald-700">Visits This Week</span>
+            <div className="text-xl font-black text-emerald-900 mt-0.5">
+              {weeklyVisitsCount}
+            </div>
+            <p className="text-[10px] text-emerald-600 mt-0.5">Field visits completed (WITA)</p>
+          </div>
+        </div>
       </div>
 
       {/* Available Batches & Capacity Openings in Command Center */}
