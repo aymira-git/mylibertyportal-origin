@@ -10,11 +10,12 @@ import {
 import {
   getStartOfWeekWita,
   getEndOfWeekWita,
-} from "../marketing/schoolOutreachRepository";
+} from "../marketing/schoolOutreachRepository.js";
 
 export function ManagerOverview({
   stats,
   loading,
+  outreachLoading = false,
   pendingApplications,
   unenrolledStudents,
   classesWithIssues,
@@ -431,26 +432,34 @@ export function ManagerOverview({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
             <span className="text-[11px] font-bold text-slate-500">School Coverage</span>
-            <div className="text-xl font-black text-slate-800 mt-0.5">
-              {coverage.visited} / {coverage.total}{" "}
-              <span className="text-xs text-emerald-600 font-bold">({coverage.percentage}%)</span>
-            </div>
+            {outreachLoading ? (
+              <div className="h-7 w-24 mt-1 rounded-lg bg-slate-200 animate-pulse" />
+            ) : (
+              <div className="text-xl font-black text-slate-800 mt-0.5">
+                {coverage.visited} / {coverage.total}{" "}
+                <span className="text-xs text-emerald-600 font-bold">({coverage.percentage}%)</span>
+              </div>
+            )}
             <p className="text-[10px] text-slate-400 mt-0.5">Target schools visited</p>
           </div>
 
           <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200">
             <span className="text-[11px] font-bold text-purple-700">Follow-ups Due</span>
-            <div className="text-xl font-black text-purple-900 mt-0.5">
-              {followUpCount}
-            </div>
+            {outreachLoading ? (
+              <div className="h-7 w-12 mt-1 rounded-lg bg-purple-200 animate-pulse" />
+            ) : (
+              <div className="text-xl font-black text-purple-900 mt-0.5">{followUpCount}</div>
+            )}
             <p className="text-[10px] text-purple-600 mt-0.5">Schools awaiting next action</p>
           </div>
 
           <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200">
             <span className="text-[11px] font-bold text-emerald-700">Visits This Week</span>
-            <div className="text-xl font-black text-emerald-900 mt-0.5">
-              {weeklyVisitsCount}
-            </div>
+            {outreachLoading ? (
+              <div className="h-7 w-12 mt-1 rounded-lg bg-emerald-200 animate-pulse" />
+            ) : (
+              <div className="text-xl font-black text-emerald-900 mt-0.5">{weeklyVisitsCount}</div>
+            )}
             <p className="text-[10px] text-emerald-600 mt-0.5">Field visits completed (WITA)</p>
           </div>
         </div>

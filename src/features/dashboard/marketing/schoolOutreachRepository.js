@@ -109,9 +109,10 @@ export function getEndOfWeekWita(date = new Date()) {
  * Supports date range, officer filtering, server-side ordering, and limits to prevent
  * unbounded collectionGroup streaming.
  *
- * @param {function(Array<object>): void|object} arg1 - onData callback OR options object
- * @param {function(Error): void|function(Array<object>): void|object} [arg2] - onError callback OR onData callback OR options object
+ * @param {function(Array<object>): void|object} arg1 - onData callback (required) OR options object
+ * @param {function(Error): void|function(Array<object>): void|object} [arg2] - onError callback OR onData callback (required when arg1 is options) OR options object
  * @param {object|function(Error): void} [arg3] - options object OR onError callback
+ * @throws {TypeError} If onData is not a function.
  * @returns {function(): void} Unsubscribe function
  */
 export function listenToOutreachVisits(arg1, arg2, arg3) {
@@ -135,6 +136,13 @@ export function listenToOutreachVisits(arg1, arg2, arg3) {
     options = arg1;
     onData = arg2;
     onError = arg3;
+  }
+
+  if (typeof onData !== "function") {
+    throw new TypeError(
+      "listenToOutreachVisits: onData must be a function. " +
+        "Pass it as the first argument or as the second argument when the first is an options object."
+    );
   }
 
   const constraints = [];
@@ -168,32 +176,32 @@ export function listenToOutreachVisits(arg1, arg2, arg3) {
   return onSnapshot(
     q,
     (snap) => {
-      const visits = snap.docs
-        .map((d) => {
-          let schoolId = "";
-          if (d.ref?.path) {
-            const pathParts = d.ref.path.split("/").filter(Boolean);
-            const visitsIdx = pathParts.lastIndexOf("visits");
-            if (visitsIdx >= 2 && pathParts[visitsIdx - 2] === COLLECTION_NAME) {
-              schoolId = pathParts[visitsIdx - 1];
-            }
-          } else if (
-            d.ref?.parent?.id === "visits" &&
-            d.ref?.parent?.parent?.parent?.id === COLLECTION_NAME
-          ) {
-            schoolId = d.ref.parent.parent.id;
+      // Firestore already orders docs by visitDate per the orderBy constraint
+      // applied to the query — no client-side sort needed.
+      const visits = snap.docs.map((d) => {
+        let schoolId = "";
+        if (d.ref?.path) {
+          const pathParts = d.ref.path.split("/").filter(Boolean);
+          const visitsIdx = pathParts.lastIndexOf("visits");
+          if (visitsIdx >= 2 && pathParts[visitsIdx - 2] === COLLECTION_NAME) {
+            schoolId = pathParts[visitsIdx - 1];
           }
-          if (!schoolId) {
-            schoolId = d.data?.()?.schoolId || d.data?.schoolId || "";
-          }
-          return {
-            id: d.id,
-            ...d.data(),
-            schoolId,
-          };
-        })
-        .sort((a, b) => (b.visitDate || "").localeCompare(a.visitDate || ""));
-      onData(visits);
+        } else if (
+          d.ref?.parent?.id === "visits" &&
+          d.ref?.parent?.parent?.parent?.id === COLLECTION_NAME
+        ) {
+          schoolId = d.ref.parent.parent.id;
+        }
+        if (!schoolId) {
+          schoolId = d.data?.()?.schoolId || d.data?.schoolId || "";
+        }
+        return {
+          id: d.id,
+          ...d.data(),
+          schoolId,
+        };
+      });
+      if (typeof onData === "function") onData(visits);
     },
     (err) => {
       console.error("listenToOutreachVisits error:", err);

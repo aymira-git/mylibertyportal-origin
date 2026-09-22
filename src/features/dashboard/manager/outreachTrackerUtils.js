@@ -31,6 +31,10 @@ export function filterVisitsByOfficer(visits = [], officerId = "all") {
  * Defensively handles ISO strings, Date objects, Timestamps, and epoch numbers.
  * Returns null if the value is missing or cannot be parsed into a valid date.
  *
+ * All Date-based extraction uses UTC getters (getUTC*) to match the UTC basis
+ * used by getStartOfWeekWita / getEndOfWeekWita, avoiding off-by-one-day errors
+ * when the runtime's local timezone is behind UTC.
+ *
  * @param {any} dateVal
  * @returns {string|null} Canonical "YYYY-MM-DD" or null
  */
@@ -52,12 +56,13 @@ export function normalizeVisitDate(dateVal) {
       }
     }
 
-    // Try parsing as generic date string
+    // Try parsing as generic date string — use UTC getters to stay consistent
+    // with the WITA week boundaries produced by getStartOfWeekWita/getEndOfWeekWita.
     const parsed = new Date(trimmed);
     if (!isNaN(parsed.getTime())) {
-      const y = parsed.getFullYear();
-      const m = String(parsed.getMonth() + 1).padStart(2, "0");
-      const d = String(parsed.getDate()).padStart(2, "0");
+      const y = parsed.getUTCFullYear();
+      const m = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(parsed.getUTCDate()).padStart(2, "0");
       return `${y}-${m}-${d}`;
     }
     return null;
@@ -77,13 +82,14 @@ export function normalizeVisitDate(dateVal) {
     dateVal = new Date(dateVal.seconds * 1000);
   }
 
-  // Handle Date instance or numeric milliseconds timestamp
+  // Handle Date instance or numeric milliseconds timestamp — use UTC getters
+  // to match the WITA week boundary basis (see comment on string branch above).
   if (dateVal instanceof Date || typeof dateVal === "number") {
     const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
     if (!isNaN(d.getTime())) {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(d.getUTCDate()).padStart(2, "0");
       return `${y}-${m}-${day}`;
     }
   }

@@ -12,7 +12,7 @@ import {
   MarketingOutreachTracker,
   getFollowUpSchools,
 } from "./manager";
-import { listenToSchools, listenToOutreachVisits } from "./marketing";
+import { listenToSchools, listenToOutreachVisits, getStartOfWeekWita, getEndOfWeekWita } from "./marketing";
 
 export default function ManagerDashboard() {
   const toast = useToast();
@@ -26,11 +26,13 @@ export default function ManagerDashboard() {
   const [todosPermission, setTodosPermission] = useState(true);
   const [schools, setSchools] = useState([]);
   const [visits, setVisits] = useState([]);
+  const [weekVisits, setWeekVisits] = useState([]);
   const [schoolsLoading, setSchoolsLoading] = useState(true);
   const [visitsLoading, setVisitsLoading] = useState(true);
+  const [weekVisitsLoading, setWeekVisitsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
 
-  const outreachLoading = schoolsLoading || visitsLoading;
+  const outreachLoading = schoolsLoading || visitsLoading || weekVisitsLoading;
 
   useEffect(() => {
     const unsubUsers = onSnapshot(
@@ -99,7 +101,18 @@ export default function ManagerDashboard() {
       }
     );
 
+    // Bound the visit stream to a rolling 90-day window so the manager
+    // dashboard never streams the full unbounded visits collection group.
+    // getStartOfWeekWita anchors to Monday; subtract 12 full weeks (~90 days)
+    // to cover a meaningful quarter of outreach history.
+    const todayMonday = getStartOfWeekWita();
+    const [year, month, day] = todayMonday.split("-").map(Number);
+    const windowStart = new Date(Date.UTC(year, month - 1, day - 90));
+    const pad = (n) => String(n).padStart(2, "0");
+    const startDate = `${windowStart.getUTCFullYear()}-${pad(windowStart.getUTCMonth() + 1)}-${pad(windowStart.getUTCDate())}`;
+
     const unsubVisits = listenToOutreachVisits(
+      { startDate, orderDirection: "desc", limitCount: 200 },
       (data) => {
         setVisits(data);
         setVisitsLoading(false);
@@ -107,6 +120,24 @@ export default function ManagerDashboard() {
       (err) => {
         console.warn("manager visits listener:", err);
         setVisitsLoading(false);
+      }
+    );
+
+    // Second subscription scoped to the current WITA week only.
+    // Weekly KPI metrics (visits count, flyers, leads) are computed from this
+    // array so they are never truncated by the 90-day log limit above.
+    // limitCount: 500 is generous enough for any realistic weekly outreach volume.
+    const weekStart = getStartOfWeekWita();
+    const weekEnd = getEndOfWeekWita();
+    const unsubWeekVisits = listenToOutreachVisits(
+      { startDate: weekStart, endDate: weekEnd, orderDirection: "desc", limitCount: 500 },
+      (data) => {
+        setWeekVisits(data);
+        setWeekVisitsLoading(false);
+      },
+      (err) => {
+        console.warn("manager week-visits listener:", err);
+        setWeekVisitsLoading(false);
       }
     );
 
@@ -118,6 +149,7 @@ export default function ManagerDashboard() {
       unsubTodos();
       unsubSchools();
       unsubVisits();
+      unsubWeekVisits();
     };
   }, []);
 
@@ -261,7 +293,8 @@ export default function ManagerDashboard() {
           users={users}
           currentUserId={auth.currentUser?.uid}
           schools={schools}
-          visits={visits}
+          visits={weekVisits}
+          outreachLoading={outreachLoading}
         />
       ),
     },
@@ -273,6 +306,7 @@ export default function ManagerDashboard() {
         <MarketingOutreachTracker
           schools={schools}
           visits={visits}
+          weekVisits={weekVisits}
           loading={outreachLoading}
           users={users}
         />

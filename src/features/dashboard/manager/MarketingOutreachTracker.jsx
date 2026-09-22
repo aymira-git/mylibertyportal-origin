@@ -11,7 +11,7 @@ import {
 import {
   getStartOfWeekWita,
   getEndOfWeekWita,
-} from "../marketing/schoolOutreachRepository";
+} from "../marketing/schoolOutreachRepository.js";
 import {
   calculateCoverage,
   filterVisitsByOfficer,
@@ -22,9 +22,14 @@ import {
 export default function MarketingOutreachTracker({
   schools = [],
   visits = [],
+  weekVisits,
   loading = false,
   users = [],
 }) {
+  // weekVisits is a week-scoped subscription used exclusively for KPI metric
+  // calculations, ensuring the limit on the 90-day log query (visits) never
+  // silently truncates weekly counts. Falls back to visits if not provided.
+  const metricsVisits = weekVisits ?? visits;
   const [selectedOfficer, setSelectedOfficer] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewSchool, setViewSchool] = useState(null);
@@ -76,16 +81,30 @@ export default function MarketingOutreachTracker({
   const startOfWeek = useMemo(() => getStartOfWeekWita(), []);
   const endOfWeek = useMemo(() => getEndOfWeekWita(), []);
 
-  // Filtered visits by officer
+  // Today's date in WITA (UTC+8) as YYYY-MM-DD, used for "scheduled today" metric
+  const todayWita = useMemo(() => {
+    const WITA_OFFSET_MS = 8 * 60 * 60 * 1000;
+    const now = new Date(Date.now() + WITA_OFFSET_MS);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}`;
+  }, []);
+
+  // Filtered visits by officer — used only for the recent log display
   const filteredVisits = useMemo(() => {
     return filterVisitsByOfficer(visits, selectedOfficer);
   }, [visits, selectedOfficer]);
 
+  // Weekly KPI metrics use metricsVisits (week-scoped) so the log limit never
+  // truncates the count. Also filter by officer for consistency.
+  const filteredMetricsVisits = useMemo(() => {
+    return filterVisitsByOfficer(metricsVisits, selectedOfficer);
+  }, [metricsVisits, selectedOfficer]);
+
   // Weekly visits and metrics in current WITA week
   const { visitsCount: weeklyVisitsCount, flyersCount: weeklyFlyers, leadsCount: weeklyLeads } =
     useMemo(() => {
-      return calculateWeeklyMetrics(filteredVisits, startOfWeek, endOfWeek);
-    }, [filteredVisits, startOfWeek, endOfWeek]);
+      return calculateWeeklyMetrics(filteredMetricsVisits, startOfWeek, endOfWeek);
+    }, [filteredMetricsVisits, startOfWeek, endOfWeek]);
 
   // School status metrics
   const { total: totalSchools, visited: visitedCount, percentage: visitedPercentage } =
@@ -93,9 +112,13 @@ export default function MarketingOutreachTracker({
       return calculateCoverage(schools);
     }, [schools]);
 
+  // Schools with a visit explicitly scheduled for today (WITA) — status must
+  // be "scheduled" AND scheduledDate must match today's WITA date.
   const scheduledCount = useMemo(() => {
-    return schools.filter((s) => s.status === "scheduled").length;
-  }, [schools]);
+    return schools.filter(
+      (s) => s.status === "scheduled" && s.scheduledDate === todayWita
+    ).length;
+  }, [schools, todayWita]);
 
   const followUpSchools = useMemo(() => {
     return getFollowUpSchools(schools);
