@@ -5,6 +5,7 @@ import {
   studentIdSchema,
   batchSchema,
   applicationSchema,
+  corporateEventSchema,
 } from "./index.js";
 
 describe("inviteSchema", () => {
@@ -253,5 +254,80 @@ describe("applicationSchema", () => {
       branch: "  bone bolango  ",
     });
     expect(clean.branch).toBe("Bone Bolango");
+  });
+});
+
+describe("corporateEventSchema", () => {
+  it("validates a valid corporate event with audienceType all", () => {
+    const event = corporateEventSchema.parse({
+      name: "All-Hands Annual Gathering",
+      eventDate: "2026-10-15",
+      audienceType: "all",
+    });
+    expect(event.name).toBe("All-Hands Annual Gathering");
+    expect(event.eventDate).toBe("2026-10-15");
+    expect(event.audienceType).toBe("all");
+    expect(event.audienceValue).toBeNull();
+    expect(event.status).toBe("active");
+  });
+
+  it("normalizes branch and division audience values", () => {
+    const branchEvt = corporateEventSchema.parse({
+      name: "Campus Training",
+      eventDate: "2026-10-15",
+      audienceType: "branch",
+      audienceValue: "cabang utama",
+    });
+    expect(branchEvt.audienceValue).toBe("Kota Gorontalo");
+
+    const divEvt = corporateEventSchema.parse({
+      name: "Kindergarten Workshop",
+      eventDate: "2026-10-15",
+      audienceType: "division",
+      audienceValue: "kids school",
+    });
+    expect(divEvt.audienceValue).toBe("kindergarten");
+  });
+
+  it("validates role audience including manager", () => {
+    const roleEvt = corporateEventSchema.parse({
+      name: "Management Sync",
+      eventDate: "2026-10-15",
+      audienceType: "role",
+      audienceValue: "manager",
+    });
+    expect(roleEvt.audienceValue).toBe("manager");
+  });
+
+  it("rejects invalid roles for audience", () => {
+    expect(() =>
+      corporateEventSchema.parse({
+        name: "Invalid Role Event",
+        eventDate: "2026-10-15",
+        audienceType: "role",
+        audienceValue: "student",
+      })
+    ).toThrow(/Allowed roles/);
+  });
+
+  it("rejects missing audienceValue when audienceType is not all", () => {
+    expect(() =>
+      corporateEventSchema.parse({
+        name: "Branch Event",
+        eventDate: "2026-10-15",
+        audienceType: "branch",
+        audienceValue: "",
+      })
+    ).toThrow(/Audience value is required/);
+  });
+
+  it("rejects invalid date format", () => {
+    expect(() =>
+      corporateEventSchema.parse({
+        name: "Bad Date Event",
+        eventDate: "15-10-2026",
+        audienceType: "all",
+      })
+    ).toThrow(/YYYY-MM-DD/);
   });
 });

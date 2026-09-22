@@ -5,6 +5,7 @@ import {
   getDistinctStaffBranches,
   getInstructorWorkload,
   isActiveClass,
+  TRACKED_STAFF_ROLES,
 } from "./staffUtils.js";
 
 describe("isActiveClass", () => {
@@ -171,3 +172,14 @@ describe("getDistinctStaffBranches", () => {
     ]);
   });
 });
+
+describe("TRACKED_STAFF_ROLES", () => {
+  it("includes manager so manager attendance badges can be printed", () => {
+    expect(TRACKED_STAFF_ROLES).toContain("manager");
+    expect(TRACKED_STAFF_ROLES).toContain("instructor");
+    expect(TRACKED_STAFF_ROLES).toContain("frontoffice");
+    expect(TRACKED_STAFF_ROLES).toContain("marketing");
+    expect(TRACKED_STAFF_ROLES).toContain("officeboy");
+  });
+});
+

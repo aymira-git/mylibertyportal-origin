@@ -8,3 +8,6 @@ export * from "./punctuality";
 export { autoCloseShift } from "./shiftAutoClose";
 export * from "./shiftStatus";
 export * from "./shiftsRepository";
+export { default as CorporateEventsPanel } from "./CorporateEventsPanel";
+export * from "./corporateEvents";
+export * from "./corporateEventsRepository";

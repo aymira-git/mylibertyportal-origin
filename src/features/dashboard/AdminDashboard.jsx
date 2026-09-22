@@ -5,7 +5,7 @@ import { AIAssistant, DashboardShell, WelcomeBanner } from "../shared";
 import { UserPlus, GraduationCap, BookOpen, AlertCircle, ArrowRight } from "lucide-react";
 import { ReportsDashboard } from "../reports";
 import { StudentApplications, UserForm, StudentRoster, BadgeModal } from "../students";
-import { KioskModal, KioskSidebarButton } from "../attendance";
+import { KioskModal, KioskSidebarButton, CorporateEventsPanel } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { StaffDirectory, InvitesPanel, TasksPanel } from "../staff";
 import LogRetentionCard from "./LogRetentionCard";
@@ -230,6 +230,11 @@ export default function AdminDashboard() {
           onDeleteInvite={handleDeleteInvite}
         />
       ),
+    },
+    {
+      id: "events",
+      label: "Events",
+      component: <CorporateEventsPanel />,
     },
     {
       id: "reports",

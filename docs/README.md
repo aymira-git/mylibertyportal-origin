@@ -29,6 +29,12 @@ Welcome to the central documentation directory for **MyLiberty Portal**. This fo
   * Admissions pipeline with 1-click WhatsApp applicant/parent outreach and automatic redirect to student profile setup.
   * Role-based access control (Admin-only batch authoring, Front Office enrollment capabilities).
 
+* **[`Corporate Event Attendance — Implementation Plan (Audited).md`](./Corporate%20Event%20Attendance%20%E2%80%94%20Implementation%20Plan%20%28Audited%29.md)**
+  * Corporate events as attendance reasons, not classes (`corporateEvents` collection).
+  * Three audience scopes: students, staff roles, and managers across `all`, `branch`, `division`, and `role`.
+  * Automatic kiosk check-in tagging and staff/manager General Duty fallback on ambiguous overlaps.
+  * Dedicated event management panel for Admin and Front Office dashboards.
+
 ---
 
 ### 3. Product Roadmaps

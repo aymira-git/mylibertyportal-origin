@@ -64,6 +64,8 @@ export function clockIn({
   punctuality = null,
   stationId = "reception-01",
   docId = null,
+  shiftType = null,
+  eventId = null,
 }) {
   const payload = {
     userId: uid,
@@ -80,6 +82,8 @@ export function clockIn({
     stationId,
     clockInSource: "kiosk",
     createdAt: serverTimestamp(),
+    ...(shiftType ? { shiftType } : {}),
+    ...(eventId ? { eventId } : {}),
   };
 
   if (docId) {
@@ -140,13 +144,15 @@ export function switchClassAtomic({
   return batch.commit();
 }
 
-export function recordStudentAttendance({ uid, displayName }) {
+export function recordStudentAttendance({ uid, displayName, eventId = null, eventName = null }) {
   return addDoc(collection(db, "attendance"), {
     userId: uid,
     displayName: displayName || "",
     role: "student",
     timestamp: new Date().toISOString(),
     method: "KIOSK",
+    ...(eventId ? { eventId } : {}),
+    ...(eventName ? { eventName } : {}),
   });
 }
 

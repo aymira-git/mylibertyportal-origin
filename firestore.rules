@@ -36,7 +36,11 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(uid)).data.role;
     }
 
-    function isTrackedRole(r) {
+    function isTrackedShiftRole(r) {
+      return r in ['instructor', 'frontoffice', 'marketing', 'officeboy', 'admin', 'manager'];
+    }
+
+    function isTrackedLeaveRole(r) {
       return r in ['instructor', 'frontoffice', 'marketing', 'officeboy', 'admin'];
     }
 
@@ -152,7 +156,7 @@ service cloud.firestore {
       allow create: if isAdmin()
         && request.resource.data.userId is string
         && request.resource.data.clockOut == null
-        && isTrackedRole(roleOf(request.resource.data.userId));
+        && isTrackedShiftRole(roleOf(request.resource.data.userId));
       // Deploy B: Shift updates and manual corrections are strictly Admin-only
       allow update, delete: if isAdmin();
     }
@@ -165,13 +169,27 @@ service cloud.firestore {
       allow update, delete: if false; // append-only immutable audit trail
     }
 
+    match /corporateEvents/{eventId} {
+      allow read: if isStaff();
+      allow create: if (isAdmin() || isFrontOffice())
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.name is string
+        && request.resource.data.eventDate is string
+        && request.resource.data.audienceType in ['all', 'branch', 'role', 'division'];
+      allow update: if (isAdmin() || isFrontOffice())
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false; // soft-cancel only
+    }
+
     match /staffLeave/{leaveId} {
       allow read: if isAdmin()
         || isManager()
         || (signedIn() && resource.data.userId == request.auth.uid);
       allow create: if isAdmin()
         && request.resource.data.status == 'approved'
-        && isTrackedRole(roleOf(request.resource.data.userId));
+        && isTrackedLeaveRole(roleOf(request.resource.data.userId));
       allow update, delete: if isAdmin();
     }
 

@@ -10,7 +10,7 @@ import {
   BadgeModal,
   isActiveStudent,
 } from "../students";
-import { KioskModal, KioskSidebarButton } from "../attendance";
+import { KioskModal, KioskSidebarButton, CorporateEventsPanel } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { TasksPanel } from "../staff";
 import {
@@ -243,6 +243,11 @@ export default function FrontOfficeDashboard() {
           isAdmin={false}
         />
       ),
+    },
+    {
+      id: "events",
+      label: "Events",
+      component: <CorporateEventsPanel />,
     },
     {
       id: "reports",

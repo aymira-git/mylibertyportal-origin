@@ -8,6 +8,7 @@ import {
   fetchOpenShiftFor,
   fetchStaffLeaves,
   logStaffLeave,
+  recordStudentAttendance,
   switchClassAtomic,
 } from "./shiftsRepository.js";
 
@@ -69,6 +70,88 @@ describe("clockIn", () => {
   it("writes to a chosen document id through a batch when docId is given", async () => {
     await clockIn({ uid: "i1", role: "instructor", clockInAt: at, docId: "fixed-id" });
     expect(fake.find("shifts/fixed-id")).toMatchObject({ kind: "set", via: "batch" });
+  });
+
+  it("records a General Duty shift for manager role", async () => {
+    await clockIn({
+      uid: "m1",
+      displayName: "Pak Manager",
+      role: "manager",
+      classId: "general",
+      className: "General Duty",
+      clockInAt: at,
+    });
+    const op = fake.opsOf("add")[0];
+    expect(op.data).toMatchObject({
+      userId: "m1",
+      displayName: "Pak Manager",
+      role: "manager",
+      classId: "general",
+      className: "General Duty",
+      clockIn: "2026-09-21T02:00:00.000Z",
+      clockOut: null,
+      punctualityStatus: "Present",
+    });
+  });
+
+  it("attaches shiftType and eventId when clocking in to a corporate event", async () => {
+    await clockIn({
+      uid: "i1",
+      displayName: "Ms. Rina",
+      role: "instructor",
+      classId: "corporate_event:evt-123",
+      className: "Teacher Training Summit",
+      clockInAt: at,
+      shiftType: "corporate_event",
+      eventId: "evt-123",
+    });
+    const op = fake.opsOf("add")[0];
+    expect(op.data).toMatchObject({
+      userId: "i1",
+      displayName: "Ms. Rina",
+      role: "instructor",
+      classId: "corporate_event:evt-123",
+      className: "Teacher Training Summit",
+      shiftType: "corporate_event",
+      eventId: "evt-123",
+      clockIn: "2026-09-21T02:00:00.000Z",
+      clockOut: null,
+    });
+  });
+});
+
+describe("recordStudentAttendance", () => {
+  it("records a normal student attendance when no event is attached", async () => {
+    await recordStudentAttendance({ uid: "s1", displayName: "Ahmad" });
+    const op = fake.opsOf("add")[0];
+    expect(op.path.startsWith("attendance/")).toBe(true);
+    expect(op.data).toMatchObject({
+      userId: "s1",
+      displayName: "Ahmad",
+      role: "student",
+      method: "KIOSK",
+    });
+    expect(op.data.eventId).toBeUndefined();
+    expect(op.data.eventName).toBeUndefined();
+  });
+
+  it("attaches eventId and eventName when student attends a corporate event", async () => {
+    await recordStudentAttendance({
+      uid: "s2",
+      displayName: "Budi",
+      eventId: "evt-456",
+      eventName: "School Open House",
+    });
+    const op = fake.opsOf("add")[0];
+    expect(op.path.startsWith("attendance/")).toBe(true);
+    expect(op.data).toMatchObject({
+      userId: "s2",
+      displayName: "Budi",
+      role: "student",
+      method: "KIOSK",
+      eventId: "evt-456",
+      eventName: "School Open House",
+    });
   });
 });
 

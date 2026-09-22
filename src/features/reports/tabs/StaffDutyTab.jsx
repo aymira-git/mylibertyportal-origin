@@ -318,6 +318,7 @@ const StaffDutyTab = forwardRef(
               <option value="all">All Roles</option>
               <option value="instructor">Instructors</option>
               <option value="frontoffice">Front Office</option>
+              <option value="manager">Manager</option>
               <option value="marketing">Marketing</option>
               <option value="officeboy">Office Boy</option>
             </select>

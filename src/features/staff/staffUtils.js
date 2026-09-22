@@ -48,7 +48,13 @@ export const STAFF_STATUS_MAP = {
   },
 };
 
-export const TRACKED_STAFF_ROLES = ["instructor", "frontoffice", "marketing", "officeboy"];
+export const TRACKED_STAFF_ROLES = [
+  "instructor",
+  "frontoffice",
+  "manager",
+  "marketing",
+  "officeboy",
+];
 
 export const STAFF_STATUS_OPTIONS = Object.entries(STAFF_STATUS_MAP).map(([value, conf]) => ({
   value,
