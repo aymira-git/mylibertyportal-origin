@@ -1,5 +1,5 @@
-const CLOUD_NAME = "w1vndykv";
-const UPLOAD_PRESET = "mylibertyies-f2f38";
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "sxoiqoae";
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "mylibertyies-f2f38";
 
 // Uploads a file directly from the browser to Cloudinary's free tier
 // and returns the permanent HTTPS URL of the uploaded image.
