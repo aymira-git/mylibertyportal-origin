@@ -63,8 +63,8 @@ export default function GorontaloOutreachMap({
       const customIcon = L.divIcon({
         className: "custom-school-marker",
         html: `
-          <div class="relative flex items-center justify-center w-8 h-8 rounded-full shadow-md text-white font-bold text-xs ${statusInfo.bgClass} border-2 border-white ring-2 ${statusInfo.borderClass}/30 transition-transform transform hover:scale-115">
-            <span>${school.tier === "SMK" ? "K" : school.tier === "SMP" ? "P" : "A"}</span>
+          <div class="relative flex items-center justify-center w-8 h-8 rounded-full shadow-md text-white font-bold text-[11px] ${statusInfo.bgClass} border-2 border-white ring-2 ${statusInfo.borderClass}/30 transition-transform transform hover:scale-115">
+            <span>${school.tier === "SD" ? "SD" : school.tier === "SMK" ? "K" : school.tier === "SMP" ? "P" : school.tier === "University" ? "U" : "A"}</span>
           </div>
         `,
         iconSize: [32, 32],

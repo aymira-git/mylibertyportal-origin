@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const SCHOOL_TIERS = ["SMA", "SMK", "SMP", "University", "Other"];
+export const SCHOOL_TIERS = ["SD", "SMP", "SMA", "SMK", "University", "Other"];
 
 export const OUTREACH_STATUSES = ["pending", "scheduled", "visited", "follow_up"];
 

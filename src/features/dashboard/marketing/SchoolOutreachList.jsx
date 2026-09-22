@@ -81,7 +81,7 @@ export default function SchoolOutreachList({
         </div>
 
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {["all", "SMA", "SMK", "SMP"].map((tier) => (
+          {["all", "SD", "SMP", "SMA", "SMK"].map((tier) => (
             <button
               key={tier}
               onClick={() => setSelectedTier(tier)}

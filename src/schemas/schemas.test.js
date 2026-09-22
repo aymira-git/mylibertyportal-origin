@@ -348,6 +348,16 @@ describe("schoolMasterSchema", () => {
     expect(valid.active).toBe(true);
   });
 
+  it("validates SD tier successfully", () => {
+    const sd = schoolMasterSchema.parse({
+      name: "SDN 1 Kota Tengah Gorontalo",
+      lat: 0.552,
+      lng: 123.059,
+      tier: "SD",
+    });
+    expect(sd.tier).toBe("SD");
+  });
+
   it("rejects coordinates outside geographic limits", () => {
     expect(() =>
       schoolMasterSchema.parse({
