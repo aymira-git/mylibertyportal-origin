@@ -13,6 +13,7 @@ import {
   getFollowUpSchools,
 } from "./manager";
 import { listenToSchools, listenToOutreachVisits, getStartOfWeekWita, getEndOfWeekWita } from "./marketing";
+import { reportError } from "../../utils/reportError";
 
 export default function ManagerDashboard() {
   const toast = useToast();
@@ -31,8 +32,18 @@ export default function ManagerDashboard() {
   const [visitsLoading, setVisitsLoading] = useState(true);
   const [weekVisitsLoading, setWeekVisitsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [outreachError, setOutreachError] = useState(null);
+  const [outreachRetryKey, setOutreachRetryKey] = useState(0);
 
   const outreachLoading = schoolsLoading || visitsLoading || weekVisitsLoading;
+
+  const handleRetryOutreach = () => {
+    setSchoolsLoading(true);
+    setVisitsLoading(true);
+    setWeekVisitsLoading(true);
+    setOutreachError(null);
+    setOutreachRetryKey((k) => k + 1);
+  };
 
   useEffect(() => {
     const unsubUsers = onSnapshot(
@@ -90,14 +101,28 @@ export default function ManagerDashboard() {
       }
     );
 
+    return () => {
+      unsubUsers();
+      unsubClasses();
+      unsubApplications();
+      unsubShifts();
+      unsubTodos();
+    };
+  }, []);
+
+  // Isolated subscription lifecycle for outreach collections with retryability,
+  // error logging to telemetry, and toast notifications.
+  useEffect(() => {
     const unsubSchools = listenToSchools(
       (data) => {
         setSchools(data);
         setSchoolsLoading(false);
       },
       (err) => {
-        console.warn("manager schools listener:", err);
+        reportError(err, "manager_schools_listener");
         setSchoolsLoading(false);
+        setOutreachError((prev) => prev || err.message || "Failed to load schools");
+        toast("Failed to load school outreach data: " + (err.message || "Unknown error"), "error");
       }
     );
 
@@ -106,8 +131,11 @@ export default function ManagerDashboard() {
     // getStartOfWeekWita anchors to Monday; subtract 12 full weeks (~90 days)
     // to cover a meaningful quarter of outreach history.
     const todayMonday = getStartOfWeekWita();
-    const [year, month, day] = todayMonday.split("-").map(Number);
-    const windowStart = new Date(Date.UTC(year, month - 1, day - 90));
+    // Subtract 90 days via milliseconds from the Monday Date object to avoid
+    // day-of-month underflow (e.g. day - 90 would produce a nonsensical day component
+    // that only works by accident via Date normalization, and drifts across months).
+    const mondayDate = new Date(todayMonday + "T00:00:00Z");
+    const windowStart = new Date(mondayDate.getTime() - 90 * 24 * 60 * 60 * 1000);
     const pad = (n) => String(n).padStart(2, "0");
     const startDate = `${windowStart.getUTCFullYear()}-${pad(windowStart.getUTCMonth() + 1)}-${pad(windowStart.getUTCDate())}`;
 
@@ -118,8 +146,10 @@ export default function ManagerDashboard() {
         setVisitsLoading(false);
       },
       (err) => {
-        console.warn("manager visits listener:", err);
+        reportError(err, "manager_visits_listener");
         setVisitsLoading(false);
+        setOutreachError((prev) => prev || err.message || "Failed to load visits");
+        toast("Failed to load outreach visits: " + (err.message || "Unknown error"), "error");
       }
     );
 
@@ -136,22 +166,18 @@ export default function ManagerDashboard() {
         setWeekVisitsLoading(false);
       },
       (err) => {
-        console.warn("manager week-visits listener:", err);
+        reportError(err, "manager_week_visits_listener");
         setWeekVisitsLoading(false);
+        setOutreachError((prev) => prev || err.message || "Failed to load weekly visits");
       }
     );
 
     return () => {
-      unsubUsers();
-      unsubClasses();
-      unsubApplications();
-      unsubShifts();
-      unsubTodos();
       unsubSchools();
       unsubVisits();
       unsubWeekVisits();
     };
-  }, []);
+  }, [outreachRetryKey, toast]);
 
   const handleAddTodo = async (todoData) => {
     try {
@@ -295,6 +321,8 @@ export default function ManagerDashboard() {
           schools={schools}
           visits={weekVisits}
           outreachLoading={outreachLoading}
+          outreachError={outreachError}
+          onRetryOutreach={handleRetryOutreach}
         />
       ),
     },
@@ -309,6 +337,8 @@ export default function ManagerDashboard() {
           weekVisits={weekVisits}
           loading={outreachLoading}
           users={users}
+          error={outreachError}
+          onRetry={handleRetryOutreach}
         />
       ),
     },

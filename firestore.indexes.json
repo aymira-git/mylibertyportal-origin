@@ -28,6 +28,7 @@
       "collectionGroup": "visits",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
+        { "fieldPath": "source", "order": "ASCENDING" },
         { "fieldPath": "visitDate", "order": "DESCENDING" }
       ]
     },
@@ -35,6 +36,15 @@
       "collectionGroup": "visits",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
+        { "fieldPath": "source", "order": "ASCENDING" },
+        { "fieldPath": "visitDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "visits",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "source", "order": "ASCENDING" },
         { "fieldPath": "createdBy", "order": "ASCENDING" },
         { "fieldPath": "visitDate", "order": "DESCENDING" }
       ]

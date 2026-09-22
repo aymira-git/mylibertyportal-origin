@@ -14,6 +14,7 @@ import {
   orderBy,
   limit,
 } from "firebase/firestore";
+/** @typedef {import("firebase/firestore").QueryConstraint} QueryConstraint */
 import { schoolMasterSchema, schoolVisitSchema } from "../../../schemas/schoolOutreachSchema.js";
 import { WITA_OFFSET_MS } from "../../../utils/dateWita.js";
 import { KOTA_GORONTALO_SEEDS } from "./seedSchoolsData.js";
@@ -21,22 +22,63 @@ import { KOTA_GORONTALO_SEEDS } from "./seedSchoolsData.js";
 const COLLECTION_NAME = "schoolOutreach";
 
 /**
- * Subscribes to all active school outreach records in real-time.
- * In-memory sorting by name to avoid composite index requirements.
+ * Subscribes to active school outreach records in real-time, ordered by name.
+ * Filters and ordering are applied server-side to avoid an unbounded collection
+ * scan and redundant client-side work.
  *
- * @param {function(Array<object>): void} onData
- * @param {function(Error): void} [onError]
- * @returns {function(): void} Unsubscribe function
+ * @param {((schools: any[]) => void)} onData
+ * @param {((err: any) => void)} [onError]
+ * @returns {(() => void)} Unsubscribe function
  */
-export function listenToSchools(onData, onError) {
-  const colRef = collection(db, COLLECTION_NAME);
+/**
+ * Subscribes to active school outreach records.
+ * Supports an optional `options` object as the first argument for server‑side filtering.
+ * Currently supported options:
+ *   - `region` (string): restricts results to schools where `region` equals the provided value.
+ *
+ * Backwards compatible overloads:
+ *   - `listenToSchools(onData, onError?)`
+ *   - `listenToSchools(options, onData, onError?)`
+ *
+ * @param {object|((schools: any[]) => void)} arg1 - options object or onData callback.
+ * @param {((err: any) => void)|((schools: any[]) => void)} [arg2] - onError callback or onData when arg1 is options.
+ * @param {((err: any) => void)} [arg3] - onError when using the options‑first signature.
+ * @returns {(() => void)} Unsubscribe function
+ */
+export function listenToSchools(arg1, arg2, arg3) {
+  let onData;
+  let onError;
+  let options;
+
+  if (typeof arg1 === "function") {
+    // Signature: (onData, onError?)
+    onData = arg1;
+    onError = typeof arg2 === "function" ? arg2 : undefined;
+    options = arg3 || {};
+  } else if (typeof arg1 === "object" && arg1 !== null) {
+    // Signature: (options, onData, onError?)
+    options = arg1;
+    onData = arg2;
+    onError = typeof arg3 === "function" ? arg3 : undefined;
+  } else {
+    throw new TypeError("listenToSchools: invalid arguments");
+  }
+
+  if (typeof onData !== "function") {
+    throw new TypeError("listenToSchools: onData callback is required");
+  }
+
+  const constraints = [where("active", "==", true), orderBy("name")];
+  if (options.region) {
+    constraints.unshift(where("region", "==", options.region)); // region filter first
+  }
+
+  const q = query(collection(db, COLLECTION_NAME), ...constraints);
+
   return onSnapshot(
-    colRef,
+    q,
     (snap) => {
-      const schools = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((s) => s.active !== false)
-        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      const schools = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       onData(schools);
     },
     (err) => {
@@ -50,9 +92,9 @@ export function listenToSchools(onData, onError) {
  * Subscribes to visits history for a specific school.
  *
  * @param {string} schoolId
- * @param {function(Array<object>): void} onData
- * @param {function(Error): void} [onError]
- * @returns {function(): void} Unsubscribe function
+ * @param {((visits: any[]) => void)} onData
+ * @param {((err: any) => void)} [onError]
+ * @returns {(() => void)} Unsubscribe function
  */
 export function listenToSchoolVisits(schoolId, onData, onError) {
   if (!schoolId) {
@@ -65,7 +107,7 @@ export function listenToSchoolVisits(schoolId, onData, onError) {
     visitsColRef,
     (snap) => {
       const visits = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
+        .map((d) => /** @type {{ id: string, visitDate?: string, [key: string]: any }} */ ({ id: d.id, ...d.data() }))
         .sort((a, b) => (b.visitDate || "").localeCompare(a.visitDate || ""));
       onData(visits);
     },
@@ -105,79 +147,72 @@ export function getEndOfWeekWita(date = new Date()) {
 }
 
 /**
- * Subscribes to visits history across all schools using collectionGroup.
- * Supports date range, officer filtering, server-side ordering, and limits to prevent
- * unbounded collectionGroup streaming.
- *
- * @param {function(Array<object>): void|object} arg1 - onData callback (required) OR options object
- * @param {function(Error): void|function(Array<object>): void|object} [arg2] - onError callback OR onData callback (required when arg1 is options) OR options object
- * @param {object|function(Error): void} [arg3] - options object OR onError callback
- * @throws {TypeError} If onData is not a function.
- * @returns {function(): void} Unsubscribe function
+ * @typedef {object} OutreachVisitOptions
+ * @property {string}  [startDate]      - ISO date string lower bound for visitDate (inclusive).
+ * @property {string}  [endDate]        - ISO date string upper bound for visitDate (inclusive).
+ * @property {string}  [officerId]      - UID to filter by createdBy; pass "all" to skip.
+ * @property {"asc"|"desc"} [orderDirection] - Firestore orderBy direction (default "desc").
+ * @property {number}  [limitCount]     - Maximum documents to stream (default 100).
+ * @property {number}  [limit]          - Alias for limitCount (deprecated; prefer limitCount).
  */
-export function listenToOutreachVisits(arg1, arg2, arg3) {
-  let onData;
-  let onError;
-  let options = {};
 
-  if (typeof arg1 === "function") {
-    onData = arg1;
-    if (typeof arg2 === "function") {
-      onError = arg2;
-      options = arg3 || {};
-    } else if (typeof arg2 === "object" && arg2 !== null) {
-      options = arg2;
-      onError = typeof arg3 === "function" ? arg3 : undefined;
-    } else {
-      onError = undefined;
-      options = arg3 || {};
-    }
-  } else if (typeof arg1 === "object" && arg1 !== null) {
-    options = arg1;
-    onData = arg2;
-    onError = arg3;
-  }
-
+/**
+ * Subscribes to outreach visits across all schools via a collectionGroup query.
+ * The stream is scoped to `schoolOutreach` visits only (via the `source` discriminator
+ * field) and bounded by the options you provide to prevent unbounded streaming.
+ *
+ * @param {OutreachVisitOptions} options - Query options (pass `{}` for defaults).
+ * @param {((visits: any[]) => void)} onData - Called with the visit array on every update.
+ * @param {((err: any) => void)} [onError] - Optional error handler.
+ * @returns {(() => void)} Unsubscribe function.
+ * @throws {TypeError} If `onData` is not a function.
+ */
+export function listenToOutreachVisits(options, onData, onError) {
   if (typeof onData !== "function") {
     throw new TypeError(
-      "listenToOutreachVisits: onData must be a function. " +
-        "Pass it as the first argument or as the second argument when the first is an options object."
+      "listenToOutreachVisits: second argument `onData` must be a function."
     );
   }
 
-  const constraints = [];
+  const opts = options || {};
+
+  // Discriminator: scope to only visits under the schoolOutreach parent collection.
+  // collectionGroup("visits") would otherwise match any `visits` subcollection in the
+  // entire database if Firestore rules ever allow broader reads.
+  /** @type {QueryConstraint[]} */
+  const constraints = [where("source", "==", COLLECTION_NAME)];
 
   // Filter by marketing officer if specified
-  if (options.officerId && options.officerId !== "all") {
-    constraints.push(where("createdBy", "==", options.officerId));
+  if (opts.officerId && opts.officerId !== "all") {
+    constraints.push(where("createdBy", "==", opts.officerId));
   }
 
   // Filter by date range if specified
-  if (options.startDate) {
-    constraints.push(where("visitDate", ">=", options.startDate));
+  if (opts.startDate) {
+    constraints.push(where("visitDate", ">=", opts.startDate));
   }
-  if (options.endDate) {
-    constraints.push(where("visitDate", "<=", options.endDate));
+  if (opts.endDate) {
+    constraints.push(where("visitDate", "<=", opts.endDate));
   }
 
-  // Server-side ordering by visitDate descending (or specified direction)
-  const orderDirection = options.orderDirection || "desc";
+  // Server-side ordering by visitDate (defaults to descending)
+  const orderDirection = opts.orderDirection || "desc";
   constraints.push(orderBy("visitDate", orderDirection));
 
-  // Limit to avoid unbounded streaming (defaults to 100 unless explicitly null/false)
-  const maxLimit = options.limitCount ?? options.limit ?? 100;
+  // Bound the result set to prevent unbounded streaming (defaults to 100)
+  const maxLimit = opts.limitCount ?? opts.limit ?? 100;
   if (typeof maxLimit === "number" && maxLimit > 0) {
     constraints.push(limit(maxLimit));
   }
 
   const visitsGroup = collectionGroup(db, "visits");
-  const q = constraints.length > 0 ? query(visitsGroup, ...constraints) : visitsGroup;
+  const q = query(visitsGroup, ...constraints);
 
   return onSnapshot(
     q,
     (snap) => {
-      // Firestore already orders docs by visitDate per the orderBy constraint
-      // applied to the query — no client-side sort needed.
+      // Firestore already orders docs by visitDate per the orderBy constraint —
+      // no client-side sort needed.
       const visits = snap.docs.map((d) => {
         let schoolId = "";
         if (d.ref?.path) {
@@ -193,15 +228,11 @@ export function listenToOutreachVisits(arg1, arg2, arg3) {
           schoolId = d.ref.parent.parent.id;
         }
         if (!schoolId) {
-          schoolId = d.data?.()?.schoolId || d.data?.schoolId || "";
+          schoolId = d.data()?.schoolId || "";
         }
-        return {
-          id: d.id,
-          ...d.data(),
-          schoolId,
-        };
+        return { id: d.id, ...d.data(), schoolId };
       });
-      if (typeof onData === "function") onData(visits);
+      onData(visits);
     },
     (err) => {
       console.error("listenToOutreachVisits error:", err);
@@ -293,6 +324,9 @@ export async function createSchoolVisit(schoolId, rawVisit, creatorUid) {
 
   const visitData = {
     schoolId,
+    // Discriminator written at creation time so collectionGroup queries can scope
+    // reads to only schoolOutreach visits without relying on path inspection.
+    source: COLLECTION_NAME,
     visitDate: validated.visitDate,
     contactName: validated.contactName,
     contactRole: validated.contactRole,

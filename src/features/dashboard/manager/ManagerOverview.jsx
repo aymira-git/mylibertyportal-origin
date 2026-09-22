@@ -12,15 +12,20 @@ import {
   getEndOfWeekWita,
 } from "../marketing/schoolOutreachRepository.js";
 
+/**
+ * @param {any} props
+ */
 export function ManagerOverview({
   stats,
   loading,
   outreachLoading = false,
+  outreachError = null,
+  onRetryOutreach = null,
   pendingApplications,
   unenrolledStudents,
   classesWithIssues,
   activeShifts,
-  onNavigate,
+  onNavigate = () => {},
   classes = [],
   users = [],
   currentUserId = null,
@@ -428,6 +433,20 @@ export function ManagerOverview({
             View Outreach Tracker &rarr;
           </button>
         </div>
+
+        {outreachError && (
+          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-between gap-2">
+            <span className="font-semibold">Unable to stream live outreach updates: {outreachError}</span>
+            {onRetryOutreach && (
+              <button
+                onClick={onRetryOutreach}
+                className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-lg font-bold text-[11px] shrink-0"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">

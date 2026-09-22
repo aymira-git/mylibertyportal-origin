@@ -210,7 +210,10 @@ service cloud.firestore {
     }
 
     match /schoolOutreach/{schoolId} {
-      allow read: if isStaff();
+      // Read access is restricted to roles that have an operational need:
+      // Admin (full access), Manager (oversight/reporting), Marketing (field work).
+      // Instructor, Front Office, and Office Boy have no outreach business and are excluded.
+      allow read: if isAdmin() || isManager() || hasRole('marketing');
       allow create: if (isAdmin() || isManager() || hasRole('marketing'))
         && request.resource.data.name is string
         && request.resource.data.lat is number
@@ -221,7 +224,8 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /visits/{visitId} {
-        allow read: if isStaff();
+        // Same role restriction as parent — only outreach-related roles may read visit records.
+        allow read: if isAdmin() || isManager() || hasRole('marketing');
         allow create: if (isAdmin() || isManager() || hasRole('marketing'))
           && request.resource.data.visitDate is string
           && request.resource.data.contactName is string

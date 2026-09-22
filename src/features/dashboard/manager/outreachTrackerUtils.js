@@ -1,6 +1,7 @@
 /**
  * Utility functions for Manager Dashboard Outreach Tracker calculations.
  */
+import { WITA_OFFSET_MS } from "../../../utils/dateWita.js";
 
 /**
  * Calculates school coverage metrics for active schools only.
@@ -27,16 +28,45 @@ export function filterVisitsByOfficer(visits = [], officerId = "all") {
 }
 
 /**
- * Normalizes a visitDate (or date boundary) to a canonical "YYYY-MM-DD" string.
- * Defensively handles ISO strings, Date objects, Timestamps, and epoch numbers.
- * Returns null if the value is missing or cannot be parsed into a valid date.
+ * Filters schools by officer attribution.
  *
- * All Date-based extraction uses UTC getters (getUTC*) to match the UTC basis
- * used by getStartOfWeekWita / getEndOfWeekWita, avoiding off-by-one-day errors
- * when the runtime's local timezone is behind UTC.
+ * Attribution is visit-based: a school belongs to an officer if they have
+ * logged at least one visit to that school. This is more accurate than
+ * `school.createdBy` (who added the master record) because field officers
+ * may visit schools they did not originally register.
+ *
+ * When `officerId` is "all" the full list is returned unchanged.
+ *
+ * @param {Array<object>} schools - All active school records.
+ * @param {string} officerId - "all" or a specific officer UID.
+ * @param {Map<string, Array<object>>} visitsBySchoolId - Map of schoolId → visits[],
+ *   built from the 90-day visit window so recently worked schools are included.
+ * @returns {Array<object>} Filtered school list.
+ */
+export function filterSchoolsByOfficer(schools = [], officerId = "all", visitsBySchoolId = new Map()) {
+  if (!officerId || officerId === "all") return schools;
+  return schools.filter((s) => {
+    const schoolVisits = visitsBySchoolId.get(s.id) || [];
+    return schoolVisits.some((v) => v.createdBy === officerId);
+  });
+}
+
+/**
+ * Normalizes a visitDate (or date boundary) to a canonical "YYYY-MM-DD" string
+ * expressed in **WITA (UTC+8)**, matching the timezone basis used by
+ * `getStartOfWeekWita` / `getEndOfWeekWita`.
+ *
+ * - Strings that already start with YYYY-MM-DD are returned as-is (no parsing needed).
+ *   This is the normal path because `schoolVisitSchema` enforces YYYY-MM-DD on every write.
+ * - Other string formats, Date objects, Firestore Timestamps, and epoch numbers are
+ *   shifted by +WITA_OFFSET_MS before `getUTC*` extraction so the resulting date
+ *   reflects local WITA time rather than UTC, preventing off-by-one-day miscounts
+ *   for visits logged near midnight.
+ *
+ * Returns null if the value is missing or cannot be parsed.
  *
  * @param {any} dateVal
- * @returns {string|null} Canonical "YYYY-MM-DD" or null
+ * @returns {string|null} Canonical "YYYY-MM-DD" in WITA, or null
  */
 export function normalizeVisitDate(dateVal) {
   if (!dateVal) return null;
@@ -45,7 +75,8 @@ export function normalizeVisitDate(dateVal) {
     const trimmed = dateVal.trim();
     if (!trimmed) return null;
 
-    // Direct YYYY-MM-DD or leading YYYY-MM-DD in ISO string
+    // Fast path: YYYY-MM-DD prefix already encodes the local (WITA) date as stored
+    // by the schema — extract directly without any Date construction or timezone shift.
     const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (match) {
       const [, y, m, d] = match;
@@ -56,13 +87,15 @@ export function normalizeVisitDate(dateVal) {
       }
     }
 
-    // Try parsing as generic date string — use UTC getters to stay consistent
-    // with the WITA week boundaries produced by getStartOfWeekWita/getEndOfWeekWita.
+    // Slow path: generic date string (e.g. "Mon Sep 22 2026 23:00:00 GMT+0000").
+    // Parse to a Date, then apply the WITA offset so the extracted date reflects
+    // local WITA time rather than the raw UTC date.
     const parsed = new Date(trimmed);
     if (!isNaN(parsed.getTime())) {
-      const y = parsed.getUTCFullYear();
-      const m = String(parsed.getUTCMonth() + 1).padStart(2, "0");
-      const d = String(parsed.getUTCDate()).padStart(2, "0");
+      const w = new Date(parsed.getTime() + WITA_OFFSET_MS);
+      const y = w.getUTCFullYear();
+      const m = String(w.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(w.getUTCDate()).padStart(2, "0");
       return `${y}-${m}-${d}`;
     }
     return null;
@@ -82,14 +115,16 @@ export function normalizeVisitDate(dateVal) {
     dateVal = new Date(dateVal.seconds * 1000);
   }
 
-  // Handle Date instance or numeric milliseconds timestamp — use UTC getters
-  // to match the WITA week boundary basis (see comment on string branch above).
+  // Handle Date instance or numeric milliseconds — shift by WITA offset before
+  // extracting date parts so the result matches the WITA-local calendar date,
+  // consistent with how getStartOfWeekWita / getEndOfWeekWita compute boundaries.
   if (dateVal instanceof Date || typeof dateVal === "number") {
     const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
     if (!isNaN(d.getTime())) {
-      const y = d.getUTCFullYear();
-      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-      const day = String(d.getUTCDate()).padStart(2, "0");
+      const w = new Date(d.getTime() + WITA_OFFSET_MS);
+      const y = w.getUTCFullYear();
+      const m = String(w.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(w.getUTCDate()).padStart(2, "0");
       return `${y}-${m}-${day}`;
     }
   }

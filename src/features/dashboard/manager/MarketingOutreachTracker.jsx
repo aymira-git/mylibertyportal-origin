@@ -7,14 +7,18 @@ import {
   Eye,
   X,
   Building2,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import {
   getStartOfWeekWita,
   getEndOfWeekWita,
 } from "../marketing/schoolOutreachRepository.js";
+import { todayWita } from "../../../utils/dateWita.js";
 import {
   calculateCoverage,
   filterVisitsByOfficer,
+  filterSchoolsByOfficer,
   calculateWeeklyMetrics,
   getFollowUpSchools,
 } from "./outreachTrackerUtils";
@@ -25,6 +29,8 @@ export default function MarketingOutreachTracker({
   weekVisits,
   loading = false,
   users = [],
+  error = null,
+  onRetry = null,
 }) {
   // weekVisits is a week-scoped subscription used exclusively for KPI metric
   // calculations, ensuring the limit on the 90-day log query (visits) never
@@ -57,6 +63,7 @@ export default function MarketingOutreachTracker({
   }, [schools]);
 
   // Group visits by schoolId (schoolId -> visits[])
+  // Built from the 90-day visit window so school attribution covers recent history.
   const visitsBySchoolId = useMemo(() => {
     const map = new Map();
     visits.forEach((v) => {
@@ -71,6 +78,15 @@ export default function MarketingOutreachTracker({
     return map;
   }, [visits]);
 
+  // Schools attributed to the selected officer via visit history.
+  // When "all" is selected every school is included unchanged.
+  // When a specific officer is selected, only schools where that officer
+  // has logged at least one visit (in the 90-day window) are included,
+  // keeping coverage and follow-up metrics consistent with visit metrics.
+  const filteredSchools = useMemo(() => {
+    return filterSchoolsByOfficer(schools, selectedOfficer, visitsBySchoolId);
+  }, [schools, selectedOfficer, visitsBySchoolId]);
+
   // Visits for currently viewed school in modal
   const activeSchoolVisits = useMemo(() => {
     if (!viewSchool?.id) return [];
@@ -82,12 +98,7 @@ export default function MarketingOutreachTracker({
   const endOfWeek = useMemo(() => getEndOfWeekWita(), []);
 
   // Today's date in WITA (UTC+8) as YYYY-MM-DD, used for "scheduled today" metric
-  const todayWita = useMemo(() => {
-    const WITA_OFFSET_MS = 8 * 60 * 60 * 1000;
-    const now = new Date(Date.now() + WITA_OFFSET_MS);
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())}`;
-  }, []);
+  const [todayWitaDate] = useState(() => todayWita());
 
   // Filtered visits by officer — used only for the recent log display
   const filteredVisits = useMemo(() => {
@@ -106,23 +117,25 @@ export default function MarketingOutreachTracker({
       return calculateWeeklyMetrics(filteredMetricsVisits, startOfWeek, endOfWeek);
     }, [filteredMetricsVisits, startOfWeek, endOfWeek]);
 
-  // School status metrics
+  // School status metrics — scoped to filteredSchools so coverage reflects the
+  // selected officer's attributed portfolio rather than the global school list.
   const { total: totalSchools, visited: visitedCount, percentage: visitedPercentage } =
     useMemo(() => {
-      return calculateCoverage(schools);
-    }, [schools]);
+      return calculateCoverage(filteredSchools);
+    }, [filteredSchools]);
 
   // Schools with a visit explicitly scheduled for today (WITA) — status must
   // be "scheduled" AND scheduledDate must match today's WITA date.
+  // Scoped to filteredSchools so the officer filter is consistent.
   const scheduledCount = useMemo(() => {
-    return schools.filter(
-      (s) => s.status === "scheduled" && s.scheduledDate === todayWita
+    return filteredSchools.filter(
+      (s) => s.status === "scheduled" && s.scheduledDate === todayWitaDate
     ).length;
-  }, [schools, todayWita]);
+  }, [filteredSchools, todayWitaDate]);
 
   const followUpSchools = useMemo(() => {
-    return getFollowUpSchools(schools);
-  }, [schools]);
+    return getFollowUpSchools(filteredSchools);
+  }, [filteredSchools]);
 
   // Search filtered visits
   const searchedVisits = useMemo(() => {
@@ -137,7 +150,26 @@ export default function MarketingOutreachTracker({
     });
   }, [filteredVisits, searchQuery, schoolMap]);
 
-  if (loading) {
+  if (error && schools.length === 0 && visits.length === 0) {
+    return (
+      <div className="py-16 px-6 text-center space-y-3 bg-white rounded-3xl border border-rose-200/80 shadow-2xs">
+        <AlertTriangle className="w-10 h-10 mx-auto text-rose-500" />
+        <h3 className="text-sm font-extrabold text-slate-800">Failed to Load Outreach Data</h3>
+        <p className="text-xs text-slate-500 max-w-md mx-auto">{error}</p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-[#1a3a8f] hover:bg-[#152e72] text-white rounded-xl font-bold text-xs transition cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Retry Connection</span>
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (loading && schools.length === 0 && visits.length === 0) {
     return (
       <div className="py-20 text-center space-y-3 bg-white rounded-3xl border border-slate-200/90 shadow-2xs">
         <div className="inline-block w-8 h-8 border-3 border-slate-200 border-t-[#1a3a8f] rounded-full animate-spin" />
@@ -148,6 +180,27 @@ export default function MarketingOutreachTracker({
 
   return (
     <div className="space-y-6 w-full">
+      {/* ── Error Notification Banner ── */}
+      {error && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Outreach connection warning:</strong> {error}. Showing latest cached data.
+            </span>
+          </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="px-3 py-1.5 bg-amber-200 hover:bg-amber-300 text-amber-900 rounded-xl font-bold text-xs flex items-center gap-1.5 transition self-start sm:self-auto cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry Connection</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── Filter & Header Bar ── */}
       <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <div>
@@ -183,6 +236,17 @@ export default function MarketingOutreachTracker({
           </select>
         </div>
       </div>
+
+      {/* ── Empty State for Unseeded Schools ── */}
+      {schools.length === 0 && (
+        <div className="py-8 px-6 text-center space-y-2 bg-white rounded-3xl border border-dashed border-slate-300 shadow-2xs">
+          <Building2 className="w-8 h-8 mx-auto text-slate-300" />
+          <h4 className="text-xs font-extrabold text-slate-700">No Target Schools Available</h4>
+          <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+            No school records have been added or seeded yet. New target schools can be managed in the Marketing Portal.
+          </p>
+        </div>
+      )}
 
       {/* ── Key Performance Metric Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
