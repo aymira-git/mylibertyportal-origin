@@ -71,12 +71,14 @@ function runQuery(q) {
   let rows = [...col.entries()].map(([id, data]) => ({ id, data }));
   for (const c of q.constraints ?? []) {
     if (c.type !== "where") continue;
-    rows = rows.filter(({ data }) => {
-      const v = data[c.field];
+    rows = rows.filter(({ id, data }) => {
+      const v = c.field?.__isDocId || c.field === "__name__" ? id : data[c.field];
       if (c.op === "==") return v === c.value;
       if (c.op === ">=") return v >= c.value;
       if (c.op === "<=") return v <= c.value;
-      if (c.op === "in") return c.value.includes(v);
+      if (c.op === ">") return v > c.value;
+      if (c.op === "<") return v < c.value;
+      if (c.op === "in") return Array.isArray(c.value) ? c.value.includes(v) : false;
       return true;
     });
   }
@@ -93,6 +95,12 @@ export const firestoreModule = {
   query: vi.fn((col, ...constraints) => ({ collectionPath: col.path, constraints })),
   where: vi.fn((field, op, value) => ({ type: "where", field, op, value })),
   limit: vi.fn((n) => ({ type: "limit", n })),
+  documentId: vi.fn(() => ({ __isDocId: true })),
+  onSnapshot: vi.fn((q, onNext) => {
+    const res = q.path ? snapshotOf(q.path) : runQuery(q.isCollection ? { path: q.path } : q);
+    onNext(res);
+    return () => {};
+  }),
   getDocs: vi.fn(async (q) => runQuery(q.isCollection ? { path: q.path } : q)),
   getDoc: vi.fn(async (ref) => snapshotOf(ref.path)),
   addDoc: vi.fn((col, data) =>

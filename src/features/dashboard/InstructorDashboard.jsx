@@ -6,7 +6,7 @@ import { ClassPhotoShare, TeachingMaterial } from "../classes";
 import { ReportsDashboard } from "../reports";
 import { useStaffDirectives, StaffDirectivesWidget } from "../staff";
 import { db } from "../../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import {
   InstructorOverview,
   InstructorClasses,
@@ -35,7 +35,14 @@ export default function InstructorDashboard() {
   });
   const [selectedClassFilter, setSelectedClassFilter] = useState("all");
 
-  const { classes: rawClasses, students, instructorName } = useInstructorRoster();
+  const {
+    uid,
+    classes: rawClasses,
+    students,
+    instructorName,
+    loading,
+    error,
+  } = useInstructorRoster();
   const classes = useMemo(() => uniqueClasses(rawClasses), [rawClasses]);
   const [allClasses, setAllClasses] = useState([]);
 
@@ -48,9 +55,12 @@ export default function InstructorDashboard() {
   } = useStaffDirectives("instructor");
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "classes"), (snap) => {
-      setAllClasses(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
+    const unsub = onSnapshot(
+      query(collection(db, "classes"), where("status", "==", "active")),
+      (snap) => {
+        setAllClasses(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      }
+    );
     return () => unsub();
   }, []);
 
@@ -89,13 +99,30 @@ export default function InstructorDashboard() {
       label: "My Classes",
       component: (
         <InstructorClasses
+          classes={classes}
+          students={students}
+          instructorName={instructorName}
+          loading={loading}
+          error={error}
           selectedClassFilter={selectedClassFilter}
           setSelectedClassFilter={setSelectedClassFilter}
           allClasses={allClasses}
         />
       ),
     },
-    { id: "progress", label: "Student Progress", component: <InstructorProgress /> },
+    {
+      id: "progress",
+      label: "Student Progress",
+      component: (
+        <InstructorProgress
+          uid={uid}
+          classes={classes}
+          students={students}
+          loading={loading}
+          error={error}
+        />
+      ),
+    },
     { id: "materials", label: "Lesson Materials", component: <TeachingMaterial /> },
     { id: "reports", label: "Reports", component: <ReportsDashboard /> },
     { id: "ai", label: "AI Assistant", component: <AIAssistant /> },

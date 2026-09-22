@@ -8,6 +8,7 @@ import { StudentApplications, UserForm, StudentRoster, BadgeModal } from "../stu
 import { KioskModal, KioskSidebarButton } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { StaffDirectory, InvitesPanel, TasksPanel } from "../staff";
+import LogRetentionCard from "./LogRetentionCard";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -149,6 +150,9 @@ export default function AdminDashboard() {
         isOverviewWidget={true}
         onNavigateToClasses={() => handleTabChange("classes")}
       />
+
+      {/* Housekeeping & Free Tier Protection */}
+      <LogRetentionCard />
     </div>
   );
 

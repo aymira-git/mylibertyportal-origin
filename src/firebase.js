@@ -1,6 +1,10 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 export const firebaseConfig = {
@@ -30,7 +34,14 @@ validateFirebaseConfig(firebaseConfig);
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Enable multi-tab local cache so multiple open tabs share offline IndexedDB
+// cache without throwing 'failed-precondition' errors.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
 
 /**
  * Initializes Firebase App Check with reCAPTCHA v3 in production and
@@ -87,13 +98,3 @@ export function getSecondaryAuth() {
   return getAuth(secondaryApp);
 }
 
-// 👈 Enable the offline database cache (Called once cleanly)
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === "failed-precondition") {
-    // Multiple tabs open, persistence can only be active in one tab at a time.
-    console.warn("Firestore offline persistence failed: Multiple browser tabs open.");
-  } else if (err.code === "unimplemented") {
-    // The current browser does not support IndexedDB offline persistence features
-    console.warn("Firestore offline persistence failed: Browser not supported.");
-  }
-});

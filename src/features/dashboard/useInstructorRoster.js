@@ -1,26 +1,36 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { auth, db } from "../../firebase";
-import { collection, query, where, onSnapshot, doc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, documentId } from "firebase/firestore";
 
 /**
- * Live classes + students for the signed-in instructor.
+ * Extracts a unique list of enrolled student IDs from class documents,
+ * safely handling both modern cls.studentIds and legacy cls.enrollments.
+ * @param {Array} classList
+ * @returns {string[]}
+ */
+export function extractEnrolledStudentIds(classList = []) {
+  const ids = new Set();
+  classList.forEach((cls) => {
+    if (Array.isArray(cls.studentIds)) {
+      cls.studentIds.forEach((id) => id && typeof id === "string" && ids.add(id));
+    }
+    if (Array.isArray(cls.enrollments)) {
+      cls.enrollments.forEach((e) => e?.studentId && ids.add(e.studentId));
+    }
+  });
+  return Array.from(ids);
+}
+
+/**
+ * Live classes + enrolled students for the signed-in instructor.
  *
- * Both tabs of InstructorDashboard ("My Classes" and "Student Progress")
- * used to run the same two queries separately, as one-time fetches. That
- * meant the same data was downloaded twice per visit, and an instructor
- * had to reload the page to see a student an admin had just enrolled.
- * One hook, three listeners, shared by both tabs.
- *
- * Returns the raw classes and the full student list — each tab narrows
- * them differently, so the filtering stays with the component that needs
- * it rather than being baked in here.
+ * Spark Plan Optimization:
+ * Instead of subscribing to the entire 'users' collection (which downloads
+ * all 1,000+ students across the school), this hook derives enrolled student
+ * IDs from the instructor's assigned classes and only queries those specific
+ * documents in chunks of 30.
  */
 export function useInstructorRoster() {
-  // Read once, at mount, via a lazy initializer — same signed-in user for
-  // the lifetime of this screen, so there's nothing to resubscribe to if
-  // it changed mid-visit. Deriving `loading`/`error`'s initial value from
-  // it means the "signed out" case doesn't need to setState inside the
-  // effect below at all.
   const [uid] = useState(() => auth.currentUser?.uid || null);
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
@@ -30,20 +40,90 @@ export function useInstructorRoster() {
     uid ? "" : "You appear to be signed out. Please log in again."
   );
 
+  const studentUnsubsRef = useRef([]);
+  const studentChunksDataRef = useRef(new Map()); // chunkIndex -> array of students
+  const activeStudentIdsKeyRef = useRef("");
+
   useEffect(() => {
     if (!uid) return;
 
-    // Classes drive the loading state — they're what the UI blocks on, and
-    // what the "no classes assigned yet" message is decided from.
     let primaryClasses = [];
     let subClasses = [];
+
+    const cleanupStudentListeners = () => {
+      studentUnsubsRef.current.forEach((unsub) => {
+        try {
+          unsub();
+        } catch (unsubErr) {
+          console.warn("Error unsubscribing student listener:", unsubErr);
+        }
+      });
+      studentUnsubsRef.current = [];
+      studentChunksDataRef.current.clear();
+      activeStudentIdsKeyRef.current = "";
+    };
+
+    const syncEnrolledStudents = (allAssignedClasses) => {
+      const enrolledIds = extractEnrolledStudentIds(allAssignedClasses);
+      const enrolledKey = enrolledIds.slice().sort().join(",");
+
+      // Skip resubscribing if the enrolled student IDs have not changed
+      if (enrolledKey === activeStudentIdsKeyRef.current) return;
+      activeStudentIdsKeyRef.current = enrolledKey;
+
+      // Clean up previous listeners
+      studentUnsubsRef.current.forEach((unsub) => {
+        try {
+          unsub();
+        } catch (unsubErr) {
+          console.warn("Error unsubscribing student listener:", unsubErr);
+        }
+      });
+      studentUnsubsRef.current = [];
+      studentChunksDataRef.current.clear();
+
+      if (enrolledIds.length === 0) {
+        setStudents([]);
+        return;
+      }
+
+      // Firestore 'in' query allows up to 30 items per query
+      const CHUNK_SIZE = 30;
+      const chunks = [];
+      for (let i = 0; i < enrolledIds.length; i += CHUNK_SIZE) {
+        chunks.push(enrolledIds.slice(i, i + CHUNK_SIZE));
+      }
+
+      chunks.forEach((chunk, chunkIndex) => {
+        const unsub = onSnapshot(
+          query(collection(db, "users"), where(documentId(), "in", chunk)),
+          (snap) => {
+            const chunkDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            studentChunksDataRef.current.set(chunkIndex, chunkDocs);
+
+            // Merge all chunks into single student list
+            const combined = [];
+            for (const docs of studentChunksDataRef.current.values()) {
+              combined.push(...docs);
+            }
+            setStudents(combined);
+          },
+          (err) => {
+            console.error("instructor enrolled students listener error:", err);
+          }
+        );
+        studentUnsubsRef.current.push(unsub);
+      });
+    };
 
     const mergeClasses = () => {
       const map = new Map();
       primaryClasses.forEach((cls) => map.set(cls.id, cls));
       subClasses.forEach((cls) => map.set(cls.id, cls));
-      setClasses(Array.from(map.values()));
+      const merged = Array.from(map.values());
+      setClasses(merged);
       setLoading(false);
+      syncEnrolledStudents(merged);
     };
 
     const unsubClasses = onSnapshot(
@@ -70,15 +150,6 @@ export function useInstructorRoster() {
       }
     );
 
-    const unsubStudents = onSnapshot(
-      query(collection(db, "users"), where("role", "==", "student")),
-      (snap) => setStudents(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      (err) => {
-        console.error("instructor students listener:", err);
-        setError(err.message);
-      }
-    );
-
     const unsubMe = onSnapshot(
       doc(db, "users", uid),
       (snap) => setInstructorName(snap.exists() ? snap.data().displayName || "" : ""),
@@ -88,7 +159,7 @@ export function useInstructorRoster() {
     return () => {
       unsubClasses();
       unsubSubClasses();
-      unsubStudents();
+      cleanupStudentListeners();
       unsubMe();
     };
   }, [uid]);

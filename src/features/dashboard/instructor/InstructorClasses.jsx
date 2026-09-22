@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { useInstructorRoster } from "../useInstructorRoster";
 import { auth } from "../../../firebase";
 import { LevelBadge } from "../../shared";
 import { AvailableBatches } from "../../classes";
@@ -8,19 +7,21 @@ import { uniqueClasses } from "./instructorUtils";
 import { Info, ExternalLink, FileText } from "lucide-react";
 
 export default function InstructorClasses({
+  classes: propClasses = null,
+  rawClasses = [],
+  students: allStudents = [],
+  instructorName = "",
+  loading = false,
+  error = "",
   selectedClassFilter,
   setSelectedClassFilter,
   allClasses = [],
 }) {
   const [subTab, setSubTab] = useState("my_classes");
-  const {
-    classes: rawClasses,
-    students: allStudents,
-    instructorName,
-    loading,
-    error,
-  } = useInstructorRoster();
-  const classes = useMemo(() => uniqueClasses(rawClasses), [rawClasses]);
+  const classes = useMemo(
+    () => propClasses || uniqueClasses(rawClasses),
+    [propClasses, rawClasses]
+  );
   const [selectedStudent, setSelectedStudent] = useState(null);
 
   const enrolledIds = useMemo(

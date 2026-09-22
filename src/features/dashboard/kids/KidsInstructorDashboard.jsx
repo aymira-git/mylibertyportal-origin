@@ -6,7 +6,7 @@ import { TeachingMaterial, ClassPhotoShare } from "../../classes";
 import { ReportsDashboard } from "../../reports";
 import { useStaffDirectives, StaffDirectivesWidget } from "../../staff";
 import { db } from "../../../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import {
   InstructorOverview,
   InstructorClasses,
@@ -35,7 +35,14 @@ export default function KidsInstructorDashboard() {
   });
   const [selectedClassFilter, setSelectedClassFilter] = useState("all");
 
-  const { classes: rawClasses, students: rawStudents, instructorName } = useInstructorRoster();
+  const {
+    uid,
+    classes: rawClasses,
+    students: rawStudents,
+    instructorName,
+    loading,
+    error,
+  } = useInstructorRoster();
 
   // Kindergarten instructors only see kindergarten learners and classes
   const classes = useMemo(
@@ -66,15 +73,18 @@ export default function KidsInstructorDashboard() {
   } = useStaffDirectives("instructor");
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "classes"), (snap) => {
-      /** @type {any[]} */
-      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setAllClasses(
-        all.filter((c) =>
-          matchesDivisionFilter(c.division || divisionOfProgram(c.programId || c.program), "kindergarten")
-        )
-      );
-    });
+    const unsub = onSnapshot(
+      query(collection(db, "classes"), where("status", "==", "active")),
+      (snap) => {
+        /** @type {any[]} */
+        const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setAllClasses(
+          all.filter((c) =>
+            matchesDivisionFilter(c.division || divisionOfProgram(c.programId || c.program), "kindergarten")
+          )
+        );
+      }
+    );
     return () => unsub();
   }, []);
 
@@ -113,13 +123,30 @@ export default function KidsInstructorDashboard() {
       label: "My Classes",
       component: (
         <InstructorClasses
+          classes={classes}
+          students={students}
+          instructorName={instructorName}
+          loading={loading}
+          error={error}
           selectedClassFilter={selectedClassFilter}
           setSelectedClassFilter={setSelectedClassFilter}
           allClasses={allClasses}
         />
       ),
     },
-    { id: "progress", label: "Student Progress", component: <InstructorProgress /> },
+    {
+      id: "progress",
+      label: "Student Progress",
+      component: (
+        <InstructorProgress
+          uid={uid}
+          classes={classes}
+          students={students}
+          loading={loading}
+          error={error}
+        />
+      ),
+    },
     { id: "materials", label: "Lesson Materials", component: <TeachingMaterial /> },
     {
       id: "reports",

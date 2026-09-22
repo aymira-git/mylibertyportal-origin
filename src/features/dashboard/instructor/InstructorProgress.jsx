@@ -1,13 +1,23 @@
 import { useState, useCallback, useMemo } from "react";
-import { useInstructorRoster } from "../useInstructorRoster";
+import { auth } from "../../../firebase";
 import { LevelBadge } from "../../shared";
 import { StudentProgressForm, fetchInstructorProgressReports } from "../../students";
 import { uniqueClasses } from "./instructorUtils";
 import { Info, GraduationCap, Award, Search } from "lucide-react";
 
-export default function InstructorProgress() {
-  const { uid, classes: allClasses, students, loading, error } = useInstructorRoster();
-  const classes = useMemo(() => uniqueClasses(allClasses), [allClasses]);
+export default function InstructorProgress({
+  uid: propUid = null,
+  classes: propClasses = null,
+  rawClasses = [],
+  students = [],
+  loading = false,
+  error = "",
+}) {
+  const uid = propUid || auth.currentUser?.uid || null;
+  const classes = useMemo(
+    () => propClasses || uniqueClasses(rawClasses),
+    [propClasses, rawClasses]
+  );
   const [progressTab, setProgressTab] = useState("form"); // "form" | "history"
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
