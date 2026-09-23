@@ -416,6 +416,12 @@ export function useDashboardData({
       }));
   };
 
+  const currentStaffProfile = useMemo(
+    () => users.find((u) => u.id === auth.currentUser?.uid),
+    [users]
+  );
+  const effectiveBranch = branch || normalizeBranch(currentStaffProfile?.branch);
+
   const scopedClasses = useMemo(() => {
     let list = classes;
     if (division && division !== "all") {
@@ -423,11 +429,11 @@ export function useDashboardData({
         matchesDivisionFilter(c.division || divisionOfProgram(c.programId || c.program), division)
       );
     }
-    if (branch && branch !== "all") {
-      list = list.filter((c) => matchesBranchFilter(c.branch, branch));
+    if (effectiveBranch && effectiveBranch !== "all") {
+      list = list.filter((c) => matchesBranchFilter(c.branch, effectiveBranch));
     }
     return list;
-  }, [classes, division, branch]);
+  }, [classes, division, effectiveBranch]);
 
   const scopedApplications = useMemo(() => {
     let list = applications;
@@ -436,11 +442,11 @@ export function useDashboardData({
         matchesDivisionFilter(a.division || divisionOfProgram(a.programId || a.program), division)
       );
     }
-    if (branch && branch !== "all") {
-      list = list.filter((a) => matchesBranchFilter(a.branch, branch));
+    if (effectiveBranch && effectiveBranch !== "all") {
+      list = list.filter((a) => matchesBranchFilter(a.branch, effectiveBranch));
     }
     return list;
-  }, [applications, division, branch]);
+  }, [applications, division, effectiveBranch]);
 
   const scopedStudents = useMemo(() => {
     let list = users.filter((u) => u.role === "student");
@@ -449,22 +455,22 @@ export function useDashboardData({
         matchesDivisionFilter(s.division || divisionOfProgram(s.programId || s.program), division)
       );
     }
-    if (branch && branch !== "all") {
-      list = list.filter((s) => matchesBranchFilter(s.branch, branch));
+    if (effectiveBranch && effectiveBranch !== "all") {
+      list = list.filter((s) => matchesBranchFilter(s.branch, effectiveBranch));
     }
     return list;
-  }, [users, division, branch]);
+  }, [users, division, effectiveBranch]);
 
   const instructors = useMemo(() => {
     let list = users.filter((u) => u.role === "instructor");
     if (division && division !== "all") {
       list = list.filter((u) => matchesDivisionFilter(u.division, division));
     }
-    if (branch && branch !== "all") {
-      list = list.filter((u) => matchesBranchFilter(u.branch, branch));
+    if (effectiveBranch && effectiveBranch !== "all") {
+      list = list.filter((u) => matchesBranchFilter(u.branch, effectiveBranch));
     }
     return list;
-  }, [users, division, branch]);
+  }, [users, division, effectiveBranch]);
 
   const activeInstructors = useMemo(() => {
     return instructors.filter((u) => (u.status || "active") === "active");
@@ -514,6 +520,8 @@ export function useDashboardData({
     students: scopedStudents,
     unenrolledStudents,
     pendingApplications,
+    myBranch: effectiveBranch,
+    currentStaffProfile,
     allClasses: classes,
     allUsers: users,
   };

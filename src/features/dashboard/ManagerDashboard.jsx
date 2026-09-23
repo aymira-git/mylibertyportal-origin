@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { auth, db } from "../../firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { AIAssistant, DashboardShell, useToast } from "../shared";
@@ -188,7 +188,7 @@ export default function ManagerDashboard() {
   }, [outreachRetryKey, toast]);
 
   // Load today's payments for daily cash drawer summary (WITA)
-  const fetchTodayPayments = async () => {
+  const fetchTodayPayments = useCallback(async () => {
     setDailyPaymentsLoading(true);
     try {
       const list = await getPaymentsForRecordedDay(new Date());
@@ -199,11 +199,29 @@ export default function ManagerDashboard() {
     } finally {
       setDailyPaymentsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
-    fetchTodayPayments();
-  }, []);
+    let active = true;
+    (async () => {
+      try {
+        const list = await getPaymentsForRecordedDay(new Date());
+        if (active) {
+          setDailyPayments(list);
+          setDailyPaymentsLoading(false);
+        }
+      } catch (err) {
+        console.warn("fetchTodayPayments error:", err);
+        if (active) {
+          toast("Could not load today's payment totals.", "error");
+          setDailyPaymentsLoading(false);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [toast]);
 
   const handleAddTodo = async (todoData) => {
     try {

@@ -72,6 +72,7 @@ export default function FrontOfficeDashboard() {
     students,
     unenrolledStudents,
     pendingApplications,
+    myBranch,
   } = useDashboardData({ restrictedRead: true, setActiveTab, division: "courses" });
 
   const sendWhatsAppInvite = (phone) => {
@@ -284,7 +285,7 @@ export default function FrontOfficeDashboard() {
       component: (
         <PaymentCashierTab
           students={students}
-          branchLabel="Kota Gorontalo"
+          branchLabel={myBranch}
         />
       ),
     },
@@ -295,7 +296,7 @@ export default function FrontOfficeDashboard() {
       component: (
         <WalkInInquiryTab
           division="courses"
-          branchLabel="Kota Gorontalo"
+          branchLabel={myBranch}
           onEnrollStudent={handleEnrollProspect}
         />
       ),
