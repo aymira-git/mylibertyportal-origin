@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fake } from "../../../test/firestoreFake.js";
+import { fake, firestoreModule } from "../../../test/firestoreFake.js";
 import {
   addSchool,
   updateSchool,
@@ -316,10 +316,10 @@ describe("schoolOutreachRepository", () => {
     });
 
     it("falls back to d.data().schoolId when d.ref is undefined", () => {
-      const { firestoreModule } = fake;
-      // Use fake's firestoreModule to test snapshot docs lacking ref
+      // firestoreModule is the named export from firestoreFake.js (not a fake property)
       const originalOnSnapshot = firestoreModule?.onSnapshot;
       try {
+        /** @type {((snap: object) => void) | undefined} */
         let capturedCallback;
         if (originalOnSnapshot) {
           firestoreModule.onSnapshot = vi.fn((_q, onNext) => {
