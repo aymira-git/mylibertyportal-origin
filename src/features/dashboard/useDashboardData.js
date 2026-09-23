@@ -10,7 +10,7 @@ import {
   createStaffAccount,
   deleteUserProfile,
 } from "./usersRepository";
-import { DEFAULT_BRANCH, normalizeBranch } from "../../constants/branches";
+import { DEFAULT_BRANCH, normalizeBranch, matchesBranchFilter } from "../../constants/branches";
 import {
   DEFAULT_DIVISION,
   normalizeDivision,
@@ -81,6 +81,7 @@ export function useDashboardData({
   restrictedRead = false,
   setActiveTab = null,
   division = null,
+  branch = null,
 } = {}) {
   const toast = useToast();
   const confirm = useConfirm(); // 👈 shadows native window.confirm on purpose — same call shape, styled modal, just needs "await"
@@ -416,32 +417,54 @@ export function useDashboardData({
   };
 
   const scopedClasses = useMemo(() => {
-    if (!division || division === "all") return classes;
-    return classes.filter((c) =>
-      matchesDivisionFilter(c.division || divisionOfProgram(c.programId || c.program), division)
-    );
-  }, [classes, division]);
+    let list = classes;
+    if (division && division !== "all") {
+      list = list.filter((c) =>
+        matchesDivisionFilter(c.division || divisionOfProgram(c.programId || c.program), division)
+      );
+    }
+    if (branch && branch !== "all") {
+      list = list.filter((c) => matchesBranchFilter(c.branch, branch));
+    }
+    return list;
+  }, [classes, division, branch]);
 
   const scopedApplications = useMemo(() => {
-    if (!division || division === "all") return applications;
-    return applications.filter((a) =>
-      matchesDivisionFilter(a.division || divisionOfProgram(a.programId || a.program), division)
-    );
-  }, [applications, division]);
+    let list = applications;
+    if (division && division !== "all") {
+      list = list.filter((a) =>
+        matchesDivisionFilter(a.division || divisionOfProgram(a.programId || a.program), division)
+      );
+    }
+    if (branch && branch !== "all") {
+      list = list.filter((a) => matchesBranchFilter(a.branch, branch));
+    }
+    return list;
+  }, [applications, division, branch]);
 
   const scopedStudents = useMemo(() => {
-    const raw = users.filter((u) => u.role === "student");
-    if (!division || division === "all") return raw;
-    return raw.filter((s) =>
-      matchesDivisionFilter(s.division || divisionOfProgram(s.programId || s.program), division)
-    );
-  }, [users, division]);
+    let list = users.filter((u) => u.role === "student");
+    if (division && division !== "all") {
+      list = list.filter((s) =>
+        matchesDivisionFilter(s.division || divisionOfProgram(s.programId || s.program), division)
+      );
+    }
+    if (branch && branch !== "all") {
+      list = list.filter((s) => matchesBranchFilter(s.branch, branch));
+    }
+    return list;
+  }, [users, division, branch]);
 
   const instructors = useMemo(() => {
-    const raw = users.filter((u) => u.role === "instructor");
-    if (!division || division === "all") return raw;
-    return raw.filter((u) => matchesDivisionFilter(u.division, division));
-  }, [users, division]);
+    let list = users.filter((u) => u.role === "instructor");
+    if (division && division !== "all") {
+      list = list.filter((u) => matchesDivisionFilter(u.division, division));
+    }
+    if (branch && branch !== "all") {
+      list = list.filter((u) => matchesBranchFilter(u.branch, branch));
+    }
+    return list;
+  }, [users, division, branch]);
 
   const activeInstructors = useMemo(() => {
     return instructors.filter((u) => (u.status || "active") === "active");

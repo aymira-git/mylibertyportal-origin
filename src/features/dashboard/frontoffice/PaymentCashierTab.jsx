@@ -130,7 +130,7 @@ export default function PaymentCashierTab({
   return (
     <div className="space-y-6 w-full">
       {/* 1. Daily Reconciliation Banner */}
-      <FrontDeskCashReconcile branchLabel={branchLabel} />
+      <FrontDeskCashReconcile branchLabel={branchLabel} students={students} />
 
       {/* 2. Cashier Header & Actions */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-5 space-y-4">

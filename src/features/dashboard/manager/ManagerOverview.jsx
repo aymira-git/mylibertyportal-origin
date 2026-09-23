@@ -13,6 +13,7 @@ import {
   getEndOfWeekWita,
 } from "../marketing/schoolOutreachRepository.js";
 import { OperationalBottlenecksSection } from "./OperationalBottlenecksSection";
+import { ManagerCashSummary } from "./ManagerCashSummary";
 
 /**
  * @param {any} props
@@ -34,6 +35,12 @@ export function ManagerOverview({
   schools = [],
   visits = [],
   students = [],
+  myBranch = "Kota Gorontalo",
+  branchPayments = [],
+  paymentsLoading = false,
+  onRefreshPayments = null,
+  isScopedToBranch = true,
+  onToggleBranchScope = null,
 }) {
   const totalBottlenecks =
     pendingApplications.length + unenrolledStudents.length + classesWithIssues.length;
@@ -101,6 +108,16 @@ export function ManagerOverview({
                 },
               ]
         }
+      />
+
+      {/* Daily Cash Drawer & Intake Summary Scoped to Branch */}
+      <ManagerCashSummary
+        branch={myBranch}
+        payments={branchPayments}
+        loading={paymentsLoading}
+        onRefresh={onRefreshPayments}
+        isScopedToBranch={isScopedToBranch}
+        onToggleBranchScope={onToggleBranchScope}
       />
 
       {/* Tuition Due / Expiry Alerts */}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getPaymentsForRecordedDay } from "../../finance/paymentsRepository";
+import { summarizePaymentsByMethod } from "../../finance/financeUtils";
 import { formatIDR } from "../../finance/receiptMessages";
+import { matchesBranchFilter, normalizeBranch } from "../../../constants/branches";
 import { todayWita } from "../../../utils/dateWita";
 import { useToast } from "../../shared";
 import {
@@ -20,8 +22,9 @@ import {
  *
  * Guarantees that ALL payments for the current WITA calendar day are fetched
  * (NO artificial limit cap), computing exact Cash, Transfer, and QRIS totals.
+ * Optionally filters payments to a specific branch when students/branchLabel are provided.
  */
-export default function FrontDeskCashReconcile({ branchLabel = null }) {
+export default function FrontDeskCashReconcile({ branchLabel = null, students = [] }) {
   const toast = useToast();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +32,18 @@ export default function FrontDeskCashReconcile({ branchLabel = null }) {
   const [lastRefreshed, setLastRefreshed] = useState("");
 
   const todayStr = todayWita();
+
+  const studentBranchMap = useMemo(() => {
+    const map = new Map();
+    if (Array.isArray(students)) {
+      for (const s of students) {
+        if (s?.id) {
+          map.set(s.id, normalizeBranch(s.branch));
+        }
+      }
+    }
+    return map;
+  }, [students]);
 
   const loadDailyPayments = useCallback(async () => {
     setLoading(true);
@@ -81,36 +96,19 @@ export default function FrontDeskCashReconcile({ branchLabel = null }) {
     };
   }, [toast]);
 
-  const summary = useMemo(() => {
-    let cashTotal = 0;
-    let transferTotal = 0;
-    let qrisTotal = 0;
-    let otherTotal = 0;
-
-    for (const p of payments) {
-      const amt = Number(p.amount) || 0;
-      const m = (p.method || "").toLowerCase();
-      if (m === "cash" || m === "tunai") {
-        cashTotal += amt;
-      } else if (m === "transfer" || m === "bank transfer" || m === "bank") {
-        transferTotal += amt;
-      } else if (m === "qris") {
-        qrisTotal += amt;
-      } else {
-        otherTotal += amt;
-      }
+  const filteredPayments = useMemo(() => {
+    if (!branchLabel || branchLabel === "all" || studentBranchMap.size === 0) {
+      return payments;
     }
+    return payments.filter((p) => {
+      const b = studentBranchMap.get(p.studentId);
+      return matchesBranchFilter(b, branchLabel);
+    });
+  }, [payments, branchLabel, studentBranchMap]);
 
-    const grandTotal = cashTotal + transferTotal + qrisTotal + otherTotal;
-    return {
-      cashTotal,
-      transferTotal,
-      qrisTotal,
-      otherTotal,
-      grandTotal,
-      count: payments.length,
-    };
-  }, [payments]);
+  const summary = useMemo(() => {
+    return summarizePaymentsByMethod(filteredPayments);
+  }, [filteredPayments]);
 
   const handleCopySummary = () => {
     const lines = [

@@ -15,6 +15,8 @@ import {
 import { listenToSchools, listenToOutreachVisits, getStartOfWeekWita, getEndOfWeekWita } from "./marketing";
 import { reportError } from "../../utils/reportError";
 import { WalkInInquiryTab } from "./frontoffice";
+import { DEFAULT_BRANCH, normalizeBranch, matchesBranchFilter } from "../../constants/branches";
+import { getPaymentsForRecordedDay } from "../finance/paymentsRepository";
 
 export default function ManagerDashboard() {
   const toast = useToast();
@@ -35,6 +37,11 @@ export default function ManagerDashboard() {
   const [loading, setLoading] = useState(true);
   const [outreachError, setOutreachError] = useState(null);
   const [outreachRetryKey, setOutreachRetryKey] = useState(0);
+
+  // Daily cash drawer state for manager's branch
+  const [dailyPayments, setDailyPayments] = useState([]);
+  const [dailyPaymentsLoading, setDailyPaymentsLoading] = useState(true);
+  const [isScopedToBranch, setIsScopedToBranch] = useState(true);
 
   const outreachLoading = schoolsLoading || visitsLoading || weekVisitsLoading;
 
@@ -180,6 +187,24 @@ export default function ManagerDashboard() {
     };
   }, [outreachRetryKey, toast]);
 
+  // Load today's payments for daily cash drawer summary (WITA)
+  const fetchTodayPayments = async () => {
+    setDailyPaymentsLoading(true);
+    try {
+      const list = await getPaymentsForRecordedDay(new Date());
+      setDailyPayments(list);
+    } catch (err) {
+      console.warn("fetchTodayPayments error:", err);
+      toast("Could not load today's payment totals.", "error");
+    } finally {
+      setDailyPaymentsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTodayPayments();
+  }, []);
+
   const handleAddTodo = async (todoData) => {
     try {
       await createTodo(todoData);
@@ -245,28 +270,71 @@ export default function ManagerDashboard() {
     }
   };
 
+  // Derived branch for the logged-in manager
+  const currentStaffProfile = useMemo(
+    () => users.find((u) => u.id === auth.currentUser?.uid),
+    [users]
+  );
+  const myBranch = normalizeBranch(currentStaffProfile?.branch || DEFAULT_BRANCH);
+
+  // Fast O(1) studentId -> branch lookup map for payment join
+  const studentBranchMap = useMemo(() => {
+    const map = new Map();
+    for (const u of users) {
+      if (u.id) {
+        map.set(u.id, normalizeBranch(u.branch));
+      }
+    }
+    return map;
+  }, [users]);
+
+  // Branch-filtered daily payments (client-side join with zero additional reads)
+  const branchDailyPayments = useMemo(() => {
+    if (!isScopedToBranch) return dailyPayments;
+    return dailyPayments.filter((p) => {
+      const studentBranch = studentBranchMap.get(p.studentId);
+      return matchesBranchFilter(studentBranch, myBranch);
+    });
+  }, [dailyPayments, isScopedToBranch, studentBranchMap, myBranch]);
+
+  // Branch-scoped vs company-wide datasets
+  const scopedUsers = useMemo(() => {
+    if (!isScopedToBranch) return users;
+    return users.filter((u) => matchesBranchFilter(u.branch, myBranch));
+  }, [users, isScopedToBranch, myBranch]);
+
+  const scopedClasses = useMemo(() => {
+    if (!isScopedToBranch) return classes;
+    return classes.filter((c) => matchesBranchFilter(c.branch, myBranch));
+  }, [classes, isScopedToBranch, myBranch]);
+
+  const scopedApplications = useMemo(() => {
+    if (!isScopedToBranch) return applications;
+    return applications.filter((a) => matchesBranchFilter(a.branch, myBranch));
+  }, [applications, isScopedToBranch, myBranch]);
+
   // Derived datasets
-  const students = useMemo(() => users.filter((u) => u.role === "student"), [users]);
+  const students = useMemo(() => scopedUsers.filter((u) => u.role === "student"), [scopedUsers]);
   const activeStudents = useMemo(
     () => students.filter((s) => (s.status || "active") === "active"),
     [students]
   );
   const staff = useMemo(
-    () => users.filter((u) => u.role !== "student" && u.role !== "admin"),
-    [users]
+    () => scopedUsers.filter((u) => u.role !== "student" && u.role !== "admin"),
+    [scopedUsers]
   );
   const activeStaff = useMemo(
     () => staff.filter((u) => (u.status || "active") === "active"),
     [staff]
   );
   const pendingApplications = useMemo(
-    () => applications.filter((a) => (a.status || "pending") === "pending"),
-    [applications]
+    () => scopedApplications.filter((a) => (a.status || "pending") === "pending"),
+    [scopedApplications]
   );
 
   const unenrolledStudents = useMemo(() => {
-    return activeStudents.filter((s) => !classes.some((c) => (c.studentIds || []).includes(s.id)));
-  }, [activeStudents, classes]);
+    return activeStudents.filter((s) => !scopedClasses.some((c) => (c.studentIds || []).includes(s.id)));
+  }, [activeStudents, scopedClasses]);
 
   const classesWithIssues = useMemo(() => {
     const activeInstructorIds = new Set(
@@ -277,7 +345,7 @@ export default function ManagerDashboard() {
         )
         .map((u) => u.id)
     );
-    return classes
+    return scopedClasses
       .map((c) => {
         const assignedUser = c.instructorId ? users.find((u) => u.id === c.instructorId) : null;
         const needsInstructor = !c.instructorId || !assignedUser;
@@ -287,15 +355,17 @@ export default function ManagerDashboard() {
         return { ...c, needsInstructor, instructorInactive, needsRoom };
       })
       .filter((c) => c.needsInstructor || c.instructorInactive || c.needsRoom);
-  }, [classes, users]);
+  }, [scopedClasses, users]);
 
   const activeShifts = useMemo(() => {
-    return shifts.filter((s) => getShiftStatus(s) === "on_duty");
-  }, [shifts]);
+    const raw = shifts.filter((s) => getShiftStatus(s) === "on_duty");
+    if (!isScopedToBranch) return raw;
+    return raw.filter((s) => matchesBranchFilter(s.branch, myBranch));
+  }, [shifts, isScopedToBranch, myBranch]);
 
   const stats = {
     students: activeStudents.length,
-    classes: classes.length,
+    classes: scopedClasses.length,
     staff: activeStaff.length,
   };
 
@@ -325,6 +395,12 @@ export default function ManagerDashboard() {
           outreachLoading={outreachLoading}
           outreachError={outreachError}
           onRetryOutreach={handleRetryOutreach}
+          myBranch={myBranch}
+          branchPayments={branchDailyPayments}
+          paymentsLoading={dailyPaymentsLoading}
+          onRefreshPayments={fetchTodayPayments}
+          isScopedToBranch={isScopedToBranch}
+          onToggleBranchScope={() => setIsScopedToBranch((prev) => !prev)}
         />
       ),
     },
@@ -334,7 +410,7 @@ export default function ManagerDashboard() {
       component: (
         <WalkInInquiryTab
           division="courses"
-          branchLabel="Kota Gorontalo"
+          branchLabel={myBranch}
         />
       ),
     },
@@ -376,8 +452,8 @@ export default function ManagerDashboard() {
       badgeDot: classesWithIssues.length > 0,
       component: (
         <ClassesAndCoverageTab
-          classes={classes}
-          users={users}
+          classes={scopedClasses}
+          users={scopedUsers}
           currentUserId={auth.currentUser?.uid}
         />
       ),
