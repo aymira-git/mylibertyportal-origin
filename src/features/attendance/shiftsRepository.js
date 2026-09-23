@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   getDoc,
+  setDoc,
   addDoc,
   getDocs,
   query,
@@ -144,8 +145,19 @@ export function switchClassAtomic({
   return batch.commit();
 }
 
-export function recordStudentAttendance({ uid, displayName, eventId = null, eventName = null }) {
-  return addDoc(collection(db, "attendance"), {
+/**
+ * Records student attendance idempotently. When dateKey is supplied (YYYY-MM-DD in WITA),
+ * uses a deterministic document ID `${uid}_${dateKey}` with merge to prevent double-tap
+ * duplicates from rapid camera scans.
+ */
+export function recordStudentAttendance({
+  uid,
+  displayName,
+  dateKey = null,
+  eventId = null,
+  eventName = null,
+}) {
+  const payload = {
     userId: uid,
     displayName: displayName || "",
     role: "student",
@@ -153,7 +165,14 @@ export function recordStudentAttendance({ uid, displayName, eventId = null, even
     method: "KIOSK",
     ...(eventId ? { eventId } : {}),
     ...(eventName ? { eventName } : {}),
-  });
+  };
+
+  if (dateKey) {
+    const docId = `${uid}_${dateKey}`;
+    return setDoc(doc(db, "attendance", docId), payload, { merge: true });
+  }
+
+  return addDoc(collection(db, "attendance"), payload);
 }
 
 /**

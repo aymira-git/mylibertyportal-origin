@@ -5,6 +5,7 @@ import {
   setDoc,
   addDoc,
   deleteDoc,
+  writeBatch,
   query,
   where,
   limit,
@@ -143,6 +144,32 @@ export async function createStaffAccount(email, password, staffData) {
   return cred.user.uid;
 }
 
-export function deleteUserProfile(uid) {
-  return deleteDoc(doc(db, "users", uid));
+/**
+ * Deletes a user profile and scrubs any active enrollment references from
+ * the /classes collection in an atomic batch to avoid leaving orphaned
+ * student IDs in class rosters.
+ */
+export async function deleteUserProfile(uid) {
+  if (!uid) return;
+
+  // Find all classes where this student is currently enrolled
+  const classesQuery = query(collection(db, "classes"), where("studentIds", "array-contains", uid));
+  const classesSnap = await getDocs(classesQuery);
+
+  const batch = writeBatch(db);
+  batch.delete(doc(db, "users", uid));
+
+  const now = new Date().toISOString();
+  for (const classDoc of classesSnap.docs) {
+    const classData = classDoc.data();
+    const updatedStudentIds = (classData.studentIds || []).filter((id) => id !== uid);
+    const updatedEnrollments = (classData.enrollments || []).filter((e) => e.studentId !== uid);
+    batch.update(classDoc.ref, {
+      studentIds: updatedStudentIds,
+      enrollments: updatedEnrollments,
+      updatedAt: now,
+    });
+  }
+
+  return batch.commit();
 }

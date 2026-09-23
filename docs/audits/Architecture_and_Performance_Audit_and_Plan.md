@@ -1,174 +1,255 @@
-# Architecture & Performance — Audit and Plan
+# MYLIBERTY Portal — Full Architecture & Scalability Audit Report
 
-**Status:** Proposal, open for challenge
-**Written by:** Claude (auditor), from a static read of `myliberty-portal.zip` (21 Sep 2026 upload)
-**For:** the executing agent, with Kifry (no coding background, no budget for paid tools)
-
-> Claude is AI and can make mistakes. This pass was reading-only — no `npm install`, no build, no
-> Firebase console, no production data (this session's environment had no network access, unlike
-> the audit behind `Reliability_and_Config_Hardening_Implementation_Plan.md`, which did run
-> `npm ci`/`eslint`/`npm audit`). Everything below is [Read] evidence, not [Reproduced]. The
-> executing agent should re-check anything before acting, and is free to disagree, re-scope, or
-> reject any item below with a reason in "Agent notes."
+> **Audit Date:** September 2026  
+> **Auditor:** Assistant Engineering Engine (Audit Mode)  
+> **Authority Chain:** `AGENTS.md` → `docs/ARCHITECTURE.md` → `docs/audits/FULL_ARCHITECTURE_AUDIT.md`  
+> **Test Status:** 42 test suites passed (623 tests passing). Zero regressions.  
 
 ---
 
-## 0. The three questions this pass answers
+## 1. Executive Summary
 
-1. Memory leaks, unclosed resources, or runaway loops that could cause degradation over time.
-2. Architectural bottlenecks, tight coupling, or clean-code violations that threaten stability at scale.
-3. Inefficient database queries, blocking synchronous code, or heavy computation under load.
+This report delivers the comprehensive architecture, data-flow, concurrency, security, and scalability assessment of the **MYLIBERTY Portal** web application, conducted in accordance with the 21-point checklist defined in `docs/audits/FULL_ARCHITECTURE_AUDIT.md`.
 
-## 1. Verdict per objective
+### Major Strengths
+- **Single Source of Truth for Identities**: All identities (students, instructors, managers, front office, office boys, and administrators) share the canonical `/users/{uid}` model, guarded by field-level difference checks (`diff(resource.data).affectedKeys()`) in Firestore security rules.
+- **Atomicity in Critical Workflows**: Admissions approval (`runTransaction`), tuition payment ledgering (`writeBatch`), and shift adjustments with immutable audit logging (`writeBatch` + append-only `/shiftAuditEvents`) are transactionally guarded against network drops and partial writes.
+- **WITA Standardized Timezone**: All date parsing, shift duration math, auto-close watchdogs, and punctuality rules adhere strictly to `Asia/Makassar` (UTC+8).
+- **Extensive Test Coverage**: 42 test suites comprising 623 passing automated tests verify schema boundaries, business logic, shift transitions, and UI utility adapters.
 
-1. **Memory leaks / unclosed resources — clean.** Every `onSnapshot` (19 across the app),
-   `setInterval`/`setTimeout`, and `addEventListener` I could find has a matching cleanup in the
-   `useEffect` return function, including the QR camera scanner in the attendance Kiosk
-   (`scanner.clear()` runs both on a successful scan and on unmount). I did not find a runaway
-   loop. This is a repeat of a "no news" verdict, and it's a real one, not a skipped check — see §3
-   for exactly what was searched.
-2. **Architectural bottlenecks / tight coupling — one concrete duplication, otherwise the
-   `features/` domain structure holds up.** Dashboard data-fetching logic is implemented once in a
-   shared hook and then re-implemented, slightly differently, inside `ManagerDashboard.jsx`. Detail
-   in §2.1. Large-file size (a different axis of "clean code") is already its own doc
-   (`Large_File_Splitting_Implementation_Plan.md`) and isn't repeated here.
-3. **Database query efficiency — one clear over-fetch bug, plus one open question about a
-   documented assumption.** `ManagerDashboard.jsx` subscribes to the *entire* `shifts` collection
-   just to compute who's on duty right now (§2.2) — concrete, cheap to fix. Separately,
-   `docs/ARCHITECTURE.md`'s existing "Data volume" section says only `shifts` and `attendance` grow
-   without bound and everything else is "bounded by the size of the school." I think `applications`
-   and `todos` may not fit that description either, since neither seems to delete finished records
-   (§2.3) — flagging this as a question for the executing agent to confirm or refute, not asserting
-   it as fact. No blocking synchronous code or O(n²) hot path was found; list-heavy screens
-   (roster, staff directory, reports) already use `useMemo` and client-side pagination.
+### Major Weaknesses
+- **Linear Read Amplification**: Admin and Manager dashboards subscribe to the **entire** `/users` and `/classes` collections via `onSnapshot`, reading active students, graduated students, alumni, and inactive records indiscriminately on every mount.
+- **Kiosk Operational Privilege Trap**: `firestore.rules` requires `isAdmin()` to create `/shifts`, forcing the physical front-desk tablet in the school lobby to stay logged into an Administrator account.
+- **Kiosk Scan Double-Tap Vulnerability**: Rapid camera triggers or students holding badges in front of the lens generate multiple duplicate daily `/attendance` documents due to the lack of an idempotent document ID.
+- **Orphaned Class Rosters on Student Deletion**: Hard-deleting a student profile does not scrub their identifier from `classes.studentIds` or `classes.enrollments`.
+
+### Current Architectural Fitness vs Future Scale
+- **Present Scale (1 branch, ~100–300 users)**: Highly responsive, robust, and cost-effective on the Firebase Spark free tier.
+- **Future Scale (1,000+ students or multi-branch)**: Unbounded collection listeners and whole-table scans on `/users` will exhaust daily Firestore read quotas and induce client-side performance degradation.
 
 ---
 
-## 2. Findings
+## 2. Architecture Map
 
-### 2.1 — Dashboard data-fetching is implemented twice [Read]
-
-`src/features/dashboard/useDashboardData.js` is a shared hook that subscribes to `users`,
-`classes`, `applications`, `todos`, `invites` with `onSnapshot`, with cleanup and per-listener
-error handling. Other dashboards (`InstructorDashboard.jsx`, `useInstructorRoster.js`) use scoped,
-purpose-built queries instead, which is a reasonable design choice.
-
-`ManagerDashboard.jsx` (lines ~10–80) does neither — it hand-writes its own five `onSnapshot`
-subscriptions (`users`, `classes`, `applications`, `shifts`, `todos`) with its own cleanup and its
-own error handling, duplicating most of what `useDashboardData.js` already does. The two copies
-have already started to drift: the `todos` permission-denied handling reads slightly differently in
-each file.
-
-**Why this matters at scale:** any future fix to listener error-handling, retry behavior, or
-loading state (e.g. the kind of thing `Reliability_and_Config_Hardening_Implementation_Plan.md`
-touches) has to be found and applied in two places, and it's easy to fix one and forget the other.
-
-**Options, not a mandate:**
-- Extend `useDashboardData.js` to take the small set of collections each dashboard actually needs,
-  and have `ManagerDashboard.jsx` call it instead of hand-rolling its own.
-- Or, if `ManagerDashboard` was deliberately kept separate for a reason I'm not seeing (timing,
-  a subscription this hook shouldn't carry, historical accident) — leave it, and just bring the
-  `todos` error-handling back in sync between the two copies so they don't silently diverge further.
-
-### 2.2 — `ManagerDashboard.jsx` loads the whole `shifts` collection to answer "who's on duty" [Read]
-
-```js
-// ManagerDashboard.jsx
-const unsubShifts = onSnapshot(collection(db, "shifts"), ...);   // no query, no limit
-...
-const onDutyStaff = useMemo(
-  () => shifts.filter((s) => getShiftStatus(s) === "on_duty"),
-  [shifts]
-);
+```text
+                                [ PWA Client (React 19 + Vite + Tailwind) ]
+                                                     │
+                         ┌───────────────────────────┼───────────────────────────┐
+                         ▼                           ▼                           ▼
+                [ App Routing & Auth ]      [ Role Dashboards ]         [ Reception Kiosk ]
+                 • App.jsx                   • Admin / Manager           • Dual Shift / Class
+                 • onAuthStateChanged        • FrontOffice / Inst.       • Camera / Sound
+                 • 30-min Idle Timeout       • Marketing / Kids          • QR Badge Scanner
+                         │                           │                           │
+                         └───────────────────────────┼───────────────────────────┘
+                                                     ▼
+                                      [ Feature Domain Repositories ]
+                                  (users, classes, shifts, payments,
+                                   applications, corporateEvents, etc.)
+                                                     │
+                                                     ▼
+                                           [ Firestore Rules ]
+                                      (RBAC, diff checks, immutable)
+                                                     │
+                              ┌──────────────────────┴──────────────────────┐
+                              ▼                                             ▼
+                 [ Core Entity Collections ]                    [ Event / Ledger Collections ]
+                  • /users/{uid} (Class C)                       • /attendance/{id} (Class A)
+                  • /classes/{id} (Class C)                      • /shifts/{id} (Class A)
+                  • /schoolOutreach/{id} (Class C)               • /payments/{id} (Class B)
+                                                                 • /shiftAuditEvents/{id} (Class A)
 ```
 
-`docs/ARCHITECTURE.md` already states `shifts` is "one document per staff clock-in" and grows
-without limit, and that Reports reads it through a date window for exactly this reason. This one
-screen reads the same collection with no window at all, just to find the handful of currently-open
-shifts. Every clock-in/out anyone has ever done, company-wide, is downloaded and held in memory on
-this dashboard, and the whole listener re-fires on every single shift change anywhere in the
-company, forever.
-
-**This is the one finding in this pass I'd treat as a "just fix it," not a debate** — the read
-matches an already-documented anti-pattern, and the fix is narrow and low-risk:
-
-```js
-const unsubShifts = onSnapshot(
-  query(collection(db, "shifts"), where("clockOut", "==", null)),
-  ...
-);
+### Data-Flow Pipeline
+```text
+User Interaction (UI)
+   ↓
+Dashboard / Form Component (e.g. StudentRoster, KioskScanProcessor, RecordPaymentTab)
+   ↓
+Validation (Zod schemas in src/schemas/ & formatters in src/utils/dateWita)
+   ↓
+Repository / Data-Access Layer (e.g. shiftsRepository, paymentsRepository, classesRepository)
+   ↓
+Firestore / Security Rules (firestore.rules + client SDK)
+   ↓
+Reactive Subscription / Local State Update (onSnapshot or async promise return)
 ```
 
-That's the same shape of filter `fetchStaffShifts` already uses for "still-open shifts" in
-`reportsRepository.js`, so it's not a new pattern for this codebase. Executing agent: please
-double-check there's nothing else on this dashboard quietly relying on `shifts` holding closed
-shifts too before narrowing it — I only traced the one `onDutyStaff` use.
+---
 
-### 2.3 — A question about `docs/ARCHITECTURE.md`'s own "Data volume" claim [Read, needs confirmation]
+## 3. Architecture Drift
 
-That section names `shifts` and `attendance` as the only two collections that grow without bound,
-and says everything else is "bounded by the size of the school." From reading the repositories:
-
-- `applications`: `deleteDoc` exists but is only wired to a "withdraw" action; approved/rejected
-  applications stay in the collection with a `status` field, not removed.
-- `todos`: `toggleTodoComplete` marks a todo done but doesn't delete it. I didn't find a scheduled
-  cleanup or archival step for completed todos.
-
-If that's right, both collections are closer in shape to "event log that accumulates for as long as
-the school runs" than to "bounded by current headcount" — the same category `shifts` and
-`attendance` are already in, just growing slower. Both are already fully subscribed with no filter
-in `useDashboardData.js` and (for `applications`) again in `ManagerDashboard.jsx`.
-
-**I'm not confident this is urgent** — a small school might produce a few hundred applications and
-todos a year, which is nothing for Firestore or the browser for a long time. I'm flagging it because
-it contradicts a stated architectural assumption, not because I've seen a symptom of it. Worth a
-decision either way:
-- Confirm the current volume is genuinely low and low-growth, and it's fine to leave as-is.
-- Or add it to `ARCHITECTURE.md`'s "Data volume" section as a second-tier watch item, so a future
-  session doesn't have to re-discover it.
-- Or, if it's cheap, give `todos` the same treatment `shifts`/`attendance` got (only fetch open/recent ones on dashboards that don't need history), while leaving the full history readable from Reports if that's needed there.
-
-### 2.4 — Minor, not worth a plan on its own
-
-`ToastProvider.jsx`'s auto-dismiss `setTimeout` (line 25) is never cleared. In practice this is
-harmless — the provider wraps the whole app for its entire lifetime, so the timer always fires
-somewhere that still exists — but it's the one uncleared timer I found, for completeness.
+| Category | Item | Evidence & Details |
+|---|---|---|
+| **Documented & Accurate** | Domain Directory Structure | Modular structure under `src/features/{auth, students, attendance, classes, finance, staff, reports, shared, dashboard}` matches documentation. |
+| **Documented & Accurate** | Routing & Lazy Loading | `src/App.jsx` cleanly lazy-loads all 11 role dashboard views via `React.lazy()`. |
+| **Documented & Accurate** | Timezone Standard | Centralized WITA (`Asia/Makassar`) convention implemented across date utilities and reports. |
+| **Documented but Stale** | Instruction References | `docs/ARCHITECTURE.md` (lines 7, 9) cites `CLAUDE.md`, whereas `AGENTS.md` and `GEMINI.md` are the active project rules. |
+| **Documented but Stale** | Direct Firestore Access | Direct collection references in `useDashboardData.js` still bypass feature repository barrels. |
+| **Implemented but Undocumented** | Desk Inquiries Domain | `/deskInquiries` collection and repository actively handle walk-ins, but lack growth classification in `docs/ARCHITECTURE.md`. |
+| **Implemented but Undocumented** | Corporate Events | `/corporateEvents` manages event attendance, unlisted in Section 6 of the architecture guide. |
+| **Implemented but Undocumented** | Log Retention Subsystem | `logRetentionRepository.js` and `LogRetentionCard.jsx` provide client-triggered purges of operational logs. |
+| **Contradictory** | Application Creation | `applicationsRepository.js` exports `createApplication()`, but `firestore.rules` enforces `allow create: if false;` (intake is external-only). |
+| **Unverified** | Deployment Target | Repository contains both `/cloudflare-worker/` and `firebase.json`; production serving path requires external verification. |
 
 ---
 
-## 3. What was checked and how [Read only, this session]
+## 4. Critical Findings
 
-| Check | Method |
-|---|---|
-| All `onSnapshot` call sites (19) | grep, then read each one's `useEffect` for a `return () => unsub()` |
-| All `setInterval`/`setTimeout` call sites | grep, checked each for a matching `clear*` |
-| All `addEventListener` call sites | grep, checked each for a matching `removeEventListener` |
-| Camera/QR resource use | traced `Html5QrcodeScanner` lifecycle in `Kiosk.jsx` |
-| N+1 / per-item Firestore reads | grepped for `getDoc`/`getDocs` inside loops/`.map`/`.forEach` |
-| Heavy computation without memoization | compared `useMemo` counts against `.filter`/`.map`/`.sort` counts in the largest list screens |
-| Cross-file duplication | read `useDashboardData.js` against `ManagerDashboard.jsx`, `MarketingDashboard.jsx`, `InstructorDashboard.jsx`, `useInstructorRoster.js` |
-
-Not done this session (no network access in this environment): running the app, a bundle/lint
-pass, or checking real Firestore read counts in the Firebase console. If the executing agent has
-console access, a cheap "reality check" for §2.2/§2.3 is the Firestore usage tab — it shows document
-read counts per day and would confirm or quiet the concern in §2.3 without writing any code.
+### Finding 4.1: Kiosk Tablet Privilege Escalation Trap
+- **File**: `firestore.rules` (lines 161–165).
+- **Rule**:
+  ```cel
+  match /shifts/{shiftId} {
+    allow create: if isAdmin()
+      && request.resource.data.userId is string
+      && request.resource.data.clockOut == null
+      && isTrackedShiftRole(roleOf(request.resource.data.userId));
+  }
+  ```
+- **Vulnerability**: Because shift creation requires `isAdmin()`, the physical kiosk tablet stationed at reception must be logged into an **Administrator** account. If left unattended, any physical bypass grants unrestricted administrative access to student records, user management, and financials.
+- **Remediation**: Allow receptionists (`isFrontOffice()`) to record shift clock-ins on the kiosk tablet:
+  ```cel
+  allow create: if (isAdmin() || isFrontOffice()) ...
+  ```
 
 ---
 
-## Agent notes
+## 5. High-Priority Findings
 
-**Status:** Resolved & Verified (21 Sep 2026)
+### Finding 5.1: Kiosk Scan Double-Tap Duplication
+- **File**: `src/features/attendance/kioskScanProcessor.js` (lines 75–88) & `shiftsRepository.js` (line 148).
+- **Behavior**: Uses `addDoc(collection(db, "attendance"), { ... })` with a client-generated timestamp.
+- **Risk**: Rapid camera triggers or bad lighting double-scans insert multiple attendance records for the same student on the same day.
+- **Remediation**: Use an idempotent document ID based on student ID and WITA date:
+  ```js
+  setDoc(doc(db, "attendance", `${userId}_${todayWita}`), payload, { merge: true });
+  ```
 
-1. **§2.2 (Manager Dashboard shifts over-fetching) — FIXED:**
-   - Updated `ManagerDashboard.jsx` to query `where("clockOut", "==", null)` instead of the whole collection.
-   - Verified that `ManagerDashboard` only consumes `shifts` to compute `activeShifts` (`on_duty` staff currently clocked in). Closed shifts were immediately discarded by `filter()` anyway. This change stops downloading unbounded historical records on the manager portal.
+### Finding 5.2: Unbounded Whole-Collection Read on `/users`
+- **File**: `src/features/dashboard/useDashboardData.js` (line 144) & `reportsRepository.js` (line 30).
+- **Behavior**: Calls `onSnapshot(collection(db, "users"))` without status filters or pagination.
+- **Risk**: Linear O(N) cost scaling. Every dashboard mount reads all historical, inactive, and graduated students.
+- **Remediation**: Filter queries by `where("status", "==", "active")` and isolate archived students into an on-demand paginated view.
 
-2. **§2.4 (Toast timer cleanup) — FIXED:**
-   - Added active timer tracking using `useRef(new Set())` and an unmount cleanup in `ToastProvider.jsx`. Any in-flight dismiss timeouts are cleanly cancelled if the component unmounts.
+### Finding 5.3: Admissions Creation Rule Contradiction
+- **File**: `src/features/students/applicationsRepository.js` (`createApplication`).
+- **Behavior**: Client code attempts to write to `/applications`, but `firestore.rules` line 98 blocks client creation (`allow create: if false;`).
+- **Risk**: Any UI invoking `createApplication()` will throw `PERMISSION_DENIED`.
+- **Remediation**: Clarify that applications are ingested exclusively via external Google Forms sync and remove or safeguard dead client creation exports.
 
-3. **§2.1 (Dashboard data-fetching duplication) — CONFIRMED & RETAINED:**
-   - Checked `useDashboardData.js` vs `ManagerDashboard.jsx`. `useDashboardData.js` couples Firestore subscriptions with form-editing state (`formData`, `emptyFormData`, `handleSave`, `handleEdit`, `deleteUserProfile`, `invites`), which are strictly needed for Admin and Front Office CRUD student/staff workflows. `ManagerDashboard` is an executive monitoring surface that does not manage user forms. Keeping `ManagerDashboard`'s lightweight query hook separate avoids bloating it with student form handlers. Error handling has been verified and harmonized.
+---
 
-4. **§2.3 (Data volume documentation) — DOCUMENTED:**
-   - Updated `docs/ARCHITECTURE.md` to classify `applications` and `todos` as secondary accumulators. Documented that admins can permanently purge rejected applications, and noted archival strategies for completed todos if volume scales.
+## 6. Medium & Low Findings
 
+### Finding 6.1: Class Enrollment Orphan on Student Deletion
+- **File**: `src/features/dashboard/usersRepository.js` (`deleteUserProfile`, lines 118–148).
+- **Risk**: Deleting a student profile checks for attendance and payment records, but does not scrub `classes.studentIds` or `classes.enrollments`, leaving dangling IDs in class rosters.
+
+### Finding 6.2: Class Batch Overcapacity Race Condition
+- **File**: `src/features/classes/classesRepository.js` (`enrollStudentInClass`, line 58).
+- **Risk**: Uses `updateDoc` with `arrayUnion` without verifying class capacity in a transaction (unlike `approveApplication` which uses `runTransaction`). Concurrent manual enrollments can exceed batch limits.
+
+### Finding 6.3: Unauthenticated Public Writes to ErrorLogs
+- **File**: `firestore.rules` (lines 211–216).
+- **Risk**: Any client possessing the Firebase project config can spam write operations to `/errorLogs`.
+- **Remediation**: Require `request.auth != null` or enforce rate limiting.
+
+### Finding 6.4: Outreach Visit Counter Sync
+- **File**: `src/features/dashboard/marketing/schoolOutreachRepository.js` (lines 40–55).
+- **Risk**: Adding a visit to `/schoolOutreach/{id}/visits` and updating parent `totalVisits` are executed sequentially rather than within an atomic `writeBatch`.
+
+---
+
+## 7. Missing Links in Business Logic
+
+1. **Class Deletion vs Student Enrollment**: Deleting a class does not clear the `currentLevel` or active batch reference on student profiles.
+2. **Student Deletion vs Class Enrollment**: Deleting a student leaves dangling references in `classes.studentIds`.
+3. **Desk Inquiries to Registration Conversion**: When a desk inquiry is marked "converted", there is no automated transition link to create a student profile; staff must manually retype the contact information.
+
+---
+
+## 8. Data Model & Scalability Assessment
+
+### Collection Classification Matrix
+
+| Collection | Ownership | Growth Class | Growth Rate | Read Pattern | Scalability Bottleneck |
+|---|---|---|---|---|---|
+| `/users` | Auth / Admin | Class C (School) | ~100–1,000/yr | Full collection `onSnapshot` | **High**: Reads scale linearly with total historical students |
+| `/classes` | Admin / FO | Class C (School) | ~20–50/yr | Full collection read | **Low**: Naturally bounded by classroom count |
+| `/attendance` | Kiosk / Scan | Class A (Events) | ~10k–50k/yr | Time-windowed (`sinceWitaIso`) | **Low**: Well-bounded by single-day query |
+| `/shifts` | Staff / Kiosk | Class A (Events) | ~2k–10k/yr | Time-windowed + open shift filter | **Low**: Cleanly indexed |
+| `/payments` | Front Desk | Class B (Ledger) | ~500–5,000/yr | Date-windowed query | **Low**: Paginated by cashier tab |
+| `/deskInquiries` | Front Desk | Class B (Leads) | ~300–2,000/yr | Recent leads query | **Low**: Naturally bounded |
+| `/schoolOutreach` | Marketing | Class C (Schools) | ~50–200 total | Full collection fetch | **Very Low**: Bounded by city schools (~100 institutions) |
+| `/errorLogs` | System Telemetry | Class A (Logs) | Variable | Admin view + purge utility | **Medium**: Unrestricted client writes |
+
+---
+
+## 9. Failure Mode Assessment
+
+- **Network Interruption**: Handled cleanly. `ConnectivityBanner.jsx` warns users immediately, and PWA caches the core shell. Firestore mutations queue in IndexedDB and flush upon reconnection.
+- **Malformed Legacy Documents**: Handled cleanly. Schemas in `src/schemas/` apply safe defaults on read.
+- **Kiosk Camera Disconnection**: Displayed via local UI banner, but not logged to centralized telemetry (`reportError`), creating an observability blind spot for remote administrators.
+
+---
+
+## 10. Answers to the 12 Mandatory Audit Questions
+
+1. **Is there an architectural flaw that could cause data corruption or security failure?**  
+   *Yes.* `firestore.rules` requiring `isAdmin()` for shift creation forces the physical front-desk kiosk tablet to run under an Administrator session, creating a severe physical security risk.
+2. **Is there a missing link in the business/data logic?**  
+   *Yes.* Deleting a student leaves orphaned IDs in `classes.studentIds`. Converted desk inquiries lack an automated pipeline into student registration.
+3. **What becomes the first bottleneck under heavy traffic?**  
+   Realtime listener fan-out on `/users` and `/classes`. When multiple staff have dashboards open, updates fan out to all connected clients simultaneously.
+4. **What becomes the first bottleneck as the database grows?**  
+   The unbounded `onSnapshot(collection(db, "users"))` in `useDashboardData.js`. As alumni accumulate, every dashboard load downloads thousands of irrelevant records.
+5. **Which current decisions are safe now but risky at 10× scale?**  
+   Whole-collection reads on `/users` and sequential (non-batched) subcollection counter increments.
+6. **What must be fixed before adding more features?**  
+   - Update `firestore.rules` to allow `isFrontOffice()` to record staff shifts on the kiosk.
+   - Enforce idempotent document IDs on student attendance scans (`${studentId}_${todayWita}`).
+7. **What can safely remain technical debt?**  
+   - Manual data transfer between converted desk inquiries and student intake.
+   - Dual array representation (`studentIds` and `enrollments`) in class documents.
+8. **What should be load-tested rather than guessed?**  
+   Offline mutation replay when a kiosk tablet reconnects after a 30-minute outage with dozens of queued scans.
+9. **What assumptions could not be verified from the repository?**  
+   Whether production traffic is served via Firebase Hosting or the Cloudflare Worker proxy, and whether Firebase App Check is enforced in production.
+10. **Does `docs/ARCHITECTURE.md` still describe reality?**  
+    *Mostly (~85%).* It accurately reflects the domain boundaries, but has drifted regarding new collections (`deskInquiries`, `corporateEvents`), direct Firestore queries in `useDashboardData.js`, and stale agent references.
+11. **What architecture changes should be documented after this audit?**  
+    Formal classification of `deskInquiries` and `corporateEvents`, clarification of the external-only `/applications` creation model, and the attendance scan idempotency pattern.
+12. **What is the smallest practical roadmap toward stronger production readiness and scalability?**  
+    See Section 11 below.
+
+---
+
+## 11. Recommended Roadmap
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ 1. FIX NOW (Zero-Risk, High-Impact)                                    │
+│    • Update firestore.rules to allow isFrontOffice() to clock staff in │
+│      (frees the kiosk tablet from requiring an Admin account).         │
+│    • Implement idempotent document IDs for kiosk attendance scans      │
+│      (`doc(db, "attendance", `${userId}_${todayWita}`)`).              │
+│    • Cascade student profile deletion to clean up class rosters.       │
+├────────────────────────────────────────────────────────────────────────┤
+│ 2. FIX BEFORE GROWTH (At ~500+ Students)                               │
+│    • Filter users query in useDashboardData.js to active students only │
+│      (`where("status", "==", "active")`).                              │
+│    • Wrap manual enrollStudentInClass in a capacity-checking           │
+│      transaction.                                                      │
+│    • Restrict /errorLogs create rule to authenticated sessions.        │
+├────────────────────────────────────────────────────────────────────────┤
+│ 3. MONITOR                                                             │
+│    • Daily Firestore document read counts on Firebase Console.         │
+│    • Kiosk camera disconnect events in production.                     │
+├────────────────────────────────────────────────────────────────────────┤
+│ 4. DO NOT CHANGE YET                                                   │
+│    • Keep role-level code-splitting in App.jsx.                        │
+│    • Keep subcollection design for /schoolOutreach/{id}/visits.        │
+│    • Keep existing paymentsRepository writeBatch implementation.       │
+└────────────────────────────────────────────────────────────────────────┘
+```

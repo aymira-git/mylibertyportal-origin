@@ -91,6 +91,7 @@ function runQuery(q) {
       if (c.op === ">") return v > c.value;
       if (c.op === "<") return v < c.value;
       if (c.op === "in") return Array.isArray(c.value) ? c.value.includes(v) : false;
+      if (c.op === "array-contains") return Array.isArray(v) ? v.includes(c.value) : false;
       return true;
     });
   }

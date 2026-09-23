@@ -158,13 +158,17 @@ service cloud.firestore {
       allow read: if isAdmin()
         || isManager()
         || (signedIn() && resource.data.userId == request.auth.uid);
-      // Staff scans: Admin only, for tracked roles only, new shifts start open
-      allow create: if isAdmin()
+      // Staff scans: Admin and Front Office (reception kiosk station), for tracked roles only, new shifts start open
+      allow create: if (isAdmin() || isFrontOffice())
         && request.resource.data.userId is string
         && request.resource.data.clockOut == null
         && isTrackedShiftRole(roleOf(request.resource.data.userId));
-      // Deploy B: Shift updates and manual corrections are strictly Admin-only
-      allow update, delete: if isAdmin();
+      // Shift clock-out and updates: Admin or Front Office (kiosk clock-out)
+      allow update: if isAdmin()
+        || (isFrontOffice()
+          && resource.data.clockOut == null
+          && request.resource.data.clockOut is string);
+      allow delete: if isAdmin();
     }
 
     match /shiftAuditEvents/{eventId} {

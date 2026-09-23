@@ -153,6 +153,22 @@ describe("recordStudentAttendance", () => {
       eventName: "School Open House",
     });
   });
+
+  it("writes to a deterministic document ID when dateKey is supplied to prevent double-counts", async () => {
+    await recordStudentAttendance({
+      uid: "s3",
+      displayName: "Citra",
+      dateKey: "2026-09-23",
+    });
+    const doc = fake.find("attendance/s3_2026-09-23");
+    expect(doc).toBeDefined();
+    expect(doc.data).toMatchObject({
+      userId: "s3",
+      displayName: "Citra",
+      role: "student",
+      method: "KIOSK",
+    });
+  });
 });
 
 describe("clockOutShift / switchClassAtomic", () => {

@@ -4,6 +4,7 @@ import {
   checkStaffHasAttendanceHistory,
   checkStudentHasHistory,
   createStaffAccount,
+  deleteUserProfile,
   updateStaffStatus,
 } from "./usersRepository.js";
 
@@ -128,5 +129,40 @@ describe("createStaffAccount", () => {
     expect(err.message).toContain("Account was created in Firebase Auth");
     expect(err.message).toContain("permission-denied");
     expect(err.cause.message).toBe("permission-denied");
+  });
+});
+
+describe("deleteUserProfile", () => {
+  it("deletes user profile and removes student from class rosters in an atomic batch", async () => {
+    fake.seed("users", [{ id: "s1", role: "student" }]);
+    fake.seed("classes", [
+      {
+        id: "c1",
+        studentIds: ["s1", "s2"],
+        enrollments: [
+          { studentId: "s1", level: "warrior" },
+          { studentId: "s2", level: "warrior" },
+        ],
+      },
+      {
+        id: "c2",
+        studentIds: ["s2"],
+        enrollments: [{ studentId: "s2", level: "warrior" }],
+      },
+    ]);
+
+    await deleteUserProfile("s1");
+
+    // User document should be deleted
+    expect(fake.opsOf("delete").some((o) => o.path === "users/s1")).toBe(true);
+
+    // Class c1 should be updated in a batch to remove s1
+    const c1 = fake.find("classes/c1");
+    expect(c1.via).toBe("batch");
+    expect(c1.data.studentIds).toEqual(["s2"]);
+    expect(c1.data.enrollments).toEqual([{ studentId: "s2", level: "warrior" }]);
+
+    // Class c2 should NOT be touched
+    expect(fake.find("classes/c2")).toBeUndefined();
   });
 });

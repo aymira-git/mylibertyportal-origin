@@ -83,6 +83,7 @@ export async function handleKioskScan(
     await recordStudentAttendance({
       uid,
       displayName: userData.displayName,
+      dateKey: todayDate,
       eventId: matchedEvent ? matchedEvent.id : null,
       eventName: matchedEvent ? matchedEvent.name : null,
     });
