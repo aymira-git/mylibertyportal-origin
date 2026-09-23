@@ -22,19 +22,19 @@ export const schoolMasterSchema = z.object({
   district: z.string().trim().nullable().optional().default(""),
   address: z.string().trim().default(""),
   lat: z
-    .number({ invalid_type_error: "Latitude must be a valid number." })
+    .number({ message: "Latitude must be a valid number." })
     .min(-90, "Latitude must be between -90 and 90.")
     .max(90, "Latitude must be between -90 and 90."),
   lng: z
-    .number({ invalid_type_error: "Longitude must be a valid number." })
+    .number({ message: "Longitude must be a valid number." })
     .min(-180, "Longitude must be between -180 and 180.")
     .max(180, "Longitude must be between -180 and 180."),
   tier: z.enum(SCHOOL_TIERS, {
-    errorMap: () => ({ message: `Tier must be one of: ${SCHOOL_TIERS.join(", ")}.` }),
+    message: `Tier must be one of: ${SCHOOL_TIERS.join(", ")}.`,
   }).default("SMA"),
   active: z.boolean().default(true),
   status: z.enum(OUTREACH_STATUSES, {
-    errorMap: () => ({ message: `Status must be one of: ${OUTREACH_STATUSES.join(", ")}.` }),
+    message: `Status must be one of: ${OUTREACH_STATUSES.join(", ")}.`,
   }).default("pending"),
   scheduledDate: z
     .string()
@@ -76,12 +76,12 @@ export const schoolVisitSchema = z.object({
   contactRole: z.string().trim().min(1, "Contact role is required."),
   phone: z.string().trim().default(""),
   flyersHandedOut: z
-    .number({ invalid_type_error: "Flyers count must be a number." })
+    .number({ message: "Flyers count must be a number." })
     .int("Flyers count must be an integer.")
     .nonnegative("Flyers count cannot be negative.")
     .default(0),
   leadsCollected: z
-    .number({ invalid_type_error: "Leads count must be a number." })
+    .number({ message: "Leads count must be a number." })
     .int("Leads count must be an integer.")
     .nonnegative("Leads count cannot be negative.")
     .default(0),

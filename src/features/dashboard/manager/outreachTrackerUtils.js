@@ -5,7 +5,7 @@ import { WITA_OFFSET_MS } from "../../../utils/dateWita.js";
 
 /**
  * Calculates school coverage metrics for active schools only.
- * @param {Array<object>} schools
+ * @param {Array<any>} schools
  * @returns {{ total: number, visited: number, percentage: number }}
  */
 export function calculateCoverage(schools = []) {
@@ -18,9 +18,9 @@ export function calculateCoverage(schools = []) {
 
 /**
  * Filters visit records by marketing officer ID.
- * @param {Array<object>} visits
+ * @param {Array<any>} visits
  * @param {string} officerId - "all" or specific UID
- * @returns {Array<object>}
+ * @returns {Array<any>}
  */
 export function filterVisitsByOfficer(visits = [], officerId = "all") {
   if (!officerId || officerId === "all") return visits;
@@ -37,11 +37,11 @@ export function filterVisitsByOfficer(visits = [], officerId = "all") {
  *
  * When `officerId` is "all" the full list is returned unchanged.
  *
- * @param {Array<object>} schools - All active school records.
+ * @param {Array<any>} schools - All active school records.
  * @param {string} officerId - "all" or a specific officer UID.
- * @param {Map<string, Array<object>>} visitsBySchoolId - Map of schoolId → visits[],
+ * @param {Map<string, Array<any>>} visitsBySchoolId - Map of schoolId → visits[],
  *   built from the 90-day visit window so recently worked schools are included.
- * @returns {Array<object>} Filtered school list.
+ * @returns {Array<any>} Filtered school list.
  */
 export function filterSchoolsByOfficer(schools = [], officerId = "all", visitsBySchoolId = new Map()) {
   if (!officerId || officerId === "all") return schools;
@@ -137,10 +137,10 @@ export function normalizeVisitDate(dateVal) {
  * Defensively normalizes dates so non-YYYY-MM-DD strings, ISO timestamps, or
  * Date objects do not silently miscount metrics.
  *
- * @param {Array<object>} visits
+ * @param {Array<any>} visits
  * @param {string|Date} startOfWeek - YYYY-MM-DD or parseable date
  * @param {string|Date} endOfWeek - YYYY-MM-DD or parseable date
- * @returns {{ visitsCount: number, flyersCount: number, leadsCount: number, weeklyVisits: Array<object> }}
+ * @returns {{ visitsCount: number, flyersCount: number, leadsCount: number, weeklyVisits: Array<any> }}
  */
 export function calculateWeeklyMetrics(visits = [], startOfWeek, endOfWeek) {
   const normStart = normalizeVisitDate(startOfWeek);
@@ -169,8 +169,8 @@ export function calculateWeeklyMetrics(visits = [], startOfWeek, endOfWeek) {
 
 /**
  * Extracts schools requiring follow-up action.
- * @param {Array<object>} schools
- * @returns {Array<object>}
+ * @param {Array<any>} schools
+ * @returns {Array<any>}
  */
 export function getFollowUpSchools(schools = []) {
   return schools.filter(

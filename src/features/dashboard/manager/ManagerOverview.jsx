@@ -1,6 +1,7 @@
 import { WelcomeBanner } from "../../shared";
 import { GraduationCap, BookOpen, UserPlus, Users, MapPin } from "lucide-react";
 import { AvailableBatches } from "../../classes";
+import { TuitionDueWidget } from "../frontoffice";
 import { formatTime, formatPunctuality } from "./managerUtils";
 import {
   calculateCoverage,
@@ -31,6 +32,7 @@ export function ManagerOverview({
   currentUserId = null,
   schools = [],
   visits = [],
+  students = [],
 }) {
   const totalBottlenecks =
     pendingApplications.length + unenrolledStudents.length + classesWithIssues.length;
@@ -98,6 +100,12 @@ export function ManagerOverview({
                 },
               ]
         }
+      />
+
+      {/* Tuition Due / Expiry Alerts */}
+      <TuitionDueWidget
+        students={students.length > 0 ? students : users.filter((u) => u.role === "student")}
+        onNavigateToStudents={() => onNavigate("classes")}
       />
 
       {/* Operational Bottlenecks / Action Required */}

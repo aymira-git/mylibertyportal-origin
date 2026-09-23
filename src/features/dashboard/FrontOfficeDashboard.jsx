@@ -13,22 +13,33 @@ import {
 import { KioskModal, KioskSidebarButton, CorporateEventsPanel } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { TasksPanel } from "../staff";
+import { PaymentModal } from "../finance";
+import {
+  TodayScheduleBoard,
+  TuitionDueWidget,
+  PaymentCashierTab,
+  WalkInInquiryTab,
+} from "./frontoffice";
+import { getProgram } from "../../constants/programs";
+import { normalizeBranch } from "../../constants/branches";
+import { normalizeDivision } from "../../constants/divisions";
 import {
   ScanLine,
   FileText,
-  School,
-  BarChart3,
   Send,
   MessageCircle,
   UserPlus,
   GraduationCap,
   BookOpen,
   AlertCircle,
+  CreditCard,
+  UserCheck,
 } from "lucide-react";
 
 export default function FrontOfficeDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [waPhone, setWaPhone] = useState("");
+  const [paymentModalStudent, setPaymentModalStudent] = useState(null);
   const [kioskOpen, setKioskOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -80,6 +91,56 @@ export default function FrontOfficeDashboard() {
     setWaPhone("");
   };
 
+  const handleEnrollProspect = (inquiry) => {
+    const isKindergarten = (inquiry.division || "courses") === "kindergarten";
+    const defaultProgId = isKindergarten ? "kids_school" : "english_course";
+    const chosenProgId = inquiry.programId || defaultProgId;
+    const prog = getProgram(chosenProgId);
+
+    let level = inquiry.currentLevel;
+    if (!level) {
+      if (isKindergarten) {
+        level =
+          inquiry.fluencyTier === "intermediate"
+            ? "tk_a"
+            : inquiry.fluencyTier === "fluent"
+              ? "tk_b"
+              : "nursery";
+      } else {
+        level =
+          inquiry.fluencyTier === "intermediate"
+            ? "master"
+            : inquiry.fluencyTier === "fluent"
+              ? "epic"
+              : "warrior";
+      }
+    }
+
+    handleAddStudent({
+      displayName: inquiry.studentName || "",
+      firstName: inquiry.studentName?.split(" ")[0] || "",
+      lastName: inquiry.studentName?.split(" ").slice(1).join(" ") || "",
+      dob: inquiry.dob || "",
+      phone: inquiry.phone || "",
+      parentName: inquiry.parentName || "",
+      parentPhone: inquiry.phone || "",
+      fatherName: inquiry.parentName || "",
+      fatherPhone: inquiry.phone || "",
+      motherName: inquiry.parentName || "",
+      motherPhone: inquiry.phone || "",
+      branch: normalizeBranch(inquiry.branch || "Kota Gorontalo"),
+      division: normalizeDivision(inquiry.division || "courses"),
+      programId: chosenProgId,
+      program:
+        prog?.label ||
+        inquiry.program ||
+        (isKindergarten ? "Kids School (Kindergarten)" : "English Course"),
+      currentLevel: level || (isKindergarten ? "nursery" : "warrior"),
+      referralSource: "Walk-in Front Desk",
+      notes: `Walk-in prospect enrolled directly.${inquiry.notes ? ` Inquired: ${inquiry.notes}` : ""}`,
+    });
+  };
+
   const overviewTab = (
     <div className="space-y-6 w-full">
       <WelcomeBanner
@@ -114,6 +175,22 @@ export default function FrontOfficeDashboard() {
           },
         ]}
       />
+
+      {/* Tuition Due / Overdue Alert Widget */}
+      <TuitionDueWidget
+        students={students}
+        onOpenPaymentModal={(student) => setPaymentModalStudent(student)}
+        onNavigateToStudents={() => setActiveTab("students")}
+      />
+
+      {/* Today's Live Room & Class Board */}
+      <TodayScheduleBoard
+        classes={classes}
+        instructors={instructors}
+        onNavigateToClasses={() => setActiveTab("classes")}
+      />
+
+      {/* Quick Actions & Walk-in Sender */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-3xl border border-indigo-100 shadow-sm space-y-3">
           <div className="flex items-center gap-2 text-indigo-900 font-extrabold text-sm">
@@ -140,6 +217,7 @@ export default function FrontOfficeDashboard() {
             </button>
           </div>
         </div>
+
         <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="font-extrabold text-slate-800 text-sm">Quick Actions</h4>
@@ -153,6 +231,20 @@ export default function FrontOfficeDashboard() {
           </div>
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
+              onClick={() => setActiveTab("cashier")}
+              className="p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200/80 text-xs font-bold text-[#1a3a8f] hover:bg-indigo-100 transition flex items-center gap-2"
+            >
+              <CreditCard className="w-4 h-4 text-[#1a3a8f] shrink-0" />
+              <span className="truncate">Desk Cashier</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("inquiries")}
+              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
+            >
+              <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="truncate">Guest Log</span>
+            </button>
+            <button
               onClick={() => setActiveTab("applications")}
               className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
             >
@@ -160,22 +252,8 @@ export default function FrontOfficeDashboard() {
               <span className="truncate">Applications</span>
             </button>
             <button
-              onClick={() => setActiveTab("classes")}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
-            >
-              <School className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="truncate">Manage Classes</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("reports")}
-              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
-            >
-              <BarChart3 className="w-4 h-4 text-blue-600 shrink-0" />
-              <span className="truncate">Open Reports</span>
-            </button>
-            <button
               onClick={() => setKioskOpen(true)}
-              className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200/80 text-xs font-bold text-[#1a3a8f] hover:bg-indigo-100 transition flex items-center gap-2"
+              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
             >
               <ScanLine className="w-4 h-4 text-[#1a3a8f] shrink-0" />
               <span className="truncate">Reception Mode</span>
@@ -199,6 +277,29 @@ export default function FrontOfficeDashboard() {
 
   const tabs = [
     { id: "overview", label: "Overview", component: overviewTab },
+    {
+      id: "cashier",
+      label: "Cashier & Finance",
+      icon: CreditCard,
+      component: (
+        <PaymentCashierTab
+          students={students}
+          branchLabel="Kota Gorontalo"
+        />
+      ),
+    },
+    {
+      id: "inquiries",
+      label: "Guestbook & Inquiries",
+      icon: UserCheck,
+      component: (
+        <WalkInInquiryTab
+          division="courses"
+          branchLabel="Kota Gorontalo"
+          onEnrollStudent={handleEnrollProspect}
+        />
+      ),
+    },
     {
       id: "applications",
       label: "Applications",
@@ -270,11 +371,6 @@ export default function FrontOfficeDashboard() {
       ),
     },
     { id: "aiAssistant", label: "AI Assistant", component: <AIAssistant /> },
-    // 👈 Not in the sidebar — reachable via "Add Student" and via "Edit" on a
-    // student in the roster (both go through handleAddStudent/handleEdit,
-    // which always set role: "student"). UserForm locks the Role field to a
-    // read-only badge whenever formData.role === "student" (add OR edit), so
-    // this can never expose the staff-role picker or create staff accounts.
     {
       id: "addUser",
       label: editId ? "Edit Student" : "Add Student",
@@ -312,6 +408,14 @@ export default function FrontOfficeDashboard() {
 
       {/* ID Badge Modal */}
       <BadgeModal person={selectedStudent} onClose={() => setSelectedStudent(null)} />
+
+      {/* Direct PaymentModal from Overview Due Widget */}
+      {paymentModalStudent && (
+        <PaymentModal
+          student={paymentModalStudent}
+          onClose={() => setPaymentModalStudent(null)}
+        />
+      )}
     </div>
   );
 }

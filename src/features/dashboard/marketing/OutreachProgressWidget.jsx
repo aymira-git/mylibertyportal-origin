@@ -3,9 +3,9 @@ import { MapPin } from "lucide-react";
 export default function OutreachProgressWidget({
   schools = [],
   activeFilter = "all",
-  onFilterChange,
+  onFilterChange = undefined,
   isCompact = false,
-  onNavigateToMap,
+  onNavigateToMap = undefined,
 }) {
   const total = schools.length;
   const visited = schools.filter((s) => s.status === "visited").length;

@@ -35,7 +35,7 @@ export const corporateEventSchema = z
       .optional()
       .or(z.literal("")),
     audienceType: z.enum(AUDIENCE_TYPES, {
-      errorMap: () => ({ message: "Audience type must be 'all', 'branch', 'role', or 'division'." }),
+      message: "Audience type must be 'all', 'branch', 'role', or 'division'.",
     }),
     audienceValue: z.string().trim().nullable().optional(),
     status: z.enum(["active", "cancelled"]).default("active"),

@@ -134,6 +134,12 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin() || isFrontOffice();
     }
 
+    match /deskInquiries/{inquiryId} {
+      allow read: if isAdmin() || isManager() || isFrontOffice() || isStaff();
+      allow create, update: if isAdmin() || isManager() || isFrontOffice() || isStaff();
+      allow delete: if isAdmin() || isManager() || isFrontOffice();
+    }
+
     match /progressReports/{reportId} {
       allow read: if isAdmin()
         || isManager()

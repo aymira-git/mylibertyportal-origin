@@ -247,20 +247,24 @@ export function useDashboardData({
     setActiveTab?.("addUser");
   };
 
-  const handleAddStudent = () => {
+  const handleAddStudent = (prefill = {}) => {
     setEditId(null);
-    const isKindergarten = division === "kindergarten";
+    const effectiveDivision = prefill.division || division;
+    const isKindergarten = effectiveDivision === "kindergarten";
     const defaultProgramId = isKindergarten ? "kids_school" : "english_course";
-    const defaultProg = getProgram(defaultProgramId);
+    const defaultProg = getProgram(prefill.programId || defaultProgramId);
     setFormData({
       ...emptyFormData,
       role: "student",
       division: isKindergarten ? "kindergarten" : "courses",
-      programId: defaultProgramId,
-      program: defaultProg?.label || (isKindergarten ? "Kids School (Kindergarten)" : "English Course"),
+      programId: defaultProg?.id || defaultProgramId,
+      program:
+        defaultProg?.label ||
+        (isKindergarten ? "Kids School (Kindergarten)" : "English Course"),
       currentLevel: isKindergarten ? "nursery" : "warrior",
       paymentPlan: "monthly",
       status: "active",
+      ...prefill,
     });
     setActiveTab?.("addUser");
   };

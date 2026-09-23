@@ -139,14 +139,16 @@ export function calculateCoveragePeriod(startDate, months) {
 
 /**
  * Evaluates the payment health status of a student based on their paidUntil date.
+ * Default due-soon threshold is 8 days (7 days + 1 buffer) so instructors and front desk
+ * can notify the student/parent in person on their last face-to-face class meeting before expiry.
  * Returns:
  * - "legacy": if paidUntil is absent (renders as "No Plan Set", slate)
  * - "invalid_date": if paidUntil cannot be parsed (renders as "Check date", rose)
- * - "active": remainingDays > 14 (emerald)
- * - "due_soon": 0 <= remainingDays <= 14 (amber)
+ * - "active": remainingDays > 8 (emerald)
+ * - "due_soon": 0 <= remainingDays <= 8 (amber)
  * - "expired": remainingDays < 0 (rose)
  */
-export function getPaymentHealthStatus(paidUntil) {
+export function getPaymentHealthStatus(paidUntil, dueSoonThresholdDays = 8) {
   if (!paidUntil || typeof paidUntil !== "string" || !paidUntil.trim()) {
     return {
       status: "legacy",
@@ -179,7 +181,7 @@ export function getPaymentHealthStatus(paidUntil) {
       };
     }
 
-    if (remainingDays <= 14) {
+    if (remainingDays <= dueSoonThresholdDays) {
       return {
         status: "due_soon",
         label: "Due Soon",

@@ -74,7 +74,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
           </p>
         </div>
 
-        {/* Role & Division badges or pickers */}
+        {/* Role & Division badges or edit indicators */}
         <div>
           {editId || isStudent ? (
             <div className="flex flex-wrap items-center gap-1.5">
@@ -91,36 +91,8 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
               )}
             </div>
           ) : (
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="flex items-center gap-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Division:</label>
-                <select
-                  value={normalizeDivision(formData.division)}
-                  onChange={(e) => handleDivisionChange(e.target.value)}
-                  className="p-2 border rounded-xl bg-white font-bold text-xs"
-                >
-                  <option value="courses">Course Academy</option>
-                  <option value="kindergarten">Kids School (Kindergarten)</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Role:</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => field("role", e.target.value)}
-                  className="p-2 border rounded-xl bg-white font-bold text-xs"
-                >
-                  <option value="instructor">Instructor</option>
-                  <option value="manager">Manager</option>
-                  <option value="frontoffice">Front Office</option>
-                  {normalizeDivision(formData.division) !== "kindergarten" && (
-                    <>
-                      <option value="marketing">Marketing Staff</option>
-                      <option value="officeboy">Office Boy</option>
-                    </>
-                  )}
-                </select>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-500 font-medium">New Account</span>
             </div>
           )}
         </div>
@@ -723,7 +695,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
             </div>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                Division (Divisi)
+                Division (Divisi) *
               </label>
               <select
                 value={normalizeDivision(formData.division)}
@@ -735,30 +707,52 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                Employment Status{" "}
-                {isSelf && (
-                  <span className="text-amber-600 font-semibold">(Protected Self-Account)</span>
-                )}
+              <label className="block text-[10px] font-bold text-[#1a3a8f] uppercase mb-1 flex items-center gap-1">
+                <span>Assigned Role (Peran Staf) *</span>
               </label>
               <select
-                value={formData.status || "active"}
-                disabled={isSelf}
-                onChange={(e) => field("status", e.target.value)}
-                className={`w-full p-2.5 border rounded-xl font-bold text-xs ${
-                  isSelf ? "bg-slate-100 text-slate-500 cursor-not-allowed" : "bg-white"
-                }`}
-                title={
-                  isSelf ? "You cannot modify your own administrative status while logged in" : ""
-                }
+                value={formData.role || "instructor"}
+                onChange={(e) => field("role", e.target.value)}
+                className="w-full p-2.5 border border-[#1a3a8f]/40 bg-indigo-50/30 rounded-xl font-bold text-xs text-slate-900 focus:border-[#1a3a8f] outline-none"
               >
-                {STAFF_STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
+                <option value="instructor">Instructor / Teacher</option>
+                <option value="manager">Manager</option>
+                <option value="frontoffice">Front Office</option>
+                {normalizeDivision(formData.division) !== "kindergarten" && (
+                  <>
+                    <option value="marketing">Marketing Staff</option>
+                    <option value="officeboy">Office Support (Office Boy)</option>
+                  </>
+                )}
               </select>
             </div>
+            {editId && (
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Employment Status{" "}
+                  {isSelf && (
+                    <span className="text-amber-600 font-semibold">(Protected Self-Account)</span>
+                  )}
+                </label>
+                <select
+                  value={formData.status || "active"}
+                  disabled={isSelf}
+                  onChange={(e) => field("status", e.target.value)}
+                  className={`w-full p-2.5 border rounded-xl font-bold text-xs ${
+                    isSelf ? "bg-slate-100 text-slate-500 cursor-not-allowed" : "bg-white"
+                  }`}
+                  title={
+                    isSelf ? "You cannot modify your own administrative status while logged in" : ""
+                  }
+                >
+                  {STAFF_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
                 Email Address
@@ -775,7 +769,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
               />
             </div>
             {!editId && (
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
                   Initial Password
                 </label>

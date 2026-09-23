@@ -14,6 +14,7 @@ import {
 } from "./manager";
 import { listenToSchools, listenToOutreachVisits, getStartOfWeekWita, getEndOfWeekWita } from "./marketing";
 import { reportError } from "../../utils/reportError";
+import { WalkInInquiryTab } from "./frontoffice";
 
 export default function ManagerDashboard() {
   const toast = useToast();
@@ -317,12 +318,23 @@ export default function ManagerDashboard() {
           onNavigate={(tab) => setActiveTab(tab)}
           classes={classes}
           users={users}
+          students={students}
           currentUserId={auth.currentUser?.uid}
           schools={schools}
           visits={weekVisits}
           outreachLoading={outreachLoading}
           outreachError={outreachError}
           onRetryOutreach={handleRetryOutreach}
+        />
+      ),
+    },
+    {
+      id: "inquiries",
+      label: "Guestbook & Inquiries",
+      component: (
+        <WalkInInquiryTab
+          division="courses"
+          branchLabel="Kota Gorontalo"
         />
       ),
     },

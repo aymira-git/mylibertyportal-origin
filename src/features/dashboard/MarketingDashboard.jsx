@@ -12,6 +12,7 @@ import {
   OutreachProgressWidget,
   listenToSchools,
 } from "./marketing";
+import { WalkInInquiryTab } from "./frontoffice";
 
 function MarketingOverview({ leadCount, loading, classes, openSeats, schools, onNavigate }) {
   const toast = useToast();
@@ -42,16 +43,19 @@ function MarketingOverview({ leadCount, loading, classes, openSeats, schools, on
             label: "Pending Inquiries",
             value: loading ? "..." : leadCount,
             icon: UserPlus,
+            onClick: () => onNavigate("inquiries"),
           },
           {
             label: "Total Open Seats",
             value: openSeats,
             icon: Users,
+            onClick: () => onNavigate("classes"),
           },
           {
             label: "Available Batches",
             value: classes.length,
             icon: BookOpen,
+            onClick: () => onNavigate("classes"),
           },
         ]}
       />
@@ -91,6 +95,13 @@ function MarketingOverview({ leadCount, loading, classes, openSeats, schools, on
             <span>Preview Form</span>
             <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
           </a>
+          <button
+            onClick={() => onNavigate("inquiries")}
+            className="px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-[#1a3a8f] font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5 text-[#1a3a8f]" />
+            <span>Walk-In Guestbook</span>
+          </button>
         </div>
 
         <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200/80 text-xs text-emerald-800 font-medium">
@@ -215,6 +226,15 @@ export default function MarketingDashboard() {
       component: (
         <div className="w-full">
           <SchoolOutreachTab currentUser={auth.currentUser} />
+        </div>
+      ),
+    },
+    {
+      id: "inquiries",
+      label: "Guestbook & Inquiries",
+      component: (
+        <div className="w-full">
+          <WalkInInquiryTab division="courses" branchLabel="Kota Gorontalo" />
         </div>
       ),
     },

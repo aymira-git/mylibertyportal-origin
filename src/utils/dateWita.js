@@ -78,6 +78,26 @@ export function parseWitaInputToUtcIso(inputStr) {
 }
 
 /**
+ * Returns the exact UTC ISO start (00:00:00.000) and end (00:00:00.000 of next day)
+ * for a given WITA date (defaults to today).
+ * For example, for 2026-09-23 WITA:
+ * startIso: "2026-09-22T16:00:00.000Z"
+ * endIso:   "2026-09-23T16:00:00.000Z"
+ * @param {Date} [date=new Date()]
+ * @returns {{ startIso: string, endIso: string }}
+ */
+export function getWitaDayRangeIso(date = new Date()) {
+  const w = new Date(date.getTime() + WITA_OFFSET_MS);
+  const startUtcMs =
+    Date.UTC(w.getUTCFullYear(), w.getUTCMonth(), w.getUTCDate(), 0, 0, 0, 0) - WITA_OFFSET_MS;
+  const endUtcMs = startUtcMs + 24 * 3600 * 1000;
+  return {
+    startIso: new Date(startUtcMs).toISOString(),
+    endIso: new Date(endUtcMs).toISOString(),
+  };
+}
+
+/**
  * Validates whether a time string strictly matches the "HH:mm" 24-hour format.
  * Prevents malformed class schedule data from crashing time-calculation helpers.
  * @param {any} [timeStr]

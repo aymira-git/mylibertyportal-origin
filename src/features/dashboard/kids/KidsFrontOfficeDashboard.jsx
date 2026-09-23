@@ -13,6 +13,15 @@ import {
 import { KioskModal, KioskSidebarButton } from "../../attendance";
 import { ClassManager } from "../../classes";
 import { TasksPanel } from "../../staff";
+import { PaymentModal } from "../../finance";
+import {
+  TodayScheduleBoard,
+  TuitionDueWidget,
+  PaymentCashierTab,
+  WalkInInquiryTab,
+} from "../frontoffice";
+import { getProgram } from "../../../constants/programs";
+import { normalizeBranch } from "../../../constants/branches";
 import {
   ScanLine,
   Send,
@@ -21,12 +30,14 @@ import {
   GraduationCap,
   BookOpen,
   AlertCircle,
-  Sparkles,
+  CreditCard,
+  UserCheck,
 } from "lucide-react";
 
 export default function KidsFrontOfficeDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [waPhone, setWaPhone] = useState("");
+  const [paymentModalStudent, setPaymentModalStudent] = useState(null);
   const [kioskOpen, setKioskOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -81,6 +92,43 @@ export default function KidsFrontOfficeDashboard() {
     setWaPhone("");
   };
 
+  const handleEnrollProspect = (inquiry) => {
+    const defaultProgId = "kids_school";
+    const chosenProgId = inquiry.programId || defaultProgId;
+    const prog = getProgram(chosenProgId);
+
+    let level = inquiry.currentLevel;
+    if (!level) {
+      level =
+        inquiry.fluencyTier === "intermediate"
+          ? "tk_a"
+          : inquiry.fluencyTier === "fluent"
+            ? "tk_b"
+            : "nursery";
+    }
+
+    handleAddStudent({
+      displayName: inquiry.studentName || "",
+      firstName: inquiry.studentName?.split(" ")[0] || "",
+      lastName: inquiry.studentName?.split(" ").slice(1).join(" ") || "",
+      dob: inquiry.dob || "",
+      phone: inquiry.phone || "",
+      parentName: inquiry.parentName || "",
+      parentPhone: inquiry.phone || "",
+      fatherName: inquiry.parentName || "",
+      fatherPhone: inquiry.phone || "",
+      motherName: inquiry.parentName || "",
+      motherPhone: inquiry.phone || "",
+      branch: normalizeBranch(inquiry.branch || "Kota Gorontalo"),
+      division: "kindergarten",
+      programId: chosenProgId,
+      program: prog?.label || inquiry.program || "Kids School (Kindergarten)",
+      currentLevel: level || "nursery",
+      referralSource: "Walk-in Front Desk",
+      notes: `Walk-in prospect enrolled directly.${inquiry.notes ? ` Inquired: ${inquiry.notes}` : ""}`,
+    });
+  };
+
   const overviewTab = (
     <div className="space-y-6 w-full">
       <WelcomeBanner
@@ -102,13 +150,13 @@ export default function KidsFrontOfficeDashboard() {
             onClick: () => setActiveTab("students"),
           },
           {
-            label: "TK & Nursery Cohorts",
+            label: "Active Batches",
             value: classes.length,
             icon: BookOpen,
             onClick: () => setActiveTab("classes"),
           },
           {
-            label: "Unassigned Children",
+            label: "Unassigned",
             value: unenrolledStudents.length,
             icon: AlertCircle,
             onClick: () => setActiveTab("students"),
@@ -116,26 +164,41 @@ export default function KidsFrontOfficeDashboard() {
         ]}
       />
 
+      {/* Tuition Due / Overdue Alert Widget */}
+      <TuitionDueWidget
+        students={students}
+        onOpenPaymentModal={(student) => setPaymentModalStudent(student)}
+        onNavigateToStudents={() => setActiveTab("students")}
+      />
+
+      {/* Today's Live Room & Class Board */}
+      <TodayScheduleBoard
+        classes={classes}
+        instructors={instructors}
+        onNavigateToClasses={() => setActiveTab("classes")}
+      />
+
+      {/* Quick Actions & Walk-in Sender */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-5 rounded-3xl border border-cyan-100 shadow-xs space-y-3">
+        <div className="bg-white p-5 rounded-3xl border border-cyan-100 shadow-sm space-y-3">
           <div className="flex items-center gap-2 text-cyan-900 font-extrabold text-sm">
             <MessageCircle className="w-4 h-4 text-emerald-600" />
-            <span>Walk-in Child Registration</span>
+            <span>Walk-in Child Registration Link</span>
           </div>
           <p className="text-xs text-slate-500 font-medium">
-            Send an application link directly to a parent's WhatsApp for Nursery, TK-A, or TK-B admission.
+            Send an application link to a parent&apos;s WhatsApp for Nursery / TK registration.
           </p>
           <div className="flex gap-2 pt-1">
             <input
               type="tel"
               value={waPhone}
               onChange={(e) => setWaPhone(e.target.value)}
-              placeholder="Parent's WhatsApp (e.g. 0812...)"
-              className="flex-1 p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
+              placeholder="Parent's Phone (e.g. 0812...)"
+              className="flex-1 p-2.5 border border-slate-200 rounded-xl text-xs font-semibold bg-slate-50 focus:bg-white focus:border-cyan-600 outline-none transition"
             />
             <button
               onClick={() => sendWhatsAppInvite(waPhone)}
-              className="bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              className="bg-[#25D366] hover:bg-[#20ba59] text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-xs transition flex items-center gap-1.5"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Send Link</span>
@@ -143,23 +206,45 @@ export default function KidsFrontOfficeDashboard() {
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-slate-800 font-extrabold text-sm">
-              <Sparkles className="w-4 h-4 text-cyan-600" />
-              <span>Kindergarten Schedule Policy</span>
-            </div>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              Kids School operates on a formal academic schedule: <strong>Monday to Friday (Mon–Fri)</strong> daily. Saturday and Sunday are strictly OFF.
-            </p>
+        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-extrabold text-slate-800 text-sm">Desk Quick Launch</h4>
+            <button
+              onClick={handleAddStudent}
+              className="text-[11px] font-bold text-cyan-700 hover:underline inline-flex items-center gap-1"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>+ Register Child</span>
+            </button>
           </div>
-          <div className="pt-3">
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              onClick={() => setActiveTab("cashier")}
+              className="p-2.5 rounded-xl bg-cyan-50/80 border border-cyan-200/80 text-xs font-bold text-cyan-900 hover:bg-cyan-100 transition flex items-center gap-2"
+            >
+              <CreditCard className="w-4 h-4 text-cyan-700 shrink-0" />
+              <span className="truncate">Desk Cashier</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("inquiries")}
+              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
+            >
+              <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="truncate">Guest Log</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("applications")}
+              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
+            >
+              <UserPlus className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span className="truncate">Applications</span>
+            </button>
             <button
               onClick={() => setKioskOpen(true)}
-              className="w-full py-2.5 px-4 bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
+              className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700 hover:bg-slate-100 transition flex items-center gap-2"
             >
-              <ScanLine className="w-4 h-4 text-cyan-600" />
-              <span>Launch Daily Kiosk Station</span>
+              <ScanLine className="w-4 h-4 text-cyan-700 shrink-0" />
+              <span className="truncate">Reception Mode</span>
             </button>
           </div>
         </div>
@@ -170,9 +255,32 @@ export default function KidsFrontOfficeDashboard() {
   const tabs = [
     { id: "overview", label: "Overview", component: overviewTab },
     {
+      id: "cashier",
+      label: "Cashier & Tuition",
+      icon: CreditCard,
+      component: (
+        <PaymentCashierTab
+          students={students}
+          branchLabel="Kota Gorontalo (Kids)"
+        />
+      ),
+    },
+    {
+      id: "inquiries",
+      label: "Guestbook & Inquiries",
+      icon: UserCheck,
+      component: (
+        <WalkInInquiryTab
+          division="kindergarten"
+          branchLabel="Kota Gorontalo"
+          onEnrollStudent={handleEnrollProspect}
+        />
+      ),
+    },
+    {
       id: "applications",
       label: "Applications",
-      badge: pendingApplications || null,
+      badge: pendingApplications > 0 ? pendingApplications : null,
       component: (
         <StudentApplications
           applications={applications}
@@ -282,6 +390,14 @@ export default function KidsFrontOfficeDashboard() {
 
       {selectedStudent && (
         <BadgeModal person={selectedStudent} onClose={() => setSelectedStudent(null)} />
+      )}
+
+      {/* Direct PaymentModal from Overview Due Widget */}
+      {paymentModalStudent && (
+        <PaymentModal
+          student={paymentModalStudent}
+          onClose={() => setPaymentModalStudent(null)}
+        />
       )}
     </div>
   );

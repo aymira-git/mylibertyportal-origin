@@ -129,22 +129,22 @@ describe("getPaymentHealthStatus", () => {
     });
   });
 
-  it("is 'due_soon' on the day itself and up to 14 days out", () => {
+  it("is 'due_soon' on the day itself and up to 8 days out (7 days + 1 face-to-face buffer)", () => {
     expect(getPaymentHealthStatus("2026-09-21")).toMatchObject({
       status: "due_soon",
       remainingDays: 0,
     });
-    expect(getPaymentHealthStatus("2026-10-05")).toMatchObject({
+    expect(getPaymentHealthStatus("2026-09-29")).toMatchObject({
       status: "due_soon",
-      remainingDays: 14,
+      remainingDays: 8,
       tone: "amber",
     });
   });
 
-  it("is 'active' from 15 days out", () => {
-    expect(getPaymentHealthStatus("2026-10-06")).toMatchObject({
+  it("is 'active' from 9 days out", () => {
+    expect(getPaymentHealthStatus("2026-09-30")).toMatchObject({
       status: "active",
-      remainingDays: 15,
+      remainingDays: 9,
       tone: "emerald",
     });
   });

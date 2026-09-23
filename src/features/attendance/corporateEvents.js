@@ -17,8 +17,8 @@ import { matchesDivisionFilter, divisionOfProgram } from "../../constants/divisi
  * - "division": matches anyone in that canonical division (derives division from program for students).
  * - "role": matches staff/manager by exact role. Students are never matched by role dimension.
  *
- * @param {object} event
- * @param {object} user
+ * @param {any} event
+ * @param {any} user
  * @param {string} [dateStr] - YYYY-MM-DD
  * @returns {boolean}
  */
@@ -73,10 +73,10 @@ export function isEventEligible(event, user, dateStr) {
  * - More than 1 match -> { match: null, count: N, ambiguous: true, matchedEvents }
  * - 0 matches -> { match: null, count: 0, ambiguous: false }
  *
- * @param {Array<object>} events
- * @param {object} user
+ * @param {Array<any>} events
+ * @param {any} user
  * @param {string} [dateStr]
- * @returns {{ match: object|null, count: number, ambiguous: boolean, matchedEvents?: Array<object> }}
+ * @returns {{ match: any|null, count: number, ambiguous: boolean, matchedEvents?: Array<any> }}
  */
 export function findMatchingCorporateEvents(events, user, dateStr) {
   if (!Array.isArray(events) || events.length === 0 || !user) {

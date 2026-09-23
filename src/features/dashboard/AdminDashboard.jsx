@@ -9,6 +9,7 @@ import { KioskModal, KioskSidebarButton, CorporateEventsPanel } from "../attenda
 import { ClassManager, AvailableBatches } from "../classes";
 import { StaffDirectory, InvitesPanel, TasksPanel } from "../staff";
 import LogRetentionCard from "./LogRetentionCard";
+import { TuitionDueWidget } from "./frontoffice";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -86,6 +87,12 @@ export default function AdminDashboard() {
             onClick: () => handleTabChange("students"),
           },
         ]}
+      />
+
+      {/* Tuition Due / Expiry Alerts */}
+      <TuitionDueWidget
+        students={students}
+        onNavigateToStudents={() => handleTabChange("students")}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

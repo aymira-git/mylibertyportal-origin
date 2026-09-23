@@ -52,8 +52,8 @@ export default function SchoolVisitModal({ school, currentUser, onClose, onVisit
         contactName: contactName.trim(),
         contactRole: contactRole.trim(),
         phone: phone.trim(),
-        flyersHandedOut: Math.max(0, parseInt(flyersHandedOut, 10) || 0),
-        leadsCollected: Math.max(0, parseInt(leadsCollected, 10) || 0),
+        flyersHandedOut: Math.max(0, Number(flyersHandedOut) || 0),
+        leadsCollected: Math.max(0, Number(leadsCollected) || 0),
         outcome: outcome.trim(),
         notes: notes.trim(),
         nextActionDate: nextActionDate || "",
@@ -196,7 +196,7 @@ export default function SchoolVisitModal({ school, currentUser, onClose, onVisit
                   type="number"
                   min="0"
                   value={flyersHandedOut}
-                  onChange={(e) => setFlyersHandedOut(e.target.value)}
+                  onChange={(e) => setFlyersHandedOut(Number(e.target.value))}
                   className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800"
                 />
               </div>
@@ -206,7 +206,7 @@ export default function SchoolVisitModal({ school, currentUser, onClose, onVisit
                   type="number"
                   min="0"
                   value={leadsCollected}
-                  onChange={(e) => setLeadsCollected(e.target.value)}
+                  onChange={(e) => setLeadsCollected(Number(e.target.value))}
                   className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800"
                 />
               </div>

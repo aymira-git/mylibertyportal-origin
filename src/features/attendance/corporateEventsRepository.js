@@ -45,9 +45,9 @@ export async function fetchCorporateEvents() {
 /**
  * Subscribes to corporate events collection with real-time updates.
  *
- * @param {function(Array<object>): void} onData
- * @param {function(Error): void} [onError]
- * @returns {function(): void} Unsubscribe function
+ * @param {(events: any[]) => void} onData
+ * @param {(err: Error) => void} [onError]
+ * @returns {() => void} Unsubscribe function
  */
 export function subscribeCorporateEvents(onData, onError) {
   const q = query(collection(db, "corporateEvents"), orderBy("eventDate", "desc"));

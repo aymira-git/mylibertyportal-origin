@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { auth } from "../../../firebase";
 import { LevelBadge, WelcomeBanner } from "../../shared";
 import { AvailableBatches } from "../../classes";
+import { TuitionDueWidget } from "../frontoffice";
 import {
   BookOpen,
   Users,
@@ -61,6 +62,12 @@ export default function InstructorOverview({
             icon: FileText,
           },
         ]}
+      />
+
+      {/* ── Tuition Due / Expiry Alerts for Enrolled Students ── */}
+      <TuitionDueWidget
+        students={enrolledStudents}
+        onNavigateToStudents={() => onNavigate("classes")}
       />
 
       {/* ── Quick Action Shortcuts ── */}
