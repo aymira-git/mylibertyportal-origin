@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { PaymentModal } from "../finance";
 import { TransferModal } from "../classes";
 import {
-  exportTableCSV,
   Pagination,
   usePagination,
   getPaymentHealthStatus,
@@ -23,6 +22,7 @@ import { getStudentPlanLabel } from "./studentRosterBadges";
 import StudentRosterFilters from "./StudentRosterFilters";
 import StudentRosterMobileList from "./StudentRosterMobileList";
 import StudentRosterTable from "./StudentRosterTable";
+import { exportStudentRosterCSV } from "./studentRosterExport";
 import { Users, FileSpreadsheet, UserPlus } from "lucide-react";
 
 export default function StudentRoster({
@@ -290,7 +290,6 @@ export default function StudentRoster({
         };
       })
       .filter((s) => {
-        // 1. Status Filter
         if (statusFilter === "active" && s.effectiveStatus !== "active") return false;
         if (statusFilter === "on_leave" && s.effectiveStatus !== "on_leave") return false;
         if (
@@ -300,7 +299,6 @@ export default function StudentRoster({
         )
           return false;
 
-        // 2. Action Filter
         if (actionFilter === "unassigned" && s.studentClasses.length > 0) return false;
         if (
           actionFilter === "due_or_expired" &&
@@ -313,7 +311,6 @@ export default function StudentRoster({
         if (actionFilter === "intermediate" && s.tier !== "intermediate") return false;
         if (actionFilter === "fluent" && s.tier !== "fluent") return false;
 
-        // 3. Search Query
         const q = searchQuery.trim().toLowerCase();
         if (!q) return true;
         return (
@@ -347,45 +344,6 @@ export default function StudentRoster({
     25
   );
 
-  const handlePrint = () => {
-    const headers = [
-      "Student Name",
-      "Parent Contact",
-      "Status",
-      "Education",
-      "DOB",
-      "Joined",
-      "Payment Status",
-      "Plan",
-      "Paid Until",
-      "Class",
-      "Instructor",
-    ];
-    const rows = sortedStudents.map((s) => {
-      const planLabel = getStudentPlanLabel(s) || "—";
-      const isPending = s.paymentStatus === "pending";
-      const health = isPending ? { label: "Pending" } : getPaymentHealthStatus(s.paidUntil);
-      return [
-        s.displayName || "",
-        `${s.parentName || "N/A"} (${s.parentPhone || "N/A"})`,
-        s.effectiveStatus || "active",
-        s.educationLevel || s.schoolOrJob || "N/A",
-        s.dob || "N/A",
-        s.effectiveJoinedDate || "N/A",
-        health.label,
-        planLabel,
-        s.paidUntil || s.lastPaymentPeriod || "—",
-        s.studentClasses.length
-          ? s.studentClasses.map((c) => c.className).join(", ")
-          : "Unassigned",
-        s.studentClasses.length
-          ? s.studentClasses.map((c) => c.instructorName || "Unassigned").join(", ")
-          : "—",
-      ];
-    });
-    exportTableCSV(`student-roster-${new Date().toISOString().slice(0, 10)}`, headers, rows);
-  };
-
   return (
     <div className="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-slate-200/90 w-full space-y-5">
       {/* Header Panel */}
@@ -413,7 +371,7 @@ export default function StudentRoster({
             </button>
           )}
           <button
-            onClick={handlePrint}
+            onClick={() => exportStudentRosterCSV(sortedStudents)}
             className="inline-flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 px-3.5 py-2 rounded-xl font-bold text-xs transition shadow-2xs cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />

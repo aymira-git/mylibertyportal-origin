@@ -1,19 +1,19 @@
 import { useState, useMemo } from "react";
-import { BookOpen, Plus, Search } from "lucide-react";
-import { LEVELS, LEVEL_KEYS, TIERS, TIER_KEYS, getTier, useToast, useConfirm } from "../shared";
+import { BookOpen, Plus } from "lucide-react";
+import { LEVELS, getTier, useToast, useConfirm } from "../shared";
 import BatchModal from "./BatchModal";
 import EnrollModal from "./EnrollModal";
 import BatchesOverviewWidget from "./BatchesOverviewWidget";
 import AvailableBatchCard from "./AvailableBatchCard";
+import { AvailableBatchesFilterBar } from "./AvailableBatchesFilterBar";
 import { deleteClass } from "./classesRepository";
 import { copyText } from "../../utils/copyText";
 import { getRegistrationUrl } from "../../constants/externalLinks";
-import { BRANCHES, matchesBranchFilter } from "../../constants/branches";
+import { matchesBranchFilter } from "../../constants/branches";
 import { getBatchProgram, getEnabledPrograms } from "../../constants/programs";
 import {
   normalizeBatchType,
   getBatchType,
-  getBatchTypeList,
   matchesBatchTypeFilter,
 } from "../../constants/batchTypes";
 
@@ -72,7 +72,6 @@ export default function AvailableBatches({
       const seatsAvailable = Math.max(0, capacity - studentCount);
       const occupancyRate = Math.min(100, Math.round((studentCount / capacity) * 100));
 
-      // Determine computed availability status following the roadmap lifecycle:
       let computedStatus = cls.status || "open";
       if (cls.status === "cancelled") {
         computedStatus = "cancelled";
@@ -240,9 +239,6 @@ export default function AvailableBatches({
     }
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // COMPACT OVERVIEW WIDGET VIEW (For Admin / Front Office / Manager / Instructor)
-  // ──────────────────────────────────────────────────────────────────────────
   if (isOverviewWidget) {
     return (
       <>
@@ -257,7 +253,6 @@ export default function AvailableBatches({
           onSetEnrollingBatch={setEnrollingBatch}
         />
 
-        {/* Modal for direct enrollment & transfer */}
         {enrollingBatch && (
           <EnrollModal
             batch={enrollingBatch}
@@ -267,7 +262,6 @@ export default function AvailableBatches({
           />
         )}
 
-        {/* Modal for editing/adding if triggered from widget (Admin only) */}
         {canAdminister && (
           <BatchModal
             isOpen={modalOpen}
@@ -281,9 +275,6 @@ export default function AvailableBatches({
     );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // FULL AVAILABLE BATCHES VIEW (For Classes Tab across all Dashboards)
-  // ──────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 w-full">
       {/* Header Banner & Control Bar */}
@@ -356,151 +347,24 @@ export default function AvailableBatches({
           </div>
         </div>
 
-        {/* Program Filter Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-100 pt-1">
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
-            Program:
-          </span>
-          <button
-            onClick={() => setProgramFilter("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-              programFilter === "all"
-                ? "bg-[#1a3a8f] text-white shadow-xs"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            All Programs
-          </button>
-          {enabledPrograms.map((prog) => {
-            const isSelected = programFilter === prog.id;
-            return (
-              <button
-                key={prog.id}
-                onClick={() => setProgramFilter(isSelected ? "all" : prog.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer border flex items-center gap-1.5 ${
-                  isSelected
-                    ? "bg-[#1a3a8f] text-white border-[#1a3a8f] shadow-xs"
-                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                <span>{prog.shortLabel || prog.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Filter and Search Controls */}
-        <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-            <input
-              type="text"
-              placeholder="Search batch title, instructor, schedule, or room..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
-            />
-          </div>
-
-          {/* Marketing-Friendly Tier Filter Tabs */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <button
-              onClick={() => {
-                setTierFilter("all");
-                setLevelFilter("all");
-              }}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                tierFilter === "all" && levelFilter === "all"
-                  ? "bg-[#1a3a8f] text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-            >
-              All Batches
-            </button>
-            {TIER_KEYS.map((tierKey) => {
-              const tier = TIERS[tierKey];
-              const isSelected = tierFilter === tierKey;
-              return (
-                <button
-                  key={tierKey}
-                  onClick={() => {
-                    setTierFilter(isSelected ? "all" : tierKey);
-                    setLevelFilter("all");
-                  }}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                    isSelected
-                      ? "bg-[#1a3a8f] text-white shadow-xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  <span>{tier.starText}</span>
-                  <span>{tier.label}</span>
-                  <span
-                    className={`text-[10px] font-normal ${isSelected ? "text-indigo-200" : "text-slate-400"}`}
-                  >
-                    ({tier.levels.map((l) => LEVELS[l]?.label).join("/")})
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Sub-level Filter Dropdown */}
-          <select
-            value={levelFilter}
-            onChange={(e) => setLevelFilter(e.target.value)}
-            className="p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:border-[#1a3a8f] outline-none capitalize"
-          >
-            <option value="all">All Sub-Levels</option>
-            {LEVEL_KEYS.map((lvl) => (
-              <option key={lvl} value={lvl}>
-                {LEVELS[lvl]?.label} ({LEVELS[lvl]?.stars ? "⭐".repeat(LEVELS[lvl].stars) : ""})
-              </option>
-            ))}
-          </select>
-
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:border-[#1a3a8f] outline-none"
-          >
-            <option value="all">All Statuses</option>
-            <option value="open">🟢 Open Seats Only</option>
-            <option value="filling_fast">🟡 Filling Fast (&le; 3)</option>
-            <option value="upcoming">🔵 Upcoming Intake</option>
-            <option value="full">🔴 Full / Closed</option>
-            <option value="completed">🟣 Completed / Cancelled</option>
-          </select>
-
-          {/* Batch Type Filter */}
-          <select
-            value={batchTypeFilter}
-            onChange={(e) => setBatchTypeFilter(e.target.value)}
-            className="p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:border-[#1a3a8f] outline-none"
-          >
-            <option value="all">All Batch Types</option>
-            {getBatchTypeList().map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Campus Branch Filter */}
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-700 focus:border-[#1a3a8f] outline-none"
-          >
-            <option value="all">All Campuses</option>
-            {BRANCHES.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Filter Bar */}
+        <AvailableBatchesFilterBar
+          search={search}
+          onSearchChange={setSearch}
+          programFilter={programFilter}
+          onProgramFilterChange={setProgramFilter}
+          enabledPrograms={enabledPrograms}
+          tierFilter={tierFilter}
+          onTierFilterChange={setTierFilter}
+          levelFilter={levelFilter}
+          onLevelFilterChange={setLevelFilter}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          batchTypeFilter={batchTypeFilter}
+          onBatchTypeFilterChange={setBatchTypeFilter}
+          branchFilter={branchFilter}
+          onBranchFilterChange={setBranchFilter}
+        />
       </div>
 
       {/* Batch Cards Grid */}

@@ -3,22 +3,16 @@ import { checkDraftConflicts } from "./scheduleConflict";
 import {
   X,
   BookOpen,
-  Calendar,
-  Clock,
-  MapPin,
-  Users,
-  User,
   FileText,
   Upload,
   Info,
 } from "lucide-react";
 import {
-  LevelBadge,
   useToast,
   uploadFileToCloudinary,
 } from "../shared";
 import { createClass, updateClass } from "./classesRepository";
-import { BRANCHES, DEFAULT_BRANCH, normalizeBranch } from "../../constants/branches";
+import { DEFAULT_BRANCH, normalizeBranch } from "../../constants/branches";
 import {
   getBatchProgram,
   getEnabledPrograms,
@@ -28,10 +22,20 @@ import {
 } from "../../constants/programs";
 import {
   normalizeBatchType,
-  getBatchType,
-  getBatchTypeList,
   getBatchTypeDefaults,
 } from "../../constants/batchTypes";
+import {
+  BatchTypeSelector,
+  ProgramSelector,
+  BatchPlacementRange,
+  BatchConflictAlert,
+} from "./BatchModalFormParts";
+import {
+  BatchBasicFields,
+  BatchInstructorFields,
+  BatchScheduleFields,
+  BatchCapacityFields,
+} from "./BatchModalDetailSections";
 
 function BatchForm({ batch, instructors, existingClasses = [], onClose, onSuccess = null }) {
   const toast = useToast();
@@ -138,7 +142,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
     }
   };
 
-  // Exclude non-active instructors from assignment dropdown, but preserve the currently assigned instructor if already attached
+  // Exclude non-active instructors from assignment dropdown, but preserve current
   const assignableInstructors = useMemo(() => {
     return instructors.filter(
       (inst) => (inst.status || "active") === "active" || inst.id === instructorId
@@ -274,7 +278,7 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
         </div>
         <button
           onClick={onClose}
-          className="p-2 rounded-full hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition"
+          className="p-2 rounded-full hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -282,400 +286,76 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
 
       {/* Form Body */}
       <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-        {/* Live Schedule Conflict Alert */}
-        {hasConflicts && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 space-y-2">
-            <p className="text-xs font-extrabold text-rose-800 flex items-center gap-1.5">
-              <span className="text-base">⚠️</span>
-              <span>Schedule Conflict Detected</span>
-            </p>
-            {conflicts.teacherConflicts.map((c, i) => (
-              <p key={`t-${i}`} className="text-[11px] text-rose-700 font-medium pl-6">
-                🧑‍🏫 {c.detail}
-              </p>
-            ))}
-            {conflicts.roomConflicts.map((c, i) => (
-              <p key={`r-${i}`} className="text-[11px] text-rose-700 font-medium pl-6">
-                🏫 {c.detail}
-              </p>
-            ))}
-            <p className="text-[10px] text-rose-600 font-medium pl-6 italic">
-              You can still save, but the timetable clash should be resolved to avoid on-site
-              confusion.
-            </p>
-          </div>
-        )}
+        {hasConflicts && <BatchConflictAlert conflicts={conflicts} />}
 
-        {/* Batch Type Selection Row */}
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Batch Type (Tipe Batch) *
-            </label>
-            <span
-              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                getBatchType(batchType).badgeBg
-              }`}
-            >
-              {getBatchType(batchType).label}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {getBatchTypeList().map((t) => (
-              <button
-                type="button"
-                key={t.id}
-                onClick={() => handleBatchTypeChange(t.id)}
-                className={`p-2.5 rounded-xl text-xs font-bold border transition text-left cursor-pointer ${
-                  batchType === t.id
-                    ? "bg-[#1a3a8f] text-white border-[#1a3a8f] shadow-xs"
-                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold">{t.label}</span>
-                  <span
-                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${
-                      batchType === t.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {t.shortLabel}
-                  </span>
-                </div>
-                <div
-                  className={`text-[10px] font-normal line-clamp-2 mt-1 ${
-                    batchType === t.id ? "text-indigo-100" : "text-slate-400"
-                  }`}
-                >
-                  {t.description}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+        <BatchTypeSelector batchType={batchType} onSelect={handleBatchTypeChange} />
 
-        {/* Program Selection Row */}
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Educational Program *
-            </label>
-            <span
-              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${currentProgram.badgeBg}`}
-            >
-              {currentProgram.label}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {enabledPrograms.map((prog) => (
-              <button
-                type="button"
-                key={prog.id}
-                onClick={() => handleProgramChange(prog.id)}
-                className={`p-2 rounded-xl text-xs font-bold border transition text-left ${
-                  programId === prog.id
-                    ? "bg-[#1a3a8f] text-white border-[#1a3a8f] shadow-xs"
-                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                }`}
-              >
-                <div className="truncate">{prog.shortLabel || prog.label}</div>
-                <div
-                  className={`text-[9px] font-normal truncate ${
-                    programId === prog.id ? "text-indigo-100" : "text-slate-400"
-                  }`}
-                >
-                  {prog.scheduleType === "daily_school" ? "Mon-Fri School" : "Course Cohort"}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+        <ProgramSelector
+          programId={programId}
+          currentProgram={currentProgram}
+          enabledPrograms={enabledPrograms}
+          onSelect={handleProgramChange}
+        />
 
         {/* Cohort Name, Level, & Branch */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div className="sm:col-span-2 space-y-1">
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Batch Title *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Cambridge B1 - Evening Cohort"
-              value={className}
-              onChange={(e) => setClassName(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
-            />
-          </div>
+        <BatchBasicFields
+          className={className}
+          onClassNameChange={setClassName}
+          classLevel={classLevel}
+          onClassLevelChange={(newLvl) => {
+            setClassLevel(newLvl);
+            if (minLevel === classLevel && maxLevel === classLevel) {
+              setMinLevel(newLvl);
+              setMaxLevel(newLvl);
+            }
+          }}
+          programId={programId}
+          currentLevels={currentLevels}
+          branch={branch}
+          onBranchChange={setBranch}
+        />
 
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                Level Track *
-              </label>
-              <LevelBadge level={classLevel} programId={programId} showStars={true} />
-            </div>
-            <select
-              value={classLevel}
-              onChange={(e) => {
-                const newLvl = e.target.value;
-                setClassLevel(newLvl);
-                if (minLevel === classLevel && maxLevel === classLevel) {
-                  setMinLevel(newLvl);
-                  setMaxLevel(newLvl);
-                }
-              }}
-              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition capitalize"
-            >
-              {currentLevels.map((lvl) => (
-                <option key={lvl.id} value={lvl.id}>
-                  {lvl.label} {lvl.stars ? `(${"⭐".repeat(lvl.stars)})` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Campus Branch *
-            </label>
-            <select
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
-            >
-              {BRANCHES.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Option B: Eligible Placement Range */}
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-          <div className="flex items-center justify-between text-slate-700">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 text-[#1a3a8f]">
-              <span>🎯</span> Eligible Placement Range (Option B)
-            </span>
-            <span className="text-[10px] text-slate-500 font-medium">
-              Controls which student levels qualify for enrollment
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">
-                Minimum Level
-              </label>
-              <select
-                value={minLevel}
-                onChange={(e) => setMinLevel(e.target.value)}
-                className="w-full p-2 border rounded-xl bg-white text-xs font-semibold capitalize"
-              >
-                {currentLevels.map((lvl) => (
-                  <option key={lvl.id} value={lvl.id}>
-                    {lvl.label} {lvl.stars ? `(${lvl.stars}★)` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-0.5">
-                Maximum Level
-              </label>
-              <select
-                value={maxLevel}
-                onChange={(e) => setMaxLevel(e.target.value)}
-                className="w-full p-2 border rounded-xl bg-white text-xs font-semibold capitalize"
-              >
-                {currentLevels.map((lvl) => (
-                  <option key={lvl.id} value={lvl.id}>
-                    {lvl.label} {lvl.stars ? `(${lvl.stars}★)` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
+        <BatchPlacementRange
+          currentLevels={currentLevels}
+          minLevel={minLevel}
+          maxLevel={maxLevel}
+          onMinChange={setMinLevel}
+          onMaxChange={setMaxLevel}
+        />
 
         {/* Instructor, Substitute & Room */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-              <User className="w-3.5 h-3.5 text-[#1a3a8f]" />
-              <span>Assigned Instructor</span>
-            </label>
-            <select
-              value={instructorId}
-              onChange={(e) => setInstructorId(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
-            >
-              <option value="">-- Unassigned (TBA) --</option>
-              {assignableInstructors.map((inst) => {
-                const isInactive = inst.status && inst.status !== "active";
-                return (
-                  <option key={inst.id} value={inst.id}>
-                    {inst.displayName || inst.name || inst.email}
-                    {isInactive ? " (Inactive / Assigned)" : ` (${inst.role || "Instructor"})`}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
-              <User className="w-3.5 h-3.5 text-amber-600" />
-              <span>Substitute (Optional)</span>
-            </label>
-            <select
-              value={substituteInstructorId}
-              onChange={(e) => setSubstituteInstructorId(e.target.value)}
-              className="w-full p-2.5 border border-amber-200 rounded-xl text-xs sm:text-sm font-semibold bg-amber-50/40 focus:bg-white focus:border-amber-600 outline-none transition"
-            >
-              <option value="">-- No Substitute --</option>
-              {assignableInstructors
-                .filter((inst) => inst.id !== instructorId)
-                .map((inst) => (
-                  <option key={inst.id} value={inst.id}>
-                    {inst.displayName || inst.name || inst.email}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-slate-500" />
-              <span>Room / Classroom</span>
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Studio Lab 2"
-              value={classRoom}
-              onChange={(e) => setClassRoom(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
-            />
-          </div>
-        </div>
+        <BatchInstructorFields
+          instructorId={instructorId}
+          onInstructorChange={setInstructorId}
+          substituteInstructorId={substituteInstructorId}
+          onSubstituteChange={setSubstituteInstructorId}
+          classRoom={classRoom}
+          onClassRoomChange={setClassRoom}
+          assignableInstructors={assignableInstructors}
+        />
 
         {/* Schedule Days, Times, Start Date */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-indigo-50/40 p-3.5 rounded-2xl border border-indigo-100">
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Frequency / Days</span>
-            </label>
-            <select
-              value={classDay}
-              onChange={(e) => setClassDay(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white focus:border-[#1a3a8f] outline-none"
-            >
-              {currentProgram.allowedDays.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-              {!currentProgram.allowedDays.includes(classDay) && (
-                <option value={classDay}>{classDay} (Current / Legacy)</option>
-              )}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Start Time</span>
-            </label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white focus:border-[#1a3a8f] outline-none"
-              required
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-indigo-600" />
-              <span>End Time</span>
-            </label>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white focus:border-[#1a3a8f] outline-none"
-              required
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Intake Date</span>
-            </label>
-            <input
-              type="date"
-              value={classStartDate}
-              onChange={(e) => setClassStartDate(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold bg-white focus:border-[#1a3a8f] outline-none"
-            />
-          </div>
-        </div>
+        <BatchScheduleFields
+          classDay={classDay}
+          onClassDayChange={setClassDay}
+          startTime={startTime}
+          onStartTimeChange={setStartTime}
+          endTime={endTime}
+          onEndTimeChange={setEndTime}
+          classStartDate={classStartDate}
+          onClassStartDateChange={setClassStartDate}
+          currentProgram={currentProgram}
+        />
 
         {/* Seat Capacity, Quorum & Status */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-[#1a3a8f]" />
-              <span>Max Capacity (Seats)</span>
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={maxCapacity}
-              onChange={(e) => setMaxCapacity(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
-            />
-            <p className="text-[10px] text-slate-400">Default is 15 students per batch.</p>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-amber-600" />
-              <span>Min Quorum</span>
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={minQuorum}
-              onChange={(e) => setMinQuorum(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
-            />
-            <p className="text-[10px] text-slate-400">Alert if fewer than this many enrolled.</p>
-          </div>
-
-          <div className="space-y-1">
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Enrollment Status
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold bg-slate-50 focus:bg-white focus:border-[#1a3a8f] outline-none transition"
-            >
-              <option value="open">🟢 Open for Enrollment</option>
-              <option value="upcoming">🔵 Upcoming / Registration Only</option>
-              <option value="in_progress">⚪ Ongoing / In Progress</option>
-              <option value="full">🔴 Full / Waitlist</option>
-              <option value="completed">🟣 Completed / Archived</option>
-              <option value="cancelled">⛔ Cancelled</option>
-            </select>
-          </div>
-        </div>
+        <BatchCapacityFields
+          maxCapacity={maxCapacity}
+          onMaxCapacityChange={setMaxCapacity}
+          minQuorum={minQuorum}
+          onMinQuorumChange={setMinQuorum}
+          status={status}
+          onStatusChange={setStatus}
+        />
 
         {/* Notes / Promotional Blurb */}
         <div className="space-y-1">
@@ -725,14 +405,14 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-xs rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-1.5"
+            className="px-5 py-2.5 bg-[#1a3a8f] hover:bg-[#122b6e] text-white font-extrabold text-xs rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
           >
             {saving ? "Saving Batch..." : isEditing ? "Save Changes" : "Create Available Batch"}
           </button>

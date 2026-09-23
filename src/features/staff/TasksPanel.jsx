@@ -1,89 +1,8 @@
 import { useState, useMemo } from "react";
-import { Pin, AlertTriangle, CheckCircle2, Trash2, Search, Plus, Square } from "lucide-react";
+import { Pin, Search, Plus } from "lucide-react";
 import { useConfirm, useToast } from "../shared";
-
-const ROLE_OPTIONS = [
-  {
-    value: "all",
-    label: "All Academy Staff",
-    color: "bg-slate-100 text-slate-700 border-slate-200",
-  },
-  {
-    value: "frontoffice",
-    label: "Front Office",
-    color: "bg-blue-100 text-blue-800 border-blue-200",
-  },
-  {
-    value: "marketing",
-    label: "Marketing",
-    color: "bg-purple-100 text-purple-800 border-purple-200",
-  },
-  {
-    value: "instructor",
-    label: "Instructors",
-    color: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  },
-  {
-    value: "officeboy",
-    label: "Office Boy / Facilities",
-    color: "bg-amber-100 text-amber-800 border-amber-200",
-  },
-];
-
-function getAssigneeBadge(assignee, assigneeType, assigneeName) {
-  if (assigneeType === "individual" && assigneeName) {
-    return {
-      label: `👤 ${assigneeName}`,
-      color: "bg-indigo-50 text-indigo-800 border-indigo-200 font-bold",
-    };
-  }
-  const match = ROLE_OPTIONS.find((r) => r.value === assignee);
-  if (match) {
-    return { label: match.label, color: match.color };
-  }
-  return {
-    label: assigneeName || assignee || "Everyone",
-    color: "bg-slate-100 text-slate-700 border-slate-200",
-  };
-}
-
-function formatDueDate(dueDate) {
-  if (!dueDate) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-
-  const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) {
-    return {
-      label: `Overdue (${Math.abs(diffDays)}d)`,
-      isOverdue: true,
-      badgeColor: "bg-rose-100 text-rose-800 border-rose-200 font-black",
-    };
-  }
-  if (diffDays === 0) {
-    return {
-      label: "Due Today",
-      isOverdue: false,
-      badgeColor: "bg-amber-100 text-amber-900 border-amber-300 font-black",
-    };
-  }
-  if (diffDays === 1) {
-    return {
-      label: "Due Tomorrow",
-      isOverdue: false,
-      badgeColor: "bg-blue-100 text-blue-800 border-blue-200 font-bold",
-    };
-  }
-  return {
-    label: `Due ${due.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-    isOverdue: false,
-    badgeColor: "bg-slate-100 text-slate-700 border-slate-200",
-  };
-}
+import { ROLE_OPTIONS } from "./tasksUtils";
+import { DirectiveCard, CorkboardCard } from "./DirectiveCards";
 
 export default function TasksPanel({
   todos = [],
@@ -225,7 +144,7 @@ export default function TasksPanel({
 
   return (
     <div className="space-y-8 w-full text-sm">
-      {/* ── Corkboard Section (Pinned Urgent Directives) ── */}
+      {/* Corkboard Section (Pinned Urgent Directives) */}
       {pinnedDirectives.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
@@ -241,65 +160,19 @@ export default function TasksPanel({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {pinnedDirectives.map((t) => {
-              const dueInfo = formatDueDate(t.dueDate);
-              const badge = getAssigneeBadge(t.assignee, t.assigneeType, t.assigneeName);
-              return (
-                <div
-                  key={t.id}
-                  className="p-5 border-2 border-yellow-300 rounded-3xl shadow-sm space-y-3 relative bg-gradient-to-br from-[#fef9c3] to-[#fef08a]/60 hover:shadow-md transition"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-[10px] font-black uppercase text-amber-900 bg-yellow-200 px-2 py-0.5 rounded-md border border-yellow-300">
-                      {t.type || "DIRECTIVE"}
-                    </span>
-                    {dueInfo && (
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-md border ${dueInfo.badgeColor}`}
-                      >
-                        {dueInfo.label}
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="font-extrabold text-slate-900 text-sm leading-snug break-words">
-                    {t.text}
-                  </p>
-
-                  <div className="pt-2 border-t border-yellow-200/80 flex items-center justify-between text-[11px]">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded border ${badge.color}`}
-                    >
-                      {badge.label}
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      {onToggleTodo && (
-                        <button
-                          onClick={() => handleToggle(t)}
-                          className="text-slate-600 hover:text-emerald-700 font-bold text-xs"
-                          title="Mark complete"
-                        >
-                          ✓ Done
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(t)}
-                        className="text-red-600 hover:text-red-800 font-bold text-xs"
-                        title="Delete directive"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {pinnedDirectives.map((t) => (
+              <CorkboardCard
+                key={t.id}
+                t={t}
+                onToggle={onToggleTodo ? handleToggle : null}
+                onDelete={handleDelete}
+              />
+            ))}
           </div>
         </div>
       )}
 
-      {/* ── Main Layout: Creation Form & Directives Management ── */}
+      {/* Main Layout: Creation Form & Directives Management */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Directive Creator (4 cols on lg) */}
         <div className="lg:col-span-4 bg-white p-5 rounded-3xl border border-slate-200 shadow-2xs space-y-4">
@@ -518,7 +391,7 @@ export default function TasksPanel({
             </div>
           </div>
 
-          {/* Directives Cards List (Responsive & Scrollable) */}
+          {/* Directives Cards List */}
           <div className="space-y-2.5">
             {filteredTodos.length === 0 ? (
               <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-300 text-center space-y-2">
@@ -531,110 +404,14 @@ export default function TasksPanel({
                 </p>
               </div>
             ) : (
-              filteredTodos.map((t) => {
-                const dueInfo = formatDueDate(t.dueDate);
-                const badge = getAssigneeBadge(t.assignee, t.assigneeType, t.assigneeName);
-                return (
-                  <div
-                    key={t.id}
-                    className={`p-4 sm:p-5 rounded-2xl border transition flex items-start justify-between gap-3 ${
-                      t.completed
-                        ? "bg-slate-50/70 border-slate-200 opacity-80"
-                        : "bg-white border-slate-200 shadow-2xs hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                      {/* Checkbox */}
-                      <button
-                        onClick={() => handleToggle(t)}
-                        className="mt-0.5 text-slate-400 hover:text-[#1a3a8f] transition shrink-0 cursor-pointer"
-                        title={t.completed ? "Mark as active" : "Mark as complete"}
-                      >
-                        {t.completed ? (
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                        ) : (
-                          <Square className="w-5 h-5 text-slate-300 hover:text-slate-500" />
-                        )}
-                      </button>
-
-                      <div className="space-y-1.5 min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                            {t.type || "directive"}
-                          </span>
-                          <span
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${badge.color}`}
-                          >
-                            {badge.label}
-                          </span>
-                          {t.priority === "urgent" && (
-                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-0.5">
-                              <AlertTriangle className="w-3 h-3 text-rose-600" /> Urgent
-                            </span>
-                          )}
-                          {t.priority === "high" && (
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
-                              High Priority
-                            </span>
-                          )}
-                          {dueInfo && !t.completed && (
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${dueInfo.badgeColor}`}
-                            >
-                              {dueInfo.label}
-                            </span>
-                          )}
-                          {t.isPinned && (
-                            <span className="text-[9px] font-bold text-amber-700 bg-yellow-100 border border-yellow-200 px-1 rounded">
-                              📌 Corkboard
-                            </span>
-                          )}
-                        </div>
-
-                        <p
-                          className={`font-bold text-xs sm:text-sm leading-snug break-words ${
-                            t.completed
-                              ? "line-through text-slate-400 font-medium"
-                              : "text-slate-800"
-                          }`}
-                        >
-                          {t.text}
-                        </p>
-
-                        <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-2 pt-0.5">
-                          {t.createdByName && (
-                            <span>
-                              Issued by: <strong>{t.createdByName}</strong>
-                            </span>
-                          )}
-                          {t.createdAt && (
-                            <span>
-                              ·{" "}
-                              {new Date(t.createdAt).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </span>
-                          )}
-                          {t.completed && (
-                            <span className="text-emerald-700 font-bold">
-                              · Completed by {t.completedByName || "Staff"}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleDelete(t)}
-                      className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-rose-50 transition shrink-0 cursor-pointer"
-                      title="Delete directive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })
+              filteredTodos.map((t) => (
+                <DirectiveCard
+                  key={t.id}
+                  t={t}
+                  onToggle={handleToggle}
+                  onDelete={handleDelete}
+                />
+              ))
             )}
           </div>
         </div>
