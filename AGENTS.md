@@ -22,7 +22,7 @@
 MYLIBERTY uses three related documents:
 
 ```text
-CLAUDE.md
+AGENTS.md
   ↓
 How the coding assistant should behave
 
@@ -132,7 +132,7 @@ Recommended protected paths include:
 
 ```text
 docs/ARCHITECTURE.md
-CLAUDE.md
+AGENTS.md
 docs/audits/
 firestore.rules
 firestore.indexes.json
