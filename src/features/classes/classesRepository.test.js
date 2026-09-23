@@ -170,9 +170,18 @@ describe("transferStudentBetweenClasses", () => {
 });
 
 describe("addStudentToClass / removeStudentFromClass", () => {
-  it("adds a student and an enrollment record using arrayUnion", async () => {
+  it("adds a student and an enrollment record using arrayUnion within a transaction", async () => {
+    fake.seed("classes", [
+      {
+        id: "A",
+        maxCapacity: 10,
+        studentIds: ["s1"],
+        enrollments: [{ studentId: "s1", level: "elite" }],
+      },
+    ]);
     await addStudentToClass("A", { studentId: "s9", dateJoined: "2026-09-21", level: "elite" });
     const op = fake.find("classes/A");
+    expect(op.via).toBe("transaction");
     expect(op.data.studentIds).toEqual({ __op: "arrayUnion", items: ["s9"] });
     expect(op.data.enrollments.items[0]).toEqual({
       studentId: "s9",
@@ -180,6 +189,20 @@ describe("addStudentToClass / removeStudentFromClass", () => {
       level: "elite",
     });
     expect(typeof op.data.updatedAt).toBe("string");
+  });
+
+  it("rejects enrollment when class is full", async () => {
+    fake.seed("classes", [
+      {
+        id: "FULL",
+        maxCapacity: 1,
+        studentIds: ["s1"],
+        enrollments: [{ studentId: "s1", level: "elite" }],
+      },
+    ]);
+    await expect(
+      addStudentToClass("FULL", { studentId: "s9", dateJoined: "2026-09-21", level: "elite" })
+    ).rejects.toThrow("Class is full or unavailable for enrollment.");
   });
 
   it("removes only the chosen student from both lists", async () => {

@@ -7,6 +7,7 @@ import {
   updateDoc,
   arrayUnion,
   writeBatch,
+  runTransaction,
 } from "firebase/firestore";
 import { getBatchAvailability } from "./batchAvailability";
 import { todayWita } from "../../utils/dateWita.js";
@@ -56,10 +57,30 @@ export function deleteClass(classId) {
 }
 
 export function addStudentToClass(classId, { studentId, dateJoined, level }) {
-  return updateDoc(doc(db, "classes", classId), {
-    studentIds: arrayUnion(studentId),
-    enrollments: arrayUnion({ studentId, dateJoined, level }),
-    updatedAt: new Date().toISOString(),
+  return runTransaction(db, async (tx) => {
+    const classRef = doc(db, "classes", classId);
+    const classSnap = await tx.get(classRef);
+    if (!classSnap.exists()) {
+      throw new Error("Class not found.");
+    }
+
+    const classData = classSnap.data();
+    const availability = getBatchAvailability(classData);
+    if (!availability.canEnroll) {
+      throw new Error("Class is full or unavailable for enrollment.");
+    }
+
+    const currentStudentIds = classData.studentIds || [];
+    if (currentStudentIds.includes(studentId)) {
+      // Already enrolled, no-op
+      return;
+    }
+
+    tx.update(classRef, {
+      studentIds: arrayUnion(studentId),
+      enrollments: arrayUnion({ studentId, dateJoined, level }),
+      updatedAt: new Date().toISOString(),
+    });
   });
 }
 

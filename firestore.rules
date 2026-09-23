@@ -213,7 +213,8 @@ service cloud.firestore {
     }
 
     match /errorLogs/{logId} {
-      allow create: if request.resource.data.message is string
+      allow create: if signedIn()
+        && request.resource.data.message is string
         && request.resource.data.timestamp is string;
       allow read, delete: if isAdmin();
       allow update: if false;

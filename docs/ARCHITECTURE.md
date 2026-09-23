@@ -4,7 +4,7 @@
 >
 > **Purpose:** This document describes the architecture that the repository currently implements or intentionally protects. It is not a coding-assistant prompt.
 >
-> **Agent behavior:** `CLAUDE.md`
+> **Agent behavior:** `AGENTS.md`
 >
 > **Deep audit procedure:** `docs/audits/FULL_ARCHITECTURE_AUDIT.md`
 >
@@ -147,6 +147,8 @@ Examples currently present include:
 - `paymentsRepository.js`
 - `shiftsRepository.js`
 - `corporateEventsRepository.js`
+- `deskInquiriesRepository.js`
+- `usersRepository.js`
 - `todosRepository.js`
 - `invitesRepository.js`
 - `schoolOutreachRepository.js`
@@ -231,6 +233,8 @@ Expected controls:
 Examples include:
 
 - `applications`;
+- `deskInquiries`;
+- `corporateEvents`;
 - `todos`;
 - other business/operational history where yearly growth is moderate.
 
@@ -511,3 +515,4 @@ When a feature intentionally changes architecture:
 | Date | Change | Reason |
 |---|---|---|
 | 2026-09-23 | Architecture V2 refresh | Reconciled documentation with the current feature layout, outreach/manager tracking, repository patterns, shared utilities, and current migration state |
+| 2026-09-23 | Audit Roadmap Implementation | Classified `deskInquiries` & `corporateEvents` in Class B; documented `deskInquiriesRepository.js` & `usersRepository.js`; aligned agent instructions reference with `AGENTS.md` |
