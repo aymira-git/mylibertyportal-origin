@@ -2,12 +2,8 @@
 
 The active architecture guide lives at [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
-Before structural, data-model, Firestore, routing, repository, or cross-domain changes:
+**Refer to the detailed architecture guide:** `docs/ARCHITECTURE.md`. All procedural guidance lives there; this file is a thin pointer.
 
-1. Read the active architecture guide at [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
-2. Verify important claims against the current repository.
-3. Preserve protected infrastructure and incremental migration rules unless the change is intentional and justified.
-4. Update `docs/ARCHITECTURE.md` when an architectural change is intentionally introduced.
 
 For agent behavior and working rules, see [`AGENTS.md`](./AGENTS.md).
 

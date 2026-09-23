@@ -8,7 +8,7 @@
 >
 > **Deep audit procedure:** `docs/audits/FULL_ARCHITECTURE_AUDIT.md`
 >
-> This guide was refreshed against the repository snapshot on **2026-09-23** (commit `6ba76ee`). When code and documentation disagree, the discrepancy must be investigated rather than silently ignored.
+> This guide was refreshed against the repository snapshot on **2026-09-23**. When code and documentation disagree, the discrepancy must be investigated rather than silently ignored.
 
 ## 1. Architecture Goals
 
@@ -510,4 +510,4 @@ When a feature intentionally changes architecture:
 
 | Date | Change | Reason |
 |---|---|---|
-| 2026-09-23 | Architecture V2 refresh (`6ba76ee`) | Reconciled documentation with the current feature layout, outreach/manager tracking, repository patterns, shared utilities, and current migration state |
+| 2026-09-23 | Architecture V2 refresh | Reconciled documentation with the current feature layout, outreach/manager tracking, repository patterns, shared utilities, and current migration state |
