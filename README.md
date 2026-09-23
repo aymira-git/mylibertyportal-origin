@@ -38,7 +38,29 @@ Start with this README, then read:
 
 Do not assume that an old plan, migration note, or handoff document still describes the current repository. Verify important claims against the code.
 
-## Architecture at a glance
+## Architecture Overview
+
+> **NOTE:** The diagram below is illustrative and may become outdated. For the authoritative architecture, refer to [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+
+```text
+src/
+└── features/
+    ├── auth/
+    ├── students/
+    ├── attendance/
+    ├── classes/
+    ├── finance/
+    ├── staff/
+    ├── reports/
+    ├── shared/
+    └── dashboard/
+        ├── manager/
+        ├── marketing/
+        ├── instructor/
+        └── kids/
+```
+
+The detailed architecture guide is the source of truth.
 
 ```text
 src/
