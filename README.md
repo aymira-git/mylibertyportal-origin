@@ -29,6 +29,8 @@ Read these in order:
 3. **[`docs/README.md`](./docs/README.md)** — the documentation index.
 4. **[`docs/audits/FULL_ARCHITECTURE_AUDIT.md`](./docs/audits/FULL_ARCHITECTURE_AUDIT.md)** — use this when performing a full architecture/scalability audit.
 
+Claude Code may also use **[`CLAUDE.md`](./CLAUDE.md)** as its project-specific adapter.
+
 ### For a new human developer
 
 Start with this README, then read:
@@ -38,29 +40,7 @@ Start with this README, then read:
 
 Do not assume that an old plan, migration note, or handoff document still describes the current repository. Verify important claims against the code.
 
-## Architecture Overview
-
-> **NOTE:** The diagram below is illustrative and may become outdated. For the authoritative architecture, refer to [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
-
-```text
-src/
-└── features/
-    ├── auth/
-    ├── students/
-    ├── attendance/
-    ├── classes/
-    ├── finance/
-    ├── staff/
-    ├── reports/
-    ├── shared/
-    └── dashboard/
-        ├── manager/
-        ├── marketing/
-        ├── instructor/
-        └── kids/
-```
-
-The detailed architecture guide is the source of truth.
+## Architecture at a glance
 
 ```text
 src/

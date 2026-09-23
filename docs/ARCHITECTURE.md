@@ -4,11 +4,11 @@
 >
 > **Purpose:** This document describes the architecture that the repository currently implements or intentionally protects. It is not a coding-assistant prompt.
 >
-> **Agent behavior:** `AGENTS.md`
+> **Agent behavior:** `CLAUDE.md`
 >
 > **Deep audit procedure:** `docs/audits/FULL_ARCHITECTURE_AUDIT.md`
 >
-> This guide was refreshed against the repository snapshot on **2026-09-23**. When code and documentation disagree, the discrepancy must be investigated rather than silently ignored.
+> This guide was refreshed against the current repository snapshot on **2026-09-23**. When code and documentation disagree, the discrepancy must be investigated rather than silently ignored.
 
 ## 1. Architecture Goals
 
