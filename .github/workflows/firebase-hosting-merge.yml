@@ -6,21 +6,13 @@ on:
   push:
     branches:
       - main
-# Tightened least-privilege workflow permissions
 permissions:
   contents: read
-  id-token: write # Required for Google Cloud Workload Identity Federation (OIDC)
-  checks: write   # Required for action-hosting-deploy check status reporting
+  checks: write
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-    # Protected production environment: allows repository owners to configure
-    # required reviewers, deployment branch restrictions, and wait timers in
-    # GitHub Settings -> Environments -> production
-    environment:
-      name: production
-      url: https://mylibertyies-f2f38.web.app
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,27 +22,11 @@ jobs:
         env:
           VITE_AI_WORKER_URL: ${{ vars.VITE_AI_WORKER_URL || 'https://myliberty-ai-proxy.kifryh.workers.dev' }}
 
-      # Authenticate via GitHub OIDC + Google Cloud Workload Identity Federation (keyless / short-lived)
-      # when WIF is configured. If not configured, falls back to the least-privilege service account secret below.
-      - id: auth
-        name: Authenticate to Google Cloud (OIDC / WIF)
-        if: env.WIF_PROVIDER != ''
-        env:
-          WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT || vars.GCP_SERVICE_ACCOUNT }}
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
-          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
-          create_credentials_file: true
-
-      # Deploy to Firebase Hosting.
-      # Uses temporary credentials file from OIDC/WIF if available; otherwise falls back to
-      # the dedicated least-privilege service account secret (scoped strictly to 'Firebase Hosting Admin').
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ steps.auth.outputs.credentials_file_path || secrets.FIREBASE_SERVICE_ACCOUNT_MYLIBERTYIES_F2F38 }}
-          channelId: ${{ vars.FIREBASE_CHANNEL_ID || 'live' }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MYLIBERTYIES_F2F38 }}
+          channelId: live
           projectId: mylibertyies-f2f38
+
