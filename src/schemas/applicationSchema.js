@@ -3,6 +3,7 @@ import { normalizeBranch } from "../constants/branches.js";
 import { normalizeProgram } from "../constants/programs.js";
 import { divisionOfProgram } from "../constants/divisions.js";
 import { normalizeBatchType } from "../constants/batchTypes.js";
+import { placementTestItemSchema } from "./deskInquirySchema.js";
 
 export const applicationSchema = z
   .object({
@@ -38,6 +39,11 @@ export const applicationSchema = z
     photoURL: z.string().trim().optional().default(""),
     referralSource: z.string().trim().optional().default(""),
     currentLevel: z.string().trim().optional().default("warrior"),
+    placementTests: z
+      .preprocess((v) => (Array.isArray(v) ? v : []), z.array(placementTestItemSchema))
+      .optional()
+      .default([]),
+    inquiryId: z.string().trim().optional().default(""),
     rating: z.string().trim().optional().default("1"),
     paymentPlan: z.string().trim().optional().default("monthly"),
     paidUntil: z.string().trim().optional(),

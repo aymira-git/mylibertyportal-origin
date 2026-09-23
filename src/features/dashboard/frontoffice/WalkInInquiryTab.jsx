@@ -3,6 +3,7 @@ import {
   fetchRecentDeskInquiries,
   createDeskInquiry,
   updateDeskInquiryStatus,
+  addPlacementTestToInquiry,
 } from "./deskInquiriesRepository";
 import {
   calculateAge,
@@ -20,6 +21,7 @@ import { getProgram } from "../../../constants/programs";
 import { UserCheck, PlusCircle, Search, RefreshCw } from "lucide-react";
 import { WalkInModal } from "./WalkInModal";
 import { WalkInTable } from "./WalkInTable";
+import { PlacementTestModal } from "./PlacementTestModal";
 
 function getDefaultFormData(division) {
   const isKg = division === "kindergarten";
@@ -58,6 +60,8 @@ export default function WalkInInquiryTab({
   const [loading, setLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [placementModalOpen, setPlacementModalOpen] = useState(false);
+  const [selectedInquiryForTest, setSelectedInquiryForTest] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -70,6 +74,56 @@ export default function WalkInInquiryTab({
   const handleOpenModal = () => {
     setFormData(getDefaultFormData(division));
     setModalOpen(true);
+  };
+
+  const handleOpenPlacementTest = (inquiry) => {
+    setSelectedInquiryForTest(inquiry);
+    setPlacementModalOpen(true);
+  };
+
+  const handleSavePlacementTest = async (testData, { enrollImmediately = false } = {}) => {
+    if (!selectedInquiryForTest) return;
+    setSubmitting(true);
+    try {
+      const updated = await addPlacementTestToInquiry(selectedInquiryForTest.id, testData);
+      setInquiries((prev) =>
+        prev.map((i) =>
+          i.id === selectedInquiryForTest.id
+            ? {
+                ...i,
+                ...updated,
+                placementTests: updated.placementTests || [
+                  ...(i.placementTests || []),
+                  testData,
+                ],
+                currentLevel: testData.assessedLevel || i.currentLevel,
+              }
+            : i
+        )
+      );
+      setPlacementModalOpen(false);
+
+      if (enrollImmediately && onEnrollStudent) {
+        const fullUpdatedInquiry = {
+          ...selectedInquiryForTest,
+          ...updated,
+          currentLevel: testData.assessedLevel || selectedInquiryForTest.currentLevel,
+          placementTests: updated.placementTests || [
+            ...(selectedInquiryForTest.placementTests || []),
+            testData,
+          ],
+        };
+        toast("Placement test recorded! Opening Student Registration form...", "success");
+        onEnrollStudent(fullUpdatedInquiry);
+      } else {
+        toast("Placement test recorded successfully!", "success");
+      }
+    } catch (err) {
+      console.error("Failed to save placement test:", err);
+      toast("Failed to save placement test: " + err.message, "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const loadInquiries = useCallback(async () => {
@@ -377,6 +431,7 @@ export default function WalkInInquiryTab({
           onStatusChange={handleStatusChange}
           onSendWhatsApp={handleSendWhatsAppFollowUp}
           onEnroll={onEnrollStudent ? handleEnrollFromList : null}
+          onTakePlacementTest={handleOpenPlacementTest}
         />
       </div>
 
@@ -389,6 +444,16 @@ export default function WalkInInquiryTab({
         tierOptions={tierOptions}
         submitting={submitting}
         onSubmit={handleSaveInquiry}
+        canEnrollImmediately={Boolean(onEnrollStudent)}
+      />
+
+      <PlacementTestModal
+        isOpen={placementModalOpen}
+        onClose={() => setPlacementModalOpen(false)}
+        inquiry={selectedInquiryForTest}
+        division={division}
+        onSaveTest={handleSavePlacementTest}
+        submitting={submitting}
         canEnrollImmediately={Boolean(onEnrollStudent)}
       />
     </div>

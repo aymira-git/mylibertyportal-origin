@@ -96,5 +96,35 @@ describe("deskInquirySchema", () => {
     expect(parsed.fluencyTier).toBe("intermediate");
     expect(parsed.currentLevel).toBe("master");
     expect(parsed.programId).toBe("english_course");
+    expect(parsed.placementTests).toEqual([]);
+    expect(parsed.leadSource).toBe("walk_in");
+  });
+
+  it("validates inquiry with placementTests array correctly", () => {
+    const parsed = deskInquirySchema.parse({
+      parentName: "Pak Hendra",
+      phone: "081122334455",
+      studentName: "Fajar",
+      leadSource: "school_outreach",
+      placementTests: [
+        {
+          id: "pt-1",
+          score: 88,
+          assessedLevel: "epic",
+          testedBy: "Teacher John",
+          testedAt: "2026-09-23",
+          notes: "Strong speaking fluency",
+        },
+      ],
+      convertedStudentId: "student-xyz",
+      convertedAt: "2026-09-23T10:00:00Z",
+    });
+
+    expect(parsed.placementTests).toHaveLength(1);
+    expect(parsed.placementTests[0].score).toBe(88);
+    expect(parsed.placementTests[0].assessedLevel).toBe("epic");
+    expect(parsed.leadSource).toBe("school_outreach");
+    expect(parsed.convertedStudentId).toBe("student-xyz");
   });
 });
+

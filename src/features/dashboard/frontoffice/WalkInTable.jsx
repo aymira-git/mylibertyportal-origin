@@ -1,4 +1,4 @@
-import { Clock, Phone, Calendar, GraduationCap, Send, UserPlus } from "lucide-react";
+import { Clock, Phone, Calendar, GraduationCap, Send, UserPlus, Award } from "lucide-react";
 import { calculateAge } from "./walkInUtils";
 
 export function WalkInTable({
@@ -8,6 +8,7 @@ export function WalkInTable({
   onStatusChange,
   onSendWhatsApp,
   onEnroll,
+  onTakePlacementTest,
 }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-100">
@@ -17,6 +18,7 @@ export function WalkInTable({
             <th className="py-3 px-4">Date / Time</th>
             <th className="py-3 px-4">Parent / Visitor</th>
             <th className="py-3 px-4">Prospective Student</th>
+            <th className="py-3 px-4">Placement / Level</th>
             <th className="py-3 px-4">Program &amp; Notes</th>
             <th className="py-3 px-4">Status</th>
             <th className="py-3 px-4 text-center">Actions</th>
@@ -25,7 +27,7 @@ export function WalkInTable({
         <tbody className="divide-y divide-slate-100">
           {filteredInquiries.length === 0 ? (
             <tr>
-              <td colSpan={6} className="py-8 text-center text-slate-400 font-medium">
+              <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
                 {loading ? "Loading inquiries..." : "No walk-in inquiries found."}
               </td>
             </tr>
@@ -46,6 +48,9 @@ export function WalkInTable({
               const tierMatch =
                 tierOptions.find((t) => t.id === inq.fluencyTier) ||
                 (inq.fluencyTier ? { label: inq.fluencyTier, starText: "⭐" } : null);
+
+              const tests = Array.isArray(inq.placementTests) ? inq.placementTests : [];
+              const latestTest = tests.length > 0 ? tests[tests.length - 1] : null;
 
               return (
                 <tr
@@ -96,6 +101,31 @@ export function WalkInTable({
                       )}
                     </div>
                   </td>
+                  <td className="py-3 px-4">
+                    {latestTest ? (
+                      <div className="space-y-0.5">
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-black">
+                          <Award className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span>
+                            {latestTest.score != null ? `${latestTest.score} pts` : "Assessed"}:{" "}
+                            <span className="capitalize">{latestTest.assessedLevel || inq.currentLevel || "Standard"}</span>
+                          </span>
+                        </div>
+                        {tests.length > 1 && (
+                          <p className="text-[9px] text-slate-400 font-bold">
+                            {tests.length} tests recorded
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 font-semibold">
+                        <span>Level:</span>
+                        <strong className="text-slate-700 capitalize">
+                          {inq.currentLevel || "Unassigned"}
+                        </strong>
+                      </span>
+                    )}
+                  </td>
                   <td className="py-3 px-4 max-w-xs">
                     <span className="font-bold text-[#1a3a8f] inline-flex items-center gap-1">
                       <GraduationCap className="w-3.5 h-3.5 text-[#1a3a8f]" />
@@ -120,7 +150,19 @@ export function WalkInTable({
                     </select>
                   </td>
                   <td className="py-3 px-4">
-                    <div className="flex items-center justify-center gap-1.5">
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      {onTakePlacementTest && (
+                        <button
+                          type="button"
+                          onClick={() => onTakePlacementTest(inq)}
+                          title="Record or update placement test"
+                          className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition inline-flex items-center gap-1 text-[11px] font-bold shadow-2xs cursor-pointer"
+                        >
+                          <Award className="w-3 h-3 text-amber-700" />
+                          <span>{latestTest ? "Retest" : "Test"}</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => onSendWhatsApp(inq)}
@@ -128,7 +170,7 @@ export function WalkInTable({
                         className="px-2.5 py-1.5 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] transition inline-flex items-center gap-1 text-[11px] font-bold shadow-2xs cursor-pointer"
                       >
                         <Send className="w-3 h-3" />
-                        <span>WhatsApp</span>
+                        <span>WA</span>
                       </button>
 
                       {onEnroll && (
@@ -153,3 +195,4 @@ export function WalkInTable({
     </div>
   );
 }
+

@@ -3,6 +3,18 @@ import { DIVISIONS, normalizeDivision } from "../constants/divisions";
 
 export const INQUIRY_STATUSES = ["inquired", "follow_up_sent", "enrolled", "closed"];
 
+export const placementTestItemSchema = z.object({
+  id: z.string().optional(),
+  score: z.preprocess(
+    (v) => (v === "" || v == null ? null : Number(v)),
+    z.number().nullable().optional()
+  ),
+  assessedLevel: z.preprocess((v) => (v == null ? "" : String(v).trim()), z.string()).optional().default(""),
+  testedBy: z.preprocess((v) => (v == null ? "" : String(v).trim()), z.string()).optional().default(""),
+  testedAt: z.preprocess((v) => (v == null ? "" : String(v).trim()), z.string()).optional().default(""),
+  notes: z.preprocess((v) => (v == null ? "" : String(v).trim()), z.string()).optional().default(""),
+});
+
 export const deskInquirySchema = z.object({
   parentName: z.string().trim().min(1, "Parent / visitor name is required."),
   phone: z.string().trim().min(5, "Valid phone number is required (at least 5 digits)."),
@@ -22,6 +34,13 @@ export const deskInquirySchema = z.object({
     )
     .optional()
     .default("inquired"),
+  leadSource: z.preprocess((v) => (v == null ? "walk_in" : String(v).trim()), z.string()).optional().default("walk_in"),
+  placementTests: z
+    .preprocess((v) => (Array.isArray(v) ? v : []), z.array(placementTestItemSchema))
+    .optional()
+    .default([]),
+  convertedStudentId: z.preprocess((v) => (v == null ? null : String(v).trim()), z.string().nullable()).optional(),
+  convertedAt: z.preprocess((v) => (v == null ? null : String(v).trim()), z.string().nullable()).optional(),
   notes: z.preprocess((v) => (v == null ? "" : String(v).trim()), z.string()).optional().default(""),
   createdAt: z.string().optional(),
   createdBy: z.string().nullish(),

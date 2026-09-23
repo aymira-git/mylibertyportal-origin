@@ -64,6 +64,8 @@ export function buildStudentRecord(fields = {}) {
     photoURL: clean(fields.photoURL),
     referralSource: clean(fields.referralSource),
     currentLevel: clean(fields.currentLevel) || "warrior",
+    placementTests: Array.isArray(fields.placementTests) ? fields.placementTests : [],
+    inquiryId: clean(fields.inquiryId),
     rating: fields.rating || "1",
     paymentPlan: clean(fields.paymentPlan) || "monthly",
     ...(fields.paidUntil ? { paidUntil: clean(fields.paidUntil) } : {}),

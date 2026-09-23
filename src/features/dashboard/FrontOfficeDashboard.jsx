@@ -137,6 +137,8 @@ export default function FrontOfficeDashboard() {
         inquiry.program ||
         (isKindergarten ? "Kids School (Kindergarten)" : "English Course"),
       currentLevel: level || (isKindergarten ? "nursery" : "warrior"),
+      placementTests: Array.isArray(inquiry.placementTests) ? inquiry.placementTests : [],
+      inquiryId: inquiry.id || "",
       referralSource: "Walk-in Front Desk",
       notes: `Walk-in prospect enrolled directly.${inquiry.notes ? ` Inquired: ${inquiry.notes}` : ""}`,
     });

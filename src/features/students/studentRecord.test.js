@@ -110,6 +110,23 @@ describe("buildStudentRecord", () => {
     expect(fromExplicit.batchType).toBe("the_three_rs");
     expect(fromExplicit.classType).toBe("3Rs");
   });
+
+  it("handles placementTests and inquiryId correctly", () => {
+    const student = buildStudentRecord({
+      inquiryId: "inq-123",
+      placementTests: [
+        {
+          score: 90,
+          assessedLevel: "epic",
+          testedBy: "Coach Dan",
+          testedAt: "2026-09-23",
+        },
+      ],
+    });
+    expect(student.inquiryId).toBe("inq-123");
+    expect(student.placementTests).toHaveLength(1);
+    expect(student.placementTests[0].score).toBe(90);
+  });
 });
 
 describe("isActiveStudent", () => {

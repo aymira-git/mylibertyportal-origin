@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   LevelBadge,
   LEVELS,
@@ -16,13 +17,216 @@ import {
   getBatchTypeLabel,
   getBatchTypeList,
 } from "../../constants/batchTypes";
+import { Award, Plus, Trash2 } from "lucide-react";
+import { todayWita } from "../../utils/dateWita";
 
 export default function StudentAcademicFields({ formData, field, setAcademicLevel, editId }) {
+  const [showAddTest, setShowAddTest] = useState(false);
+  const [testScore, setTestScore] = useState("");
+  const [testLevel, setTestLevel] = useState(formData.currentLevel || "warrior");
+  const [testTester, setTestTester] = useState("");
+  const [testDate, setTestDate] = useState(() => todayWita());
+  const [testNotes, setTestNotes] = useState("");
+
+  const placementTests = Array.isArray(formData.placementTests) ? formData.placementTests : [];
+
+  const handleAddPlacementTest = () => {
+    if (!testLevel) return;
+    const newTest = {
+      id: `pt-${Date.now()}`,
+      score: testScore !== "" ? Number(testScore) : null,
+      assessedLevel: testLevel,
+      testedBy: testTester.trim() || "Staff",
+      testedAt: testDate || todayWita(),
+      notes: testNotes.trim(),
+    };
+    const updatedTests = [...placementTests, newTest];
+    field("placementTests", updatedTests);
+    setAcademicLevel(testLevel);
+    setShowAddTest(false);
+    setTestScore("");
+    setTestNotes("");
+  };
+
+  const handleRemoveTest = (idx) => {
+    const updated = placementTests.filter((_, i) => i !== idx);
+    field("placementTests", updated);
+  };
+
   return (
     <div className="space-y-4">
       <h4 className="text-xs font-black uppercase tracking-wider text-[#1a3a8f] flex items-center gap-1.5">
         <span>🏫</span> Academic &amp; Enrollment Details
       </h4>
+
+      {/* Placement Tests History Section */}
+      <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center font-black">
+              <Award className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-extrabold text-amber-950 uppercase tracking-wider">
+                Placement Test History ({placementTests.length})
+              </label>
+              <p className="text-[10px] text-amber-800">
+                Log and view official assessment scores and recommended placement levels.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAddTest(!showAddTest)}
+            className="px-2.5 py-1 rounded-xl bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 font-bold text-[11px] transition inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+          >
+            <Plus className="w-3 h-3" />
+            <span>{showAddTest ? "Cancel" : "Add Test"}</span>
+          </button>
+        </div>
+
+        {/* Existing Test List */}
+        {placementTests.length > 0 ? (
+          <div className="space-y-1.5 pt-1">
+            {placementTests.map((pt, idx) => (
+              <div
+                key={pt.id || idx}
+                className="flex items-center justify-between text-xs bg-white p-2.5 rounded-xl border border-amber-200/70 shadow-2xs"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-extrabold text-slate-900 bg-amber-100 px-2 py-0.5 rounded text-[11px]">
+                    {pt.score != null ? `${pt.score} pts` : "Assessed"}
+                  </span>
+                  <span className="font-black text-[#1a3a8f] capitalize">
+                    {pt.assessedLevel || "Warrior"}
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    by {pt.testedBy || "Staff"} on {pt.testedAt || "-"}
+                  </span>
+                  {pt.notes && (
+                    <span className="text-[11px] text-slate-600 italic">
+                      — &quot;{pt.notes}&quot;
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveTest(idx)}
+                  className="text-slate-400 hover:text-red-600 p-1 transition cursor-pointer"
+                  title="Remove test entry"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          !showAddTest && (
+            <p className="text-[11px] text-amber-700/80 italic">
+              No placement test recorded yet. Default baseline level applied.
+            </p>
+          )
+        )}
+
+        {/* Inline Add Test Form */}
+        {showAddTest && (
+          <div className="p-3 bg-white rounded-xl border border-amber-300 space-y-2.5 animate-in fade-in">
+            <h5 className="text-[11px] font-bold text-slate-800">Record New Placement Assessment</h5>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                  Score (0-100)
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g. 85"
+                  value={testScore}
+                  onChange={(e) => {
+                    setTestScore(e.target.value);
+                    const n = Number(e.target.value);
+                    if (!isNaN(n) && e.target.value !== "") {
+                      if (n >= 85) setTestLevel("epic");
+                      else if (n >= 65) setTestLevel("master");
+                      else setTestLevel("warrior");
+                    }
+                  }}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                  Assessed Level *
+                </label>
+                <select
+                  value={testLevel}
+                  onChange={(e) => setTestLevel(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold capitalize"
+                >
+                  {LEVEL_LIST.map((lvl) => (
+                    <option key={lvl.id} value={lvl.id}>
+                      {lvl.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                  Tester / Assessor
+                </label>
+                <input
+                  type="text"
+                  placeholder="Staff name"
+                  value={testTester}
+                  onChange={(e) => setTestTester(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-medium"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                  Test Date
+                </label>
+                <input
+                  type="date"
+                  value={testDate}
+                  onChange={(e) => setTestDate(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-0.5">
+                  Test Notes
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Fluent speaking, place in Master"
+                  value={testNotes}
+                  onChange={(e) => setTestNotes(e.target.value)}
+                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-medium"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowAddTest(false)}
+                className="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-slate-100 font-bold text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddPlacementTest}
+                className="px-3 py-1.5 rounded-lg bg-[#1a3a8f] text-white font-bold text-xs hover:bg-[#153075] transition shadow-xs cursor-pointer"
+              >
+                Save Placement Test
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Fluency Tier & Academic Level Placement */}
       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
@@ -52,7 +256,6 @@ export default function StudentAcademicFields({ formData, field, setAcademicLeve
                 key={tierKey}
                 type="button"
                 onClick={() => {
-                  // If already in this tier, keep the specific level; otherwise default to tier's starting level
                   if (!tier.levels.includes(formData.currentLevel)) {
                     setAcademicLevel(tier.levels[0]);
                   }

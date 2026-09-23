@@ -10,6 +10,7 @@ import {
   createStaffAccount,
   deleteUserProfile,
 } from "./usersRepository";
+import { markInquiryConverted } from "./frontoffice/deskInquiriesRepository";
 import { DEFAULT_BRANCH, normalizeBranch, matchesBranchFilter } from "../../constants/branches";
 import {
   DEFAULT_DIVISION,
@@ -35,6 +36,8 @@ const emptyFormData = {
   parentName: "",
   parentPhone: "",
   currentLevel: "warrior",
+  placementTests: [],
+  inquiryId: "",
   rating: "1",
   paymentPlan: "monthly",
   status: "active",
@@ -190,13 +193,20 @@ export function useDashboardData({
           referralSource: formData.referralSource,
           photoURL: formData.photoURL,
           currentLevel: formData.currentLevel || "warrior",
+          placementTests: Array.isArray(formData.placementTests) ? formData.placementTests : [],
+          inquiryId: formData.inquiryId || "",
           rating: formData.rating,
           paymentPlan: formData.paymentPlan || "monthly",
           status: formData.status || "active",
           notes: formData.notes,
         });
 
-        await saveStudentRecord(editId, studentData);
+        const savedResult = await saveStudentRecord(editId, studentData);
+        if (formData.inquiryId) {
+          const targetStudentId =
+            editId || (savedResult && typeof savedResult === "object" && "id" in savedResult ? String(savedResult.id) : null);
+          await markInquiryConverted(formData.inquiryId, targetStudentId);
+        }
       } else {
         const staffDisplayName =
           `${formData.firstName} ${formData.lastName}`.trim() || formData.displayName?.trim() || "";
@@ -294,6 +304,8 @@ export function useDashboardData({
       parentName: user.parentName || user.fatherName || user.motherName || "",
       parentPhone: user.parentPhone || user.fatherPhone || user.motherPhone || "",
       currentLevel: user.currentLevel || "warrior",
+      placementTests: Array.isArray(user.placementTests) ? user.placementTests : [],
+      inquiryId: user.inquiryId || "",
       paymentPlan: user.paymentPlan || "monthly",
       status: user.status || "active",
       rating: user.rating || "1",

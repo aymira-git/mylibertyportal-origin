@@ -90,6 +90,8 @@ export async function approveApplication({
       motherPhone: app.motherPhone,
       photoURL: app.photoURL || "",
       currentLevel: finalLevel,
+      placementTests: Array.isArray(app.placementTests) ? app.placementTests : [],
+      inquiryId: app.inquiryId || "",
       paymentPlan: paymentPlan || "monthly",
       status: "active",
     });
@@ -104,6 +106,17 @@ export async function approveApplication({
       approvedBy: actorEmail || "system",
       studentId: studentRef.id,
     });
+
+    if (app.inquiryId) {
+      const inqRef = doc(db, "deskInquiries", app.inquiryId);
+      transaction.update(inqRef, {
+        status: "enrolled",
+        convertedStudentId: studentRef.id,
+        convertedAt: now,
+        updatedAt: now,
+        updatedBy: actorEmail || "system",
+      });
+    }
 
     if (classId && classRef) {
       const dateJoined = classData.classStartDate || today;

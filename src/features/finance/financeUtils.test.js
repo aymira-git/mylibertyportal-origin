@@ -15,7 +15,6 @@ describe("summarizePaymentsByMethod", () => {
   });
 
   it("handles null or non-array inputs safely", () => {
-    // @ts-expect-error testing invalid input
     const res = summarizePaymentsByMethod(null);
     expect(res.grandTotal).toBe(0);
     expect(res.count).toBe(0);
