@@ -17,3 +17,9 @@ jobs:
       - run: npm install && npm test && npm run build
         env:
           VITE_AI_WORKER_URL: ${{ vars.VITE_AI_WORKER_URL || 'https://myliberty-ai-proxy.kifryh.workers.dev' }}
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MYLIBERTYIES_F2F38 }}
+          channelId: live
+          projectId: mylibertyies-f2f38
