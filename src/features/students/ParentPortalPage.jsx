@@ -228,7 +228,7 @@ export default function ParentPortalPage() {
                   <div>
                     <h3 className="text-base font-black text-white flex items-center gap-2">
                       <span>{student.displayName || student.name}</span>
-                      <Badge variant={student.status === "active" ? "success" : "secondary"}>
+                      <Badge tone={student.status === "active" ? "emerald" : "slate"}>
                         {student.status || "Active"}
                       </Badge>
                     </h3>
@@ -242,7 +242,7 @@ export default function ParentPortalPage() {
                 {/* Level Badge */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400 font-bold">Current Level:</span>
-                  <LevelBadge level={student.level || "General"} size="sm" />
+                  <LevelBadge level={student.level || "General"} />
                 </div>
               </div>
 

@@ -252,8 +252,8 @@ export function useDashboardData({
           await updateStaffRecord(editId, staffData);
           savedRecord = { id: editId, ...staffData };
         } else {
-          const newStaff = await createStaffAccount(formData.email, formData.password, staffData);
-          savedRecord = { id: newStaff?.user?.uid || null, ...staffData };
+          const newStaffUid = await createStaffAccount(formData.email, formData.password, staffData);
+          savedRecord = { id: newStaffUid, ...staffData };
         }
       }
 

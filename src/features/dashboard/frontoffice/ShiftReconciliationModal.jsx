@@ -29,7 +29,7 @@ export default function ShiftReconciliationModal({
   activeShift,
   expectedCash = 0,
   expectedQris = 0,
-  currentUser = {},
+  currentUser = /** @type {any} */ ({}),
   onSuccess,
 }) {
   const toast = useToast();
@@ -240,7 +240,7 @@ export default function ShiftReconciliationModal({
               Shift Notes / Discrepancy Reason {exceedsThreshold && <span className="text-red-500">*</span>}
             </label>
             <textarea
-              rows="2"
+              rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={

@@ -67,6 +67,7 @@ export async function lookupStudentForParent(searchTerm = "") {
   // Bounded recent student search by displayName (bounded to 20 candidates)
   const qRole = query(usersRef, where("role", "==", "student"), limit(25));
   const snapRole = await getDocs(qRole);
+  /** @type {any[]} */
   const candidates = snapRole.docs.map((d) => ({ id: d.id, ...d.data() }));
 
   return candidates.filter((s) => {
@@ -89,6 +90,7 @@ export async function getStudentParentPortalBundle(studentId) {
   if (!studentDoc.exists()) {
     throw new Error("Student not found.");
   }
+  /** @type {any} */
   const student = { id: studentDoc.id, ...studentDoc.data() };
 
   // 2. Fetch payment history

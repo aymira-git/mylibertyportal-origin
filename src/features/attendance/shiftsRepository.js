@@ -76,6 +76,7 @@ export async function fetchUserShifts(uid, limitCount = 30) {
     limit(limitCount)
   );
   const snap = await getDocs(q);
+  /** @type {any[]} */
   const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   items.sort((a, b) => new Date(b.clockIn || 0).getTime() - new Date(a.clockIn || 0).getTime());
   return items;

@@ -17,7 +17,7 @@ const COLLECTION_NAME = "approvals";
 /**
  * Submits an approval envelope to the Firestore /approvals collection.
  *
- * @param {object} envelope
+ * @param {any} envelope
  * @returns {Promise<{ id: string, [key: string]: any }>}
  */
 export async function submitApprovalRequest(envelope) {
@@ -41,7 +41,7 @@ export async function submitApprovalRequest(envelope) {
  * Admin receives all pending approvals; Branch Managers receive approvals scoped to their branch.
  *
  * @param {string} userRole
- * @param {string} [branchId]
+ * @param {string} branchId
  * @param {((approvals: any[]) => void)} onData
  * @param {((err: any) => void)} [onError]
  * @returns {(() => void)} Unsubscribe callback
@@ -70,6 +70,7 @@ export function listenToPendingApprovals(userRole, branchId, onData, onError) {
   return onSnapshot(
     q,
     (snap) => {
+      /** @type {any[]} */
       const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       items.sort((a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime());
       onData(items);

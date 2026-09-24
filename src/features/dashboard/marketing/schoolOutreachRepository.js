@@ -245,7 +245,7 @@ export function listenToOutreachVisits(options, onData, onError) {
 /**
  * Adds a new school master record.
  *
- * @param {object} rawSchool
+ * @param {any} rawSchool
  * @param {string} creatorUid
  * @returns {Promise<import("firebase/firestore").DocumentReference>}
  */

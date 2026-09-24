@@ -172,9 +172,9 @@ export function getSelfCorrectionApprover(requesterRole) {
  * Creates a standard Maker-Checker approval envelope object.
  *
  * @param {string} actionId - Key from GATED_ACTIONS
- * @param {object} requester - { name: string, uid?: string, role?: string, branchId?: string }
- * @param {object} [context={}] - Optional metadata or reason
- * @returns {object} Canonical approval envelope
+ * @param {any} [requester] - { name?: string, uid?: string, role?: string, branchId?: string }
+ * @param {any} [context] - Optional metadata or reason
+ * @returns {any} Canonical approval envelope
  */
 export function createApprovalEnvelope(actionId, requester = {}, context = {}) {
   // Admin is fully exempt from dual-control gating
