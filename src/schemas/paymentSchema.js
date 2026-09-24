@@ -6,6 +6,8 @@ export const paymentRecordSchema = z.object({
   period: z.string().trim().min(1, "Payment period is required."),
   method: z.string().trim().min(1, "Payment method is required."),
   planId: z.string().trim().optional().default("monthly"),
+  branch: z.string().optional(),
+  branchId: z.string().optional(),
   recordedAt: z.string().optional(),
   recordedBy: z.string().optional(),
   coverageStart: z.string().optional(),

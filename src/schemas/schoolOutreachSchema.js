@@ -19,6 +19,8 @@ const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 export const schoolMasterSchema = z.object({
   name: z.string().trim().min(1, "School name is required."),
   municipality: z.string().trim().min(1, "Municipality is required.").default("Kota Gorontalo"),
+  branch: z.string().trim().optional().default("Kota Gorontalo"),
+  branchId: z.string().trim().optional().default("kota_gorontalo"),
   district: z.string().trim().nullable().optional().default(""),
   address: z.string().trim().default(""),
   lat: z

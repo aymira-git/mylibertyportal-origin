@@ -26,6 +26,7 @@ export const deskInquirySchema = z.object({
   programId: z.preprocess((v) => (v == null ? "" : String(v).trim()), z.string()).optional().default(""),
   program: z.preprocess((v) => (v == null ? "" : String(v).trim()), z.string()).optional().default(""),
   branch: z.preprocess((v) => (v == null ? "Kota Gorontalo" : String(v).trim()), z.string()).optional().default("Kota Gorontalo"),
+  branchId: z.preprocess((v) => (v == null ? "kota_gorontalo" : String(v).trim()), z.string()).optional().default("kota_gorontalo"),
   division: z.preprocess((v) => normalizeDivision(v), z.enum(DIVISIONS)).optional().default("courses"),
   status: z
     .preprocess(

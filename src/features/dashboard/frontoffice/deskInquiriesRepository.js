@@ -11,6 +11,7 @@ import {
   limit,
 } from "firebase/firestore";
 import { deskInquirySchema } from "../../../schemas/deskInquirySchema";
+import { branchToId, idToBranch, DEFAULT_BRANCH_ID } from "../../../constants/branches";
 import {
   isPermissionError,
   saveLocalInquiry,
@@ -50,8 +51,14 @@ export async function fetchRecentDeskInquiries(limitCount = 50) {
  */
 export async function createDeskInquiry(inquiryData) {
   const currentUser = auth.currentUser;
+  const rawBranch = inquiryData.branch || inquiryData.branchId || DEFAULT_BRANCH_ID;
+  const branchId = branchToId(rawBranch);
+  const branch = idToBranch(branchId);
+
   const parseResult = deskInquirySchema.safeParse({
     ...inquiryData,
+    branch,
+    branchId,
     createdAt: new Date().toISOString(),
     createdBy: currentUser?.uid || "frontoffice",
     createdByName: currentUser?.displayName || currentUser?.email || "Front Desk",

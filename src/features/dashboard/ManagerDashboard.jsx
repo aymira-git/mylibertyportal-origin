@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { auth, db } from "../../firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { AIAssistant, DashboardShell, useToast } from "../shared";
+import { AIAssistant, DashboardShell, useToast, ApprovalInbox } from "../shared";
 import { ReportsDashboard } from "../reports";
 import { createTodo, deleteTodo, toggleTodoComplete } from "../staff";
 import { getShiftStatus } from "../attendance";
@@ -461,6 +461,18 @@ export default function ManagerDashboard() {
           onDeleteTodo={handleDeleteTodo}
           onToggleTodo={handleToggleTodo}
           todosPermission={todosPermission}
+        />
+      ),
+    },
+    {
+      id: "approvals",
+      label: "Branch Approvals",
+      component: (
+        <ApprovalInbox
+          userRole="manager"
+          branchId={myBranch}
+          title={`Dual-Control Approvals (${myBranch})`}
+          subtitle="Review and authorize branch fee exceptions, cash reconciliations, schedule overrides, and shift self-corrections."
         />
       ),
     },

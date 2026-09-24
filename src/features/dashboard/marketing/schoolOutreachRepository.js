@@ -18,6 +18,7 @@ import {
 import { schoolMasterSchema, schoolVisitSchema } from "../../../schemas/schoolOutreachSchema.js";
 import { WITA_OFFSET_MS } from "../../../utils/dateWita.js";
 import { KOTA_GORONTALO_SEEDS } from "./seedSchoolsData.js";
+import { branchToId, idToBranch, DEFAULT_BRANCH_ID } from "../../../constants/branches.js";
 
 const COLLECTION_NAME = "schoolOutreach";
 
@@ -249,11 +250,23 @@ export function listenToOutreachVisits(options, onData, onError) {
  * @returns {Promise<import("firebase/firestore").DocumentReference>}
  */
 export async function addSchool(rawSchool, creatorUid) {
-  const validated = schoolMasterSchema.parse(rawSchool);
+  const rawBranch = rawSchool.branch || rawSchool.branchId || rawSchool.municipality || DEFAULT_BRANCH_ID;
+  const branchId = branchToId(rawBranch);
+  const branch = idToBranch(branchId);
+
+  const enriched = {
+    ...rawSchool,
+    branch,
+    branchId,
+  };
+
+  const validated = schoolMasterSchema.parse(enriched);
 
   const docData = {
     name: validated.name,
     municipality: validated.municipality,
+    branch: validated.branch || branch,
+    branchId: validated.branchId || branchId,
     district: validated.district || "",
     address: validated.address || "",
     lat: validated.lat,

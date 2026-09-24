@@ -14,6 +14,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { createApprovalEnvelope } from "../shared/approvalGates";
+import { branchToId, idToBranch, DEFAULT_BRANCH_ID } from "../../constants/branches";
 
 export const DEFAULT_CASH_DISCREPANCY_THRESHOLD_IDR = 25000;
 export const DEFAULT_CASH_DISCREPANCY_PERCENT = 0.01;
@@ -86,6 +87,8 @@ export function clockIn({
   uid,
   displayName = "",
   role,
+  branch = null,
+  branchId = null,
   classId = "general",
   className = "",
   clockInAt,
@@ -95,10 +98,15 @@ export function clockIn({
   shiftType = null,
   eventId = null,
 }) {
+  const finalBranchId = branchToId(branchId || branch || DEFAULT_BRANCH_ID);
+  const finalBranch = idToBranch(finalBranchId);
+
   const payload = {
     userId: uid,
     displayName: displayName || "",
     role,
+    branch: finalBranch,
+    branchId: finalBranchId,
     classId: classId || "general",
     className: className || "",
     clockIn: clockInAt.toISOString(),

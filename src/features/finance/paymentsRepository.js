@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { todayWita, getWitaDayRangeIso } from "../../utils/dateWita.js";
 import { studentIdSchema, paymentRecordSchema } from "../../schemas";
+import { branchToId, idToBranch, DEFAULT_BRANCH_ID } from "../../constants/branches";
 
 /**
  * All direct Firestore reads/writes for payments live here.
@@ -95,7 +96,17 @@ export async function getPaymentsForRecordedDay(witaDate = new Date()) {
  */
 export async function recordPayment(studentId, paymentRecord) {
   const validStudentId = studentIdSchema.parse(studentId);
-  const validatedRecord = paymentRecordSchema.parse(paymentRecord);
+  const rawBranch = paymentRecord.branch || paymentRecord.branchId || DEFAULT_BRANCH_ID;
+  const branchId = branchToId(rawBranch);
+  const branch = idToBranch(branchId);
+
+  const enrichedRecord = {
+    ...paymentRecord,
+    branch,
+    branchId,
+  };
+
+  const validatedRecord = paymentRecordSchema.parse(enrichedRecord);
   const paymentRef = doc(collection(db, "payments"));
   const batch = writeBatch(db);
 
@@ -117,11 +128,11 @@ export async function recordPayment(studentId, paymentRecord) {
     studentUpdate.paidUntil = paymentRecord.coverageEnd;
   }
 
-  batch.set(paymentRef, paymentRecord);
+  batch.set(paymentRef, enrichedRecord);
   batch.set(doc(db, "users", validStudentId), studentUpdate, { merge: true });
 
   await batch.commit();
-  return { id: paymentRef.id, ...paymentRecord };
+  return { id: paymentRef.id, ...enrichedRecord };
 }
 
 export function markPaymentPending(studentId) {

@@ -24,10 +24,23 @@ describe("recordPayment", () => {
   it("saves the payment and updates the student in a single batch", async () => {
     const result = await recordPayment("s1", record);
 
-    expect(result).toEqual({ id: "auto-1", ...record });
+    expect(result).toEqual({
+      id: "auto-1",
+      ...record,
+      branch: "Kota Gorontalo",
+      branchId: "kota_gorontalo",
+    });
     const payment = fake.find("payments/auto-1");
     const student = fake.find("users/s1");
-    expect(payment).toMatchObject({ kind: "set", via: "batch", data: record });
+    expect(payment).toMatchObject({
+      kind: "set",
+      via: "batch",
+      data: {
+        ...record,
+        branch: "Kota Gorontalo",
+        branchId: "kota_gorontalo",
+      },
+    });
     expect(student).toMatchObject({ kind: "set", via: "batch", opts: { merge: true } });
     expect(student.data).toEqual({
       paymentStatus: "paid",

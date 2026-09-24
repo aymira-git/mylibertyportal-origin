@@ -6,6 +6,14 @@
 export const BRANCHES = ["Kota Gorontalo", "Bone Bolango", "Pohuwato", "Limboto"];
 
 export const DEFAULT_BRANCH = "Kota Gorontalo";
+export const DEFAULT_BRANCH_ID = "kota_gorontalo";
+
+export const BRANCH_MAP = Object.freeze({
+  kota_gorontalo: "Kota Gorontalo",
+  bone_bolango: "Bone Bolango",
+  pohuwato: "Pohuwato",
+  limboto: "Limboto",
+});
 
 /**
  * Mapping of legacy or alternate branch spellings to their canonical names.
@@ -17,6 +25,41 @@ export const LEGACY_BRANCH_MAP = {
   gorontalo: "Kota Gorontalo",
   kota: "Kota Gorontalo",
 };
+
+/**
+ * Converts a branch name or legacy alias into a canonical branchId slug.
+ *
+ * @param {string | null | undefined} raw
+ * @returns {string}
+ */
+export function branchToId(raw) {
+  const canonical = normalizeBranch(raw);
+  const lower = canonical.toLowerCase();
+
+  for (const [id, name] of Object.entries(BRANCH_MAP)) {
+    if (name.toLowerCase() === lower || id === lower) {
+      return id;
+    }
+  }
+
+  // Fallback for custom names: slugify
+  return lower.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || DEFAULT_BRANCH_ID;
+}
+
+/**
+ * Converts a branchId slug to its canonical display name.
+ *
+ * @param {string | null | undefined} branchId
+ * @returns {string}
+ */
+export function idToBranch(branchId) {
+  if (!branchId) return DEFAULT_BRANCH;
+  const lower = branchId.toLowerCase().trim();
+  if (BRANCH_MAP[lower]) {
+    return BRANCH_MAP[lower];
+  }
+  return normalizeBranch(branchId);
+}
 
 /**
  * Normalizes a raw branch string into a canonical branch name.

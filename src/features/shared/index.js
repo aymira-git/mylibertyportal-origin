@@ -53,4 +53,11 @@ export {
   canApproveGate,
   isActionOperational,
 } from "./approvalGates";
+export { ApprovalInbox } from "./ApprovalInbox";
+export {
+  submitApprovalRequest,
+  listenToPendingApprovals,
+  approveApprovalRequest,
+  rejectApprovalRequest,
+} from "./approvalsRepository";
 

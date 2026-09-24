@@ -1,3 +1,5 @@
+import { branchToId } from "../../constants/branches";
+
 /**
  * approvalGates.js
  * Central Maker-Checker Dual-Control Approval Registry.
@@ -195,6 +197,8 @@ export function createApprovalEnvelope(actionId, requester = {}, context = {}) {
 
   const requestedAt = new Date().toISOString();
   const requestedBy = requester.name || requester.displayName || requester.email || "Staff";
+  const rawBranch = requester.branchId || requester.branch || null;
+  const approverBranchId = rawBranch ? branchToId(rawBranch) : null;
 
   return {
     actionId: gate.id,
@@ -203,7 +207,7 @@ export function createApprovalEnvelope(actionId, requester = {}, context = {}) {
     status: APPROVAL_STATUS.PENDING,
     mode: gate.mode,
     approverRole: resolvedApproverRole,
-    approverBranchId: requester.branchId || null,
+    approverBranchId,
     requestedBy,
     requestedByUid: requester.uid || null,
     requestedAt,

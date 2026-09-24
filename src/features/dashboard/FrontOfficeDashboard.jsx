@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { auth } from "../../firebase";
 import { useDashboardData } from "./useDashboardData";
-import { AIAssistant, DashboardShell, WelcomeBanner, useToast } from "../shared";
+import { AIAssistant, DashboardShell, WelcomeBanner, useToast, ApprovalInbox } from "../shared";
 import { ReportsDashboard } from "../reports";
 import {
   StudentApplications,
@@ -364,6 +364,18 @@ export default function FrontOfficeDashboard() {
       id: "reports",
       label: "Reports",
       component: <ReportsDashboard isAdminView={false} isFrontOffice={true} />,
+    },
+    {
+      id: "approvals",
+      label: "Approvals",
+      component: (
+        <ApprovalInbox
+          userRole="frontoffice"
+          branchId={myBranch}
+          title="Front Desk Operational Approvals"
+          subtitle="Dual-control authorization requests for desk operations and instructor escalations."
+        />
+      ),
     },
     {
       id: "misc",

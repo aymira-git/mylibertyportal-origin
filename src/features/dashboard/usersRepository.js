@@ -11,6 +11,22 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { branchToId, idToBranch, DEFAULT_BRANCH_ID } from "../../constants/branches";
+
+/**
+ * Normalizes user payload to include both branch and branchId.
+ */
+function normalizeUserBranchFields(data) {
+  if (!data || typeof data !== "object") return data;
+  const rawBranch = data.branch || data.branchId || DEFAULT_BRANCH_ID;
+  const branchId = branchToId(rawBranch);
+  const branch = idToBranch(branchId);
+  return {
+    ...data,
+    branchId,
+    branch,
+  };
+}
 
 /**
  * All direct Firestore writes (and the one Firebase Auth call) for
@@ -20,13 +36,15 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
  */
 
 export function saveStudentRecord(editId, studentData) {
+  const payload = normalizeUserBranchFields(studentData);
   return editId
-    ? setDoc(doc(db, "users", editId), studentData, { merge: true })
-    : addDoc(collection(db, "users"), studentData);
+    ? setDoc(doc(db, "users", editId), payload, { merge: true })
+    : addDoc(collection(db, "users"), payload);
 }
 
 export function updateStaffRecord(uid, staffData) {
-  return setDoc(doc(db, "users", uid), staffData, { merge: true });
+  const payload = normalizeUserBranchFields(staffData);
+  return setDoc(doc(db, "users", uid), payload, { merge: true });
 }
 
 export function updateStaffStatus(uid, status, updatedBy = auth.currentUser?.uid || null) {
@@ -118,20 +136,15 @@ export async function checkStudentHasHistory(uid) {
 /**
  * Creating a new staff account means creating the Firebase Auth account
  * FIRST (via the secondary auth instance, so the admin doing this stays
- * signed in), then separately writing the Firestore profile. Auth and
- * Firestore are different systems with no shared transaction between
- * them — same irreducible gap as staff self-signup. If the Firestore
- * write fails after the Auth account already exists, that's surfaced
- * clearly rather than as a generic error, since simply retrying would
- * hit "email already in use" and look like the whole thing failed when
- * actually there's a half-created account sitting there.
+ * signed in), then separately writing the Firestore profile.
  */
 export async function createStaffAccount(email, password, staffData) {
   const secAuth = getSecondaryAuth();
   const cred = await createUserWithEmailAndPassword(secAuth, email, password);
+  const payload = normalizeUserBranchFields(staffData);
 
   try {
-    await setDoc(doc(db, "users", cred.user.uid), staffData, { merge: true });
+    await setDoc(doc(db, "users", cred.user.uid), payload, { merge: true });
   } catch (err) {
     throw new Error(
       `Account was created in Firebase Auth, but saving the profile failed: ${err.message}. ` +

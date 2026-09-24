@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { auth } from "../../firebase";
 import { useDashboardData } from "./useDashboardData";
-import { AIAssistant, DashboardShell, WelcomeBanner } from "../shared";
+import { AIAssistant, DashboardShell, WelcomeBanner, ApprovalInbox } from "../shared";
 import { UserPlus, GraduationCap, BookOpen, AlertCircle, ArrowRight } from "lucide-react";
 import { ReportsDashboard } from "../reports";
 import { StudentApplications, UserForm, StudentRoster, BadgeModal } from "../students";
@@ -242,6 +242,17 @@ export default function AdminDashboard() {
       id: "events",
       label: "Events",
       component: <CorporateEventsPanel />,
+    },
+    {
+      id: "approvals",
+      label: "Approvals",
+      component: (
+        <ApprovalInbox
+          userRole="admin"
+          title="Academy Maker-Checker Authorization Registry"
+          subtitle="Dual-control operational authorization queue for sensitive transactions, discounts, cash discrepancy, and data overrides."
+        />
+      ),
     },
     {
       id: "reports",

@@ -67,14 +67,14 @@ describe("Maker-Checker Approval Gates", () => {
   it("creates standard approval envelopes with branchId and self-correction resolution", () => {
     const envelope = createApprovalEnvelope(
       "DISCOUNT_OR_REFUND",
-      { name: "Alice Frontdesk", uid: "u-123", role: "frontoffice", branchId: "branch-gorontalo-main" },
+      { name: "Alice Frontdesk", uid: "u-123", role: "frontoffice", branchId: "branch_gorontalo_main" },
       { reason: "Family discount 10%" }
     );
 
     expect(envelope.status).toBe(APPROVAL_STATUS.PENDING);
     expect(envelope.mode).toBe(APPROVAL_MODES.BLOCKING);
     expect(envelope.approverRole).toBe(APPROVAL_ROLES.BRANCH_MANAGER);
-    expect(envelope.approverBranchId).toBe("branch-gorontalo-main");
+    expect(envelope.approverBranchId).toBe("branch_gorontalo_main");
     expect(envelope.requestedBy).toBe("Alice Frontdesk");
     expect(envelope.requestedByUid).toBe("u-123");
     expect(envelope.reason).toBe("Family discount 10%");
@@ -87,7 +87,7 @@ describe("Maker-Checker Approval Gates", () => {
     // Self correction for Front Office Lead -> routes to Branch Manager
     const foSelfCorrection = createApprovalEnvelope(
       "STAFF_SHIFT_SELF_CORRECTION",
-      { name: "Budi FO Lead", uid: "u-fo-1", role: "frontoffice", branchId: "branch-gorontalo-main" },
+      { name: "Budi FO Lead", uid: "u-fo-1", role: "frontoffice", branchId: "branch_gorontalo_main" },
       { reason: "Forgot to clock in after lunch" }
     );
     expect(foSelfCorrection.approverRole).toBe(APPROVAL_ROLES.BRANCH_MANAGER);
@@ -95,7 +95,7 @@ describe("Maker-Checker Approval Gates", () => {
     // Self correction for Instructor -> routes to Ops Lead
     const instructorSelfCorrection = createApprovalEnvelope(
       "STAFF_SHIFT_SELF_CORRECTION",
-      { name: "Siti Teacher", uid: "u-inst-1", role: "instructor", branchId: "branch-gorontalo-main" }
+      { name: "Siti Teacher", uid: "u-inst-1", role: "instructor", branchId: "branch_gorontalo_main" }
     );
     expect(instructorSelfCorrection.approverRole).toBe(APPROVAL_ROLES.OPS_LEAD);
   });

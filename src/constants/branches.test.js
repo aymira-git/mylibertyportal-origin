@@ -2,15 +2,39 @@ import { describe, it, expect } from "vitest";
 import {
   BRANCHES,
   DEFAULT_BRANCH,
+  DEFAULT_BRANCH_ID,
+  BRANCH_MAP,
   LEGACY_BRANCH_MAP,
   normalizeBranch,
   matchesBranchFilter,
+  branchToId,
+  idToBranch,
 } from "./branches";
 
 describe("branches constants and utilities", () => {
-  it("defines the 4 canonical branches", () => {
+  it("defines the 4 canonical branches and IDs", () => {
     expect(BRANCHES).toEqual(["Kota Gorontalo", "Bone Bolango", "Pohuwato", "Limboto"]);
     expect(DEFAULT_BRANCH).toBe("Kota Gorontalo");
+    expect(DEFAULT_BRANCH_ID).toBe("kota_gorontalo");
+    expect(BRANCH_MAP.kota_gorontalo).toBe("Kota Gorontalo");
+  });
+
+  it("converts branch names to branchId slugs correctly", () => {
+    expect(branchToId("Kota Gorontalo")).toBe("kota_gorontalo");
+    expect(branchToId("Cabang Utama")).toBe("kota_gorontalo");
+    expect(branchToId("bone bolango")).toBe("bone_bolango");
+    expect(branchToId("Pohuwato")).toBe("pohuwato");
+    expect(branchToId("Limboto")).toBe("limboto");
+    expect(branchToId(null)).toBe("kota_gorontalo");
+    expect(branchToId("")).toBe("kota_gorontalo");
+  });
+
+  it("converts branchId slugs to display names correctly", () => {
+    expect(idToBranch("kota_gorontalo")).toBe("Kota Gorontalo");
+    expect(idToBranch("bone_bolango")).toBe("Bone Bolango");
+    expect(idToBranch("pohuwato")).toBe("Pohuwato");
+    expect(idToBranch("limboto")).toBe("Limboto");
+    expect(idToBranch(null)).toBe("Kota Gorontalo");
   });
 
   it("exports legacy branch mapping for legacy aliases", () => {
