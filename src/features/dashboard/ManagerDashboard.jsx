@@ -491,7 +491,14 @@ export default function ManagerDashboard() {
     {
       id: "reports",
       label: "Reports & Analytics",
-      component: <ReportsDashboard isAdminView={true} isFrontOffice={false} canEdit={false} />,
+      component: (
+        <ReportsDashboard
+          isAdminView={false}
+          isFrontOffice={false}
+          canEdit={false}
+          userBranch={myBranch}
+        />
+      ),
     },
     {
       id: "ai",

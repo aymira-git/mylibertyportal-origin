@@ -427,7 +427,7 @@ function App() {
                 )}
               </ErrorBoundary>
             )}
-            {role === "instructor" && (
+            {(role === "instructor" || role === "instructorleader" || role === "instructor_leader") && (
               <ErrorBoundary label="Instructor dashboard">
                 {division === "kindergarten" ? (
                   <KidsInstructorDashboard />
@@ -436,7 +436,7 @@ function App() {
                 )}
               </ErrorBoundary>
             )}
-            {role === "frontoffice" && (
+            {(role === "frontoffice" || role === "opslead" || role === "ops_lead" || role === "frontofficelead") && (
               <ErrorBoundary label="Front Office dashboard">
                 {division === "kindergarten" ? (
                   <KidsFrontOfficeDashboard />
@@ -455,9 +455,19 @@ function App() {
                 <OfficeBoyDashboard />
               </ErrorBoundary>
             )}
-            {!["admin", "manager", "instructor", "marketing", "frontoffice", "officeboy"].includes(
-              role
-            ) && (
+            {![
+              "admin",
+              "manager",
+              "instructor",
+              "instructorleader",
+              "instructor_leader",
+              "marketing",
+              "frontoffice",
+              "opslead",
+              "ops_lead",
+              "frontofficelead",
+              "officeboy",
+            ].includes(role) && (
               <div className="bg-white p-6 rounded-xl border text-center text-gray-500 text-sm max-w-md mx-auto">
                 This account doesn't have dashboard access. Please contact your administrator.
               </div>

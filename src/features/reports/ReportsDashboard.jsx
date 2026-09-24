@@ -14,6 +14,7 @@ export default function ReportsDashboard({
   isFrontOffice = false,
   canEdit = true,
   division = "all",
+  userBranch = null,
 }) {
   const isActualAdmin = isAdminView && !isFrontOffice;
   const canPerformAdminActions = isActualAdmin && canEdit;
@@ -24,8 +25,11 @@ export default function ReportsDashboard({
   // Shared Horizon Range (0 = all, or days)
   const [rangeDays, setRangeDays] = useState(30);
 
-  // Branch filter
-  const [branchFilter, setBranchFilter] = useState("all");
+  // Branch filter: Admin starts with 'all' and can switch; branch-scoped roles are locked
+  const [branchFilter, setBranchFilter] = useState(() => {
+    if (isActualAdmin) return "all";
+    return userBranch || "Kota Gorontalo";
+  });
 
   // Ref to active tab for CSV export
   const activeTabRef = useRef(null);
@@ -146,18 +150,24 @@ export default function ReportsDashboard({
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Campus Branch
             </label>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="w-full p-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
-            >
-              <option value="all">All Campuses</option>
-              {BRANCHES.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
+            {isActualAdmin ? (
+              <select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="w-full p-2 border border-slate-200 rounded-xl bg-white text-xs font-semibold focus:border-[#1a3a8f] outline-none"
+              >
+                <option value="all">All Campuses</option>
+                {BRANCHES.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="p-2 border border-slate-200 bg-slate-50 rounded-xl text-xs font-bold text-slate-700 truncate">
+                {branchFilter || userBranch || "Kota Gorontalo"}
+              </div>
+            )}
           </div>
 
           {/* Date Horizon Presets (for staff, students, admissions) */}

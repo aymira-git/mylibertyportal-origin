@@ -62,7 +62,7 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
     return calculatePlanPricing(selectedPlan, DEFAULT_BASE_MONTHLY_RATE);
   }, [selectedPlan]);
 
-  const [amount, setAmount] = useState(() => pricing.total);
+  const [amount, setAmount] = useState(() => student.tuitionRate || student.lastPaymentAmount || "");
   const [period, setPeriod] = useState(() => {
     if (selectedPlan === "custom") return getDefaultPeriod();
     return calculateCoveragePeriod(effectiveStartDate, pricing.months);
@@ -80,7 +80,6 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
       setPeriod(getDefaultPeriod());
     } else {
       const p = calculatePlanPricing(planKey, DEFAULT_BASE_MONTHLY_RATE);
-      setAmount(p.total);
       setPeriod(calculateCoveragePeriod(effectiveStartDate, p.months));
     }
   };

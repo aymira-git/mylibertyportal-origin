@@ -30,9 +30,11 @@ import {
 
 const ROLE_BADGES = {
   instructor: { label: "Instructor", tone: "bg-blue-50 text-blue-700 border-blue-200" },
+  instructorleader: { label: "Instructor Leader", tone: "bg-indigo-50 text-indigo-700 border-indigo-200" },
   manager: { label: "Manager", tone: "bg-purple-50 text-purple-700 border-purple-200" },
   marketing: { label: "Marketing", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   frontoffice: { label: "Front Office", tone: "bg-amber-50 text-amber-700 border-amber-200" },
+  opslead: { label: "Front Office Leader", tone: "bg-orange-50 text-orange-700 border-orange-200" },
   officeboy: { label: "Office Support", tone: "bg-slate-100 text-slate-600 border-slate-200" },
 };
 
@@ -224,8 +226,10 @@ export default function InvitesPanel({ invites = [], users = [], onCreateInvite,
               className="w-full py-2.5 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:border-[#1a3a8f] outline-none cursor-pointer transition"
             >
               <option value="instructor">Instructor / Teacher</option>
+              <option value="instructorleader">Instructor Leader</option>
               <option value="manager">Campus Manager</option>
-              <option value="frontoffice">Front Office / Admin</option>
+              <option value="frontoffice">Front Office Staff</option>
+              <option value="opslead">Front Office Leader (Ops Lead)</option>
               {inviteDivision !== "kindergarten" && (
                 <>
                   <option value="marketing">Marketing Specialist</option>

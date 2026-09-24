@@ -274,31 +274,28 @@ export default function RecordPaymentTab({
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="block font-bold text-slate-700 uppercase tracking-wider text-[11px]">
-            Amount (IDR)
+            Amount (IDR) *
           </label>
-          {selectedPlan !== "custom" && pricing.discountAmount > 0 && (
-            <span className="text-[11px] text-emerald-700 font-bold">
-              Includes {pricing.discountPercent}% bundle discount (
-              {formatIDR(pricing.discountAmount)})
-            </span>
-          )}
+          <span className="text-[10px] text-slate-400 font-semibold">
+            Manual fill-in per branch policy
+          </span>
         </div>
         <div className="relative">
           <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-sm">Rp</span>
           <input
             type="number"
-            value={amount}
-            onChange={(e) => onAmountChange(Number(e.target.value))}
+            value={amount === "" || amount === null || amount === undefined ? "" : amount}
+            onChange={(e) => onAmountChange(e.target.value === "" ? "" : Number(e.target.value))}
             min="1000"
             step="1000"
             required
             className="w-full pl-10 pr-3 py-2 border rounded-xl font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a3a8f]/20 focus:border-[#1a3a8f]"
-            placeholder="350000"
+            placeholder="e.g. 350000"
           />
         </div>
         {/* Quick nominal chips */}
         <div className="flex flex-wrap gap-1.5 mt-2">
-          {[250000, 350000, 500000, 997500, 1890000, 3570000].map((val) => (
+          {[250000, 350000, 500000, 750000, 997500, 1500000, 1890000, 3570000].map((val) => (
             <button
               type="button"
               key={val}

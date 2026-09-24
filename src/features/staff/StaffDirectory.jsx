@@ -58,14 +58,18 @@ export default function StaffDirectory({
   );
   const instructorCount = useMemo(
     () =>
-      users.filter((u) => u.role === "instructor" && (u.status || "active") === "active").length,
+      users.filter(
+        (u) =>
+          (u.role === "instructor" || u.role === "instructorleader") &&
+          (u.status || "active") === "active"
+      ).length,
     [users]
   );
   const opsCount = useMemo(
     () =>
       users.filter(
         (u) =>
-          ["frontoffice", "manager", "marketing", "officeboy"].includes(u.role) &&
+          ["frontoffice", "opslead", "manager", "marketing", "officeboy"].includes(u.role) &&
           (u.status || "active") === "active"
       ).length,
     [users]

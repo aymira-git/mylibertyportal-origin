@@ -8,6 +8,7 @@ import {
   getDocs,
   query,
   where,
+  limit,
   updateDoc,
   writeBatch,
   deleteDoc,
@@ -58,6 +59,25 @@ export async function fetchOpenShiftFor(uid) {
     query(collection(db, "shifts"), where("userId", "==", uid), where("clockOut", "==", null))
   );
   return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+}
+
+/**
+ * Fetches recent shift records for a specific staff member (bounded for free tier & privacy).
+ * @param {string} uid
+ * @param {number} limitCount
+ * @returns {Promise<any[]>}
+ */
+export async function fetchUserShifts(uid, limitCount = 30) {
+  if (!uid) return [];
+  const q = query(
+    collection(db, "shifts"),
+    where("userId", "==", uid),
+    limit(limitCount)
+  );
+  const snap = await getDocs(q);
+  const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  items.sort((a, b) => new Date(b.clockIn || 0).getTime() - new Date(a.clockIn || 0).getTime());
+  return items;
 }
 
 /**

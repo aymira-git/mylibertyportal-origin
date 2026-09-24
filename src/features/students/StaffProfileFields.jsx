@@ -151,8 +151,10 @@ export default function StaffProfileFields({
             className="w-full p-2.5 border border-[#1a3a8f]/40 bg-indigo-50/30 rounded-xl font-bold text-xs text-slate-900 focus:border-[#1a3a8f] outline-none"
           >
             <option value="instructor">Instructor / Teacher</option>
-            <option value="manager">Manager</option>
+            <option value="instructorleader">Instructor Leader</option>
             <option value="frontoffice">Front Office</option>
+            <option value="opslead">Front Office Leader (Ops Lead)</option>
+            <option value="manager">Manager</option>
             {normalizeDivision(formData.division) !== "kindergarten" && (
               <>
                 <option value="marketing">Marketing Staff</option>

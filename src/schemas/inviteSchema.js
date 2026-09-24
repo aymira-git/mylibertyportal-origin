@@ -6,15 +6,19 @@ export const ALLOWED_STAFF_ROLES = [
   "admin",
   "manager",
   "instructor",
+  "instructorleader",
   "marketing",
   "frontoffice",
+  "opslead",
   "officeboy",
 ];
 
 export const KINDERGARTEN_STAFF_ROLES = [
   "manager",
   "instructor",
+  "instructorleader",
   "frontoffice",
+  "opslead",
 ];
 
 export const inviteSchema = z

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { auth } from "../../firebase";
 import { useDashboardData } from "./useDashboardData";
 import { AIAssistant, DashboardShell, WelcomeBanner, useToast, ApprovalInbox } from "../shared";
-import { ReportsDashboard } from "../reports";
 import {
   StudentApplications,
   StudentRoster,
@@ -19,6 +18,7 @@ import {
   TuitionDueWidget,
   PaymentCashierTab,
   WalkInInquiryTab,
+  FrontOfficeReportsTab,
 } from "./frontoffice";
 import { getProgram } from "../../constants/programs";
 import { normalizeBranch } from "../../constants/branches";
@@ -363,7 +363,12 @@ export default function FrontOfficeDashboard() {
     {
       id: "reports",
       label: "Reports",
-      component: <ReportsDashboard isAdminView={false} isFrontOffice={true} />,
+      component: (
+        <FrontOfficeReportsTab
+          myBranch={myBranch}
+          students={students}
+        />
+      ),
     },
     {
       id: "approvals",

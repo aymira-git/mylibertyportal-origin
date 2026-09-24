@@ -174,10 +174,12 @@ describe("getDistinctStaffBranches", () => {
 });
 
 describe("TRACKED_STAFF_ROLES", () => {
-  it("includes manager so manager attendance badges can be printed", () => {
+  it("includes manager so manager attendance badges can be printed, and leader roles", () => {
     expect(TRACKED_STAFF_ROLES).toContain("manager");
     expect(TRACKED_STAFF_ROLES).toContain("instructor");
+    expect(TRACKED_STAFF_ROLES).toContain("instructorleader");
     expect(TRACKED_STAFF_ROLES).toContain("frontoffice");
+    expect(TRACKED_STAFF_ROLES).toContain("opslead");
     expect(TRACKED_STAFF_ROLES).toContain("marketing");
     expect(TRACKED_STAFF_ROLES).toContain("officeboy");
   });

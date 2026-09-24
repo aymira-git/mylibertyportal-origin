@@ -9,7 +9,9 @@ import { matchesDivisionFilter } from "../../constants/divisions.js";
 
 export const STAFF_ROLES = [
   "instructor",
+  "instructorleader",
   "frontoffice",
+  "opslead",
   "manager",
   "marketing",
   "officeboy",
@@ -18,7 +20,9 @@ export const STAFF_ROLES = [
 
 export const STAFF_ROLE_LABELS = {
   instructor: "Instructor",
+  instructorleader: "Instructor Leader",
   frontoffice: "Front Office",
+  opslead: "Front Office Leader",
   manager: "Manager",
   marketing: "Marketing Staff",
   officeboy: "Office Boy",
@@ -50,7 +54,9 @@ export const STAFF_STATUS_MAP = {
 
 export const TRACKED_STAFF_ROLES = [
   "instructor",
+  "instructorleader",
   "frontoffice",
+  "opslead",
   "manager",
   "marketing",
   "officeboy",

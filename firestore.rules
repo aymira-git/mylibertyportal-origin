@@ -25,11 +25,11 @@ service cloud.firestore {
     }
 
     function isStaff() {
-      return signedIn() && userProfile().role in ['admin', 'manager', 'instructor', 'marketing', 'frontoffice', 'officeboy'];
+      return signedIn() && userProfile().role in ['admin', 'manager', 'instructor', 'instructorleader', 'instructor_leader', 'marketing', 'frontoffice', 'opslead', 'ops_lead', 'frontofficelead', 'officeboy'];
     }
 
     function isFrontOffice() {
-      return hasRole('frontoffice');
+      return signedIn() && userProfile().role in ['frontoffice', 'opslead', 'ops_lead', 'frontofficelead'];
     }
 
     function userBranch() {
@@ -50,11 +50,11 @@ service cloud.firestore {
     }
 
     function isTrackedShiftRole(r) {
-      return r in ['instructor', 'frontoffice', 'marketing', 'officeboy', 'admin', 'manager'];
+      return r in ['instructor', 'instructorleader', 'instructor_leader', 'frontoffice', 'opslead', 'ops_lead', 'frontofficelead', 'marketing', 'officeboy', 'admin', 'manager'];
     }
 
     function isTrackedLeaveRole(r) {
-      return r in ['instructor', 'frontoffice', 'marketing', 'officeboy', 'admin'];
+      return r in ['instructor', 'instructorleader', 'instructor_leader', 'frontoffice', 'opslead', 'ops_lead', 'frontofficelead', 'marketing', 'officeboy', 'admin'];
     }
 
     function isInviteValid(inviteId) {
@@ -67,7 +67,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAdmin()
         || (isManager() && isSameBranch(resource.data))
-        || (isStaff() && resource.data.role in ['student', 'instructor'] && isSameBranch(resource.data))
+        || (isStaff() && resource.data.role in ['student', 'instructor', 'instructorleader', 'instructor_leader'] && isSameBranch(resource.data))
         || (signedIn() && userId == request.auth.uid);
       allow create: if isAdmin() 
         || (isFrontOffice() && request.resource.data.role == 'student' && isSameBranch(request.resource.data))

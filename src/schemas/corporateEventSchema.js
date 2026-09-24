@@ -6,7 +6,9 @@ export const AUDIENCE_TYPES = ["all", "branch", "role", "division"];
 
 export const EVENT_ALLOWED_ROLES = [
   "instructor",
+  "instructorleader",
   "frontoffice",
+  "opslead",
   "manager",
   "marketing",
   "officeboy",

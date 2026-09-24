@@ -21,6 +21,20 @@ describe("inviteSchema", () => {
     expect(result.branch).toBe("Kota Gorontalo");
   });
 
+  it("validates instructorleader and opslead roles", () => {
+    const leaderInv = inviteSchema.parse({
+      email: "lead@myliberty.id",
+      role: "instructorleader",
+    });
+    expect(leaderInv.role).toBe("instructorleader");
+
+    const opsInv = inviteSchema.parse({
+      email: "opslead@myliberty.id",
+      role: "opslead",
+    });
+    expect(opsInv.role).toBe("opslead");
+  });
+
   it("validates invite with division and defaults to courses", () => {
     const defaultDiv = inviteSchema.parse({
       email: "staff@myliberty.id",
