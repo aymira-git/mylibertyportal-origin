@@ -129,7 +129,8 @@ service cloud.firestore {
               'placeOfBirth', 'religion', 'programId', 'program', 'batchType', 'classType',
               'schoolOrJob', 'classOrSemester', 'joinedDate', 'fatherName', 'fatherJob',
               'fatherPhone', 'motherName', 'motherJob', 'motherPhone', 'referralSource',
-              'rating', 'paymentPlan', 'paymentStatus', 'lastPaymentPeriod', 'lastPaymentDate', 'branch'
+              'rating', 'paymentPlan', 'paymentStatus', 'lastPaymentPeriod', 'lastPaymentDate',
+              'lastPaymentAmount', 'lastPaymentMethod', 'paidUntil', 'branch'
             ]))
         || (signedIn()
           && userId == request.auth.uid

@@ -1,6 +1,5 @@
 import { db } from "../../firebase";
 import { collection, query, where, getDocs, limit, doc, getDoc } from "firebase/firestore";
-import { fetchPaymentHistory } from "../finance/paymentsRepository";
 
 /**
  * Normalizes phone string to clean digit format for matching.
@@ -80,6 +79,26 @@ export async function lookupStudentForParent(searchTerm = "") {
 }
 
 /**
+ * Builds the tuition summary shown on the public Parent Portal from the
+ * denormalized payment fields on the student document (written by the
+ * finance flow in paymentsRepository.recordPayment). The payments
+ * collection itself is staff-only in Firestore rules, so the portal —
+ * which is anonymous — reads this summary instead of the raw history.
+ */
+export function buildPaymentSummary(student) {
+  if (!student || typeof student !== "object") return null;
+  const hasRecords = Boolean(student.lastPaymentPeriod || student.lastPaymentDate || student.paidUntil);
+  return {
+    status: student.paymentStatus === "pending" ? "pending" : hasRecords ? "paid" : "none",
+    lastPaymentPeriod: student.lastPaymentPeriod || null,
+    lastPaymentDate: student.lastPaymentDate || null,
+    lastPaymentAmount: typeof student.lastPaymentAmount === "number" ? student.lastPaymentAmount : null,
+    lastPaymentMethod: student.lastPaymentMethod || null,
+    paidUntil: student.paidUntil || null,
+  };
+}
+
+/**
  * Loads complete parent dashboard data bundle for a specific student.
  */
 export async function getStudentParentPortalBundle(studentId) {
@@ -93,15 +112,7 @@ export async function getStudentParentPortalBundle(studentId) {
   /** @type {any} */
   const student = { id: studentDoc.id, ...studentDoc.data() };
 
-  // 2. Fetch payment history
-  let payments = [];
-  try {
-    payments = await fetchPaymentHistory(studentId);
-  } catch (err) {
-    console.warn("Could not fetch payments for student:", err);
-  }
-
-  // 3. Fetch enrolled batch/class info if present
+  // 2. Fetch enrolled batch/class info if present
   let batchInfo = null;
   if (student.batchId) {
     try {
@@ -116,7 +127,7 @@ export async function getStudentParentPortalBundle(studentId) {
 
   return {
     student,
-    payments,
+    paymentSummary: buildPaymentSummary(student),
     batchInfo,
   };
 }

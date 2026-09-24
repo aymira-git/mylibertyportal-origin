@@ -10,6 +10,7 @@ import Badge from "../shared/Badge";
 import {
   Search,
   CheckCircle2,
+  AlertCircle,
   CreditCard,
   Phone,
   MessageSquare,
@@ -81,8 +82,11 @@ export default function ParentPortalPage() {
   };
 
   const student = portalData?.student;
-  const payments = portalData?.payments || [];
+  const paymentSummary = portalData?.paymentSummary;
   const batchInfo = portalData?.batchInfo;
+
+  const formatSummaryDate = (value) =>
+    value ? new Date(value).toLocaleDateString("id-ID") : null;
 
   // Front Desk WhatsApp Contact link helper
   const getWhatsAppHelpLink = () => {
@@ -264,10 +268,21 @@ export default function ParentPortalPage() {
 
                 <div className="p-3 bg-slate-950/60 rounded-2xl border border-slate-800/80 col-span-2 sm:col-span-1">
                   <span className="text-[11px] font-bold text-slate-400 block">Tuition Status</span>
-                  <p className="text-xs font-black text-emerald-400 mt-1 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Up to Date</span>
-                  </p>
+                  {paymentSummary?.status === "paid" && (
+                    <p className="text-xs font-black text-emerald-400 mt-1 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{paymentSummary.paidUntil ? `Paid until ${formatSummaryDate(paymentSummary.paidUntil)}` : "Up to Date"}</span>
+                    </p>
+                  )}
+                  {paymentSummary?.status === "pending" && (
+                    <p className="text-xs font-black text-amber-400 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>Payment Pending</span>
+                    </p>
+                  )}
+                  {(!paymentSummary || paymentSummary.status === "none") && (
+                    <p className="text-xs font-black text-slate-400 mt-1">No Records</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -303,42 +318,56 @@ export default function ParentPortalPage() {
               </div>
             )}
 
-            {/* Payment & Receipts Log */}
+            {/* Tuition Payment Summary */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl">
               <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
                 <CreditCard className="w-4 h-4 text-emerald-400" />
-                <span>Tuition Receipts &amp; Payment History</span>
+                <span>Tuition Payment Summary</span>
               </h4>
 
-              {payments.length === 0 ? (
+              {(!paymentSummary || paymentSummary.status === "none") ? (
                 <p className="text-xs text-slate-500 py-3 text-center">
-                  No previous transaction records found.
+                  No payment records found. Please contact Front Desk for details.
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {payments.slice(0, 5).map((pay) => (
-                    <div
-                      key={pay.id}
-                      className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-between text-xs"
-                    >
-                      <div>
-                        <p className="font-black text-emerald-300">
-                          {formatIDR(pay.amount)}
-                        </p>
-                        <p className="text-[11px] text-slate-400">
-                          {pay.planName || "Monthly Tuition"} • Method: {pay.method || "Cash"}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-bold block mb-0.5">
-                          Paid
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          {pay.recordedAt ? new Date(pay.recordedAt).toLocaleDateString("id-ID") : "-"}
-                        </span>
-                      </div>
+                  <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-black text-emerald-300">
+                        {paymentSummary.lastPaymentAmount != null
+                          ? formatIDR(paymentSummary.lastPaymentAmount)
+                          : "—"}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {paymentSummary.lastPaymentPeriod || "Tuition"}
+                        {paymentSummary.lastPaymentMethod && ` • ${paymentSummary.lastPaymentMethod}`}
+                      </p>
                     </div>
-                  ))}
+                    <div className="text-right">
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold block mb-0.5 border ${
+                          paymentSummary.status === "paid"
+                            ? "bg-emerald-950 text-emerald-400 border-emerald-800"
+                            : "bg-amber-950 text-amber-400 border-amber-800"
+                        }`}
+                      >
+                        {paymentSummary.status === "paid" ? "Paid" : "Pending"}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {formatSummaryDate(paymentSummary.lastPaymentDate) || "-"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {paymentSummary.paidUntil && (
+                    <p className="text-[11px] text-slate-400 px-1">
+                      Payment coverage valid through{" "}
+                      <strong className="text-slate-200">{formatSummaryDate(paymentSummary.paidUntil)}</strong>.
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-500 px-1">
+                    For full receipts and payment history, please contact Front Desk via WhatsApp below.
+                  </p>
                 </div>
               )}
             </div>
