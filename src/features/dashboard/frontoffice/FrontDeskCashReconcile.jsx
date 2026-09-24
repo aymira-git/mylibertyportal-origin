@@ -5,6 +5,7 @@ import { formatIDR } from "../../finance/receiptMessages";
 import { matchesBranchFilter, normalizeBranch } from "../../../constants/branches";
 import { todayWita } from "../../../utils/dateWita";
 import { useToast } from "../../shared";
+import ShiftReconciliationModal from "./ShiftReconciliationModal";
 import {
   Wallet,
   ArrowDownCircle,
@@ -15,6 +16,7 @@ import {
   Check,
   Building2,
   Calendar,
+  LogOut,
 } from "lucide-react";
 
 /**
@@ -24,12 +26,19 @@ import {
  * (NO artificial limit cap), computing exact Cash, Transfer, and QRIS totals.
  * Optionally filters payments to a specific branch when students/branchLabel are provided.
  */
-export default function FrontDeskCashReconcile({ branchLabel = null, students = [] }) {
+export default function FrontDeskCashReconcile({
+  branchLabel = null,
+  students = [],
+  activeShift = null,
+  currentUser = {},
+  onShiftClosed = null,
+}) {
   const toast = useToast();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState("");
+  const [showReconcileModal, setShowReconcileModal] = useState(false);
 
   const todayStr = todayWita();
 
@@ -161,11 +170,21 @@ export default function FrontDeskCashReconcile({ branchLabel = null, students = 
         </div>
 
         <div className="flex items-center gap-2">
+          {activeShift && (
+            <button
+              onClick={() => setShowReconcileModal(true)}
+              className="px-3.5 py-2 rounded-xl bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>End Shift &amp; Count Drawer</span>
+            </button>
+          )}
+
           <button
             onClick={loadDailyPayments}
             disabled={loading}
             title="Refresh Totals"
-            className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition disabled:opacity-50"
+            className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -173,7 +192,7 @@ export default function FrontDeskCashReconcile({ branchLabel = null, students = 
           <button
             onClick={handleCopySummary}
             disabled={summary.count === 0}
-            className="px-3.5 py-2 rounded-xl bg-[#1a3a8f] text-white hover:bg-[#153075] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
+            className="px-3.5 py-2 rounded-xl bg-[#1a3a8f] text-white hover:bg-[#153075] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{copied ? "Copied!" : "Copy Shift Handover"}</span>
@@ -227,6 +246,21 @@ export default function FrontDeskCashReconcile({ branchLabel = null, students = 
         <p className="text-[10px] text-slate-400 font-medium text-right">
           Last reconciled at {lastRefreshed}
         </p>
+      )}
+
+      {showReconcileModal && (
+        <ShiftReconciliationModal
+          isOpen={showReconcileModal}
+          onClose={() => setShowReconcileModal(false)}
+          activeShift={activeShift}
+          expectedCash={summary.cashTotal}
+          expectedQris={summary.qrisTotal}
+          currentUser={currentUser}
+          onSuccess={() => {
+            onShiftClosed?.();
+            loadDailyPayments();
+          }}
+        />
       )}
     </div>
   );

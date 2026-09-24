@@ -44,3 +44,13 @@ export { useNetworkStatus } from "./useNetworkStatus";
 export { default as ConnectivityBanner } from "./ConnectivityBanner";
 export { default as WelcomeBanner } from "./WelcomeBanner";
 export { triggerHaptic } from "./mobileUtils";
+export {
+  APPROVAL_ROLES,
+  APPROVAL_MODES,
+  APPROVAL_STATUS,
+  GATED_ACTIONS,
+  createApprovalEnvelope,
+  canApproveGate,
+  isActionOperational,
+} from "./approvalGates";
+

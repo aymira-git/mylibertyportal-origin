@@ -1,5 +1,6 @@
 // Public entry points for student records and student-facing workflows.
 export { default as StudentApplications } from "./StudentApplications";
+export { default as ParentPortalPage } from "./ParentPortalPage";
 export { default as StudentProgressForm } from "./StudentProgressForm";
 export { default as StudentRoster } from "./StudentRoster";
 export { default as StudentRosterFilters } from "./StudentRosterFilters";

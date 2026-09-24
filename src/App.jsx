@@ -12,6 +12,12 @@ import schoolLogo from "./assets/school-logo.webp";
 // Admin's code, a marketing user never downloads the Kiosk/QR logic, etc.
 const RegistrationPage = lazy(() => import("./features/auth/RegistrationPage"));
 const StaffSignup = lazy(() => import("./features/auth/StaffSignup"));
+const StandaloneKioskPage = lazy(() =>
+  import("./features/attendance").then((m) => ({ default: m.StandaloneKioskPage }))
+);
+const ParentPortalPage = lazy(() =>
+  import("./features/students").then((m) => ({ default: m.ParentPortalPage }))
+);
 const AdminDashboard = lazy(() => import("./features/dashboard/AdminDashboard"));
 const FrontOfficeDashboard = lazy(() => import("./features/dashboard/FrontOfficeDashboard"));
 const ManagerDashboard = lazy(() => import("./features/dashboard/ManagerDashboard"));
@@ -204,6 +210,31 @@ function App() {
       <ErrorBoundary label="Staff invitation page">
         <Suspense fallback={<LoadingFallback />}>
           <StaffSignup />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  // Standalone Kiosk Routes (/kiosk, /kiosk/staff, /kiosk/students)
+  if (window.location.pathname.startsWith("/kiosk")) {
+    return (
+      <ErrorBoundary label="Standalone Attendance Kiosk">
+        <Suspense fallback={<LoadingFallback />}>
+          <StandaloneKioskPage />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  // Parent & Student Progress Portal (/parent, /portal, /parent-portal)
+  if (
+    window.location.pathname.startsWith("/parent") ||
+    window.location.pathname.startsWith("/portal")
+  ) {
+    return (
+      <ErrorBoundary label="Parent & Student Information Portal">
+        <Suspense fallback={<LoadingFallback />}>
+          <ParentPortalPage />
         </Suspense>
       </ErrorBoundary>
     );

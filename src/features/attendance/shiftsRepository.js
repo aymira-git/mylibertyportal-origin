@@ -13,6 +13,33 @@ import {
   deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
+import { createApprovalEnvelope } from "../shared/approvalGates";
+
+export const DEFAULT_CASH_DISCREPANCY_THRESHOLD_IDR = 25000;
+export const DEFAULT_CASH_DISCREPANCY_PERCENT = 0.01;
+
+/**
+ * Computes allowable cash discrepancy threshold (smaller of fixed IDR or % of expected total).
+ */
+export function calculateCashDiscrepancyThreshold(
+  expectedTotal = 0,
+  {
+    fixedThreshold = DEFAULT_CASH_DISCREPANCY_THRESHOLD_IDR,
+    percentThreshold = DEFAULT_CASH_DISCREPANCY_PERCENT,
+  } = {}
+) {
+  if (!expectedTotal || expectedTotal <= 0) return fixedThreshold;
+  const calculatedPercent = expectedTotal * percentThreshold;
+  return Math.min(fixedThreshold, Math.max(calculatedPercent, 0));
+}
+
+/**
+ * Public accessor for shift cash reconciliation data (Finance domain boundary safe).
+ */
+export function getShiftCashReconciliation(shift) {
+  if (!shift || typeof shift !== "object") return null;
+  return shift.cashReconciliation || null;
+}
 
 /**
  * @returns {Promise<any>}
@@ -98,6 +125,67 @@ export function clockIn({
 
 export function clockOutShift(shiftId, clockOutAt = new Date()) {
   return updateDoc(doc(db, "shifts", shiftId), { clockOut: clockOutAt.toISOString() });
+}
+
+/**
+ * Clocks out a shift and embeds shift-end cash & QRIS reconciliation.
+ * If discrepancy exceeds the configurable threshold, automatically attaches
+ * a maker-checker approval gate routed to Branch Manager.
+ */
+export function clockOutShiftWithCashReconciliation(
+  shiftId,
+  {
+    clockOutAt = new Date(),
+    countedCash = 0,
+    countedQris = 0,
+    expectedCash = 0,
+    expectedQris = 0,
+    notes = "",
+    requester = {},
+    customThreshold = null,
+  } = {}
+) {
+  const cCash = Number(countedCash) || 0;
+  const cQris = Number(countedQris) || 0;
+  const eCash = Number(expectedCash) || 0;
+  const eQris = Number(expectedQris) || 0;
+
+  const totalCounted = cCash + cQris;
+  const totalExpected = eCash + eQris;
+  const discrepancy = totalCounted - totalExpected;
+
+  const threshold =
+    customThreshold != null
+      ? Number(customThreshold)
+      : calculateCashDiscrepancyThreshold(totalExpected);
+
+  const exceedsThreshold = Math.abs(discrepancy) > threshold;
+
+  const reconciliationData = {
+    expectedCash: eCash,
+    expectedQris: eQris,
+    countedCash: cCash,
+    countedQris: cQris,
+    discrepancy,
+    threshold,
+    exceedsThreshold,
+    notes: (notes || "").trim(),
+    reconciledAt: clockOutAt.toISOString(),
+  };
+
+  const payload = {
+    clockOut: clockOutAt.toISOString(),
+    cashReconciliation: reconciliationData,
+  };
+
+  if (exceedsThreshold) {
+    payload.approval = createApprovalEnvelope("CASH_DISCREPANCY", requester, {
+      reason: notes || `Discrepancy of IDR ${discrepancy.toLocaleString("id-ID")} exceeds IDR ${threshold.toLocaleString("id-ID")} threshold.`,
+      payload: reconciliationData,
+    });
+  }
+
+  return updateDoc(doc(db, "shifts", shiftId), payload);
 }
 
 export function markShiftReviewed(shiftId) {

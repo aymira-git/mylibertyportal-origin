@@ -4,6 +4,9 @@ import {
   adjustShiftWithAudit,
   clockIn,
   clockOutShift,
+  clockOutShiftWithCashReconciliation,
+  calculateCashDiscrepancyThreshold,
+  getShiftCashReconciliation,
   fetchInstructorClasses,
   fetchOpenShiftFor,
   fetchStaffLeaves,
@@ -322,3 +325,75 @@ describe("fetchOpenShiftFor / fetchInstructorClasses", () => {
     expect(ids).toEqual(["c1", "c2", "c3"]);
   });
 });
+
+describe("Cash Reconciliation on Shift Clock-Out", () => {
+  it("calculates discrepancy threshold correctly (smaller of fixed IDR or 1%)", () => {
+    // 1% of 1,000,000 is 10,000 (< 25,000) -> 10,000
+    expect(calculateCashDiscrepancyThreshold(1000000)).toBe(10000);
+
+    // 1% of 5,000,000 is 50,000 (> 25,000 max fixed threshold) -> 25,000
+    expect(calculateCashDiscrepancyThreshold(5000000)).toBe(25000);
+
+    // Zero expected -> default 25,000
+    expect(calculateCashDiscrepancyThreshold(0)).toBe(25000);
+  });
+
+  it("embeds reconciliation data without approval gate when within threshold", async () => {
+    fake.seed("shifts", [{ id: "shift-1", userId: "fo-1", clockOut: null }]);
+
+    await clockOutShiftWithCashReconciliation("shift-1", {
+      clockOutAt: at,
+      countedCash: 1000000,
+      countedQris: 500000,
+      expectedCash: 1000000,
+      expectedQris: 500000,
+      notes: "Balanced till",
+    });
+
+    const op = fake.opsOf("update")[0];
+    expect(op.path).toBe("shifts/shift-1");
+    expect(op.data.clockOut).toBe("2026-09-21T02:00:00.000Z");
+    expect(op.data.cashReconciliation).toMatchObject({
+      expectedCash: 1000000,
+      expectedQris: 500000,
+      countedCash: 1000000,
+      countedQris: 500000,
+      discrepancy: 0,
+      exceedsThreshold: false,
+      notes: "Balanced till",
+    });
+    expect(op.data.approval).toBeUndefined();
+
+    // Accessor test
+    expect(getShiftCashReconciliation(op.data)).toEqual(op.data.cashReconciliation);
+  });
+
+  it("attaches blocking Branch Manager approval gate when discrepancy exceeds threshold", async () => {
+    fake.seed("shifts", [{ id: "shift-2", userId: "fo-1", clockOut: null }]);
+
+    // Expected 2,000,000 (1% is 20,000 threshold), Counted is short by 50,000
+    await clockOutShiftWithCashReconciliation("shift-2", {
+      clockOutAt: at,
+      countedCash: 1450000,
+      countedQris: 500000,
+      expectedCash: 1500000,
+      expectedQris: 500000,
+      notes: "Till short by 50k",
+      requester: { name: "Budi FO", uid: "fo-1", role: "frontoffice" },
+    });
+
+    const op = fake.opsOf("update")[0];
+    expect(op.data.cashReconciliation.discrepancy).toBe(-50000);
+    expect(op.data.cashReconciliation.exceedsThreshold).toBe(true);
+
+    expect(op.data.approval).toMatchObject({
+      actionId: "CASH_DISCREPANCY",
+      approverRole: "branch_manager",
+      mode: "blocking",
+      status: "pending",
+      requestedBy: "Budi FO",
+      requestedByUid: "fo-1",
+    });
+  });
+});
+
