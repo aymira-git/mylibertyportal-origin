@@ -388,7 +388,7 @@ describe("Cash Reconciliation on Shift Clock-Out", () => {
 
     expect(op.data.approval).toMatchObject({
       actionId: "CASH_DISCREPANCY",
-      approverRole: "branch_manager",
+      approverRole: "manager",
       mode: "blocking",
       status: "pending",
       requestedBy: "Budi FO",

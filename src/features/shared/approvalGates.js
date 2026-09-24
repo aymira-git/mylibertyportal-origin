@@ -8,7 +8,8 @@
  */
 
 export const APPROVAL_ROLES = {
-  BRANCH_MANAGER: "branch_manager",
+  ADMIN: "admin",
+  BRANCH_MANAGER: "manager",
   INSTRUCTOR_LEADER: "instructor_leader",
   OPS_LEAD: "ops_lead",
 };
@@ -26,10 +27,36 @@ export const APPROVAL_STATUS = {
 
 /**
  * Canonical registry of dual-control gated actions.
- * STAFF_ROLE_ELEVATION is hardcoded & non-reassignable.
+ * Locked entries are non-reassignable in config.
  */
 export const GATED_ACTIONS = Object.freeze({
-  // ── Branch Manager Gates (Financial & Authority) ──
+  // ── Admin Tier Gates (Owner / Director Tier — Staff Authority) ──
+  STAFF_ROLE_ELEVATION: Object.freeze({
+    id: "STAFF_ROLE_ELEVATION",
+    label: "Staff Role / Permission Elevation",
+    approverRole: APPROVAL_ROLES.ADMIN,
+    mode: APPROVAL_MODES.BLOCKING,
+    domain: "staff",
+    locked: true, // Non-reassignable in config
+  }),
+  NEW_STAFF_ACCOUNT: Object.freeze({
+    id: "NEW_STAFF_ACCOUNT",
+    label: "New Staff Account Creation",
+    approverRole: APPROVAL_ROLES.ADMIN,
+    mode: APPROVAL_MODES.BLOCKING,
+    domain: "staff",
+    locked: true,
+  }),
+  STAFF_DEACTIVATION: Object.freeze({
+    id: "STAFF_DEACTIVATION",
+    label: "Staff Deactivation / Termination",
+    approverRole: APPROVAL_ROLES.ADMIN,
+    mode: APPROVAL_MODES.BLOCKING,
+    domain: "staff",
+    locked: true,
+  }),
+
+  // ── Branch Manager Gates (Financial & Status Oversight) ──
   DISCOUNT_OR_REFUND: Object.freeze({
     id: "DISCOUNT_OR_REFUND",
     label: "Discounts & Refunds",
@@ -44,34 +71,12 @@ export const GATED_ACTIONS = Object.freeze({
     mode: APPROVAL_MODES.BLOCKING,
     domain: "finance",
   }),
-  STAFF_ROLE_ELEVATION: Object.freeze({
-    id: "STAFF_ROLE_ELEVATION",
-    label: "Staff Role / Permission Elevation",
-    approverRole: APPROVAL_ROLES.BRANCH_MANAGER,
-    mode: APPROVAL_MODES.BLOCKING,
-    domain: "staff",
-    locked: true, // Non-reassignable in config
-  }),
-  NEW_STAFF_ACCOUNT: Object.freeze({
-    id: "NEW_STAFF_ACCOUNT",
-    label: "New Staff Account Creation",
-    approverRole: APPROVAL_ROLES.BRANCH_MANAGER,
-    mode: APPROVAL_MODES.BLOCKING,
-    domain: "staff",
-  }),
   TUITION_PLAN_CHANGE: Object.freeze({
     id: "TUITION_PLAN_CHANGE",
-    label: "Tuition Plan Modification",
+    label: "Tuition Plan Modification (Create / Edit)",
     approverRole: APPROVAL_ROLES.BRANCH_MANAGER,
     mode: APPROVAL_MODES.BLOCKING,
     domain: "finance",
-  }),
-  STAFF_DEACTIVATION: Object.freeze({
-    id: "STAFF_DEACTIVATION",
-    label: "Staff Deactivation / Termination",
-    approverRole: APPROVAL_ROLES.BRANCH_MANAGER,
-    mode: APPROVAL_MODES.BLOCKING,
-    domain: "staff",
   }),
   STUDENT_WITHDRAWAL_OR_FREEZE: Object.freeze({
     id: "STUDENT_WITHDRAWAL_OR_FREEZE",
@@ -105,9 +110,9 @@ export const GATED_ACTIONS = Object.freeze({
     mode: APPROVAL_MODES.LOGGED,
     domain: "classes",
   }),
-  RETROACTIVE_ATTENDANCE_EDIT: Object.freeze({
-    id: "RETROACTIVE_ATTENDANCE_EDIT",
-    label: "Retroactive Attendance Edit",
+  RETROACTIVE_STUDENT_ATTENDANCE: Object.freeze({
+    id: "RETROACTIVE_STUDENT_ATTENDANCE",
+    label: "Retroactive Student Attendance Edit",
     approverRole: APPROVAL_ROLES.OPS_LEAD,
     mode: APPROVAL_MODES.BLOCKING,
     domain: "attendance",
@@ -119,20 +124,73 @@ export const GATED_ACTIONS = Object.freeze({
     mode: APPROVAL_MODES.BLOCKING,
     domain: "classes",
   }),
+  STAFF_SHIFT_SELF_CORRECTION: Object.freeze({
+    id: "STAFF_SHIFT_SELF_CORRECTION",
+    label: "Staff Shift / Clock-in Self-Correction",
+    approverRole: "dynamic_hierarchy", // Evaluated via getSelfCorrectionApprover()
+    mode: APPROVAL_MODES.BLOCKING,
+    domain: "attendance",
+  }),
 });
+
+/**
+ * Resolves the designated approver for self-correction actions based on the requester's role.
+ * Principle 5: staff < opslead < manager < admin (admin is exempt).
+ *
+ * Escalation ladder:
+ * - General staff (instructor, marketing, officeboy, instructorleader) -> ops_lead (Front Office Lead)
+ * - Front Office / Ops Lead's own record -> manager (Branch Manager)
+ * - Branch Manager's own record -> admin (Owner / Director tier)
+ * - Admin -> exempt (returns null)
+ *
+ * @param {string} requesterRole
+ * @returns {string|null} Approver role key or null if exempt
+ */
+export function getSelfCorrectionApprover(requesterRole) {
+  const normalized = (requesterRole || "").toLowerCase().trim();
+  if (!normalized || normalized === "admin") {
+    return null; // Admin is exempt
+  }
+  if (normalized === "manager" || normalized === "branch_manager") {
+    return APPROVAL_ROLES.ADMIN;
+  }
+  if (
+    normalized === "ops_lead" ||
+    normalized === "opslead" ||
+    normalized === "frontoffice" ||
+    normalized === "front_office"
+  ) {
+    return APPROVAL_ROLES.BRANCH_MANAGER;
+  }
+  // All other staff (instructor, marketing, officeboy, instructorleader, etc.)
+  return APPROVAL_ROLES.OPS_LEAD;
+}
 
 /**
  * Creates a standard Maker-Checker approval envelope object.
  *
- * @param {string} actionId - Key from GATED_ACTIONS (e.g. "DISCOUNT_OR_REFUND")
- * @param {object} requester - { name: string, uid?: string, role?: string }
+ * @param {string} actionId - Key from GATED_ACTIONS
+ * @param {object} requester - { name: string, uid?: string, role?: string, branchId?: string }
  * @param {object} [context={}] - Optional metadata or reason
  * @returns {object} Canonical approval envelope
  */
 export function createApprovalEnvelope(actionId, requester = {}, context = {}) {
+  // Admin is fully exempt from dual-control gating
+  if (requester.role === "admin") {
+    return null;
+  }
+
   const gate = GATED_ACTIONS[actionId];
   if (!gate) {
     throw new Error(`Unknown gated action: "${actionId}"`);
+  }
+
+  let resolvedApproverRole = gate.approverRole;
+  if (gate.id === "STAFF_SHIFT_SELF_CORRECTION") {
+    resolvedApproverRole = getSelfCorrectionApprover(requester.role);
+    if (!resolvedApproverRole) {
+      return null; // Exempt
+    }
   }
 
   const requestedAt = new Date().toISOString();
@@ -144,7 +202,8 @@ export function createApprovalEnvelope(actionId, requester = {}, context = {}) {
     domain: gate.domain,
     status: APPROVAL_STATUS.PENDING,
     mode: gate.mode,
-    approverRole: gate.approverRole,
+    approverRole: resolvedApproverRole,
+    approverBranchId: requester.branchId || null,
     requestedBy,
     requestedByUid: requester.uid || null,
     requestedAt,
@@ -167,15 +226,28 @@ export function createApprovalEnvelope(actionId, requester = {}, context = {}) {
  */
 export function canApproveGate(userRole, approverRole) {
   if (!userRole) return false;
-  if (userRole === "admin") return true;
+  const normalized = userRole.toLowerCase().trim();
+  if (normalized === "admin") return true;
 
   switch (approverRole) {
+    case APPROVAL_ROLES.ADMIN:
+      return normalized === "admin";
     case APPROVAL_ROLES.BRANCH_MANAGER:
-      return userRole === "manager";
+      return normalized === "manager" || normalized === "branch_manager";
     case APPROVAL_ROLES.INSTRUCTOR_LEADER:
-      return userRole === "manager" || userRole === "instructor_leader" || userRole === "head_instructor";
+      return (
+        normalized === "manager" ||
+        normalized === "instructor_leader" ||
+        normalized === "instructorleader" ||
+        normalized === "head_instructor"
+      );
     case APPROVAL_ROLES.OPS_LEAD:
-      return userRole === "manager" || userRole === "frontoffice" || userRole === "ops_lead";
+      return (
+        normalized === "manager" ||
+        normalized === "frontoffice" ||
+        normalized === "ops_lead" ||
+        normalized === "opslead"
+      );
     default:
       return false;
   }
