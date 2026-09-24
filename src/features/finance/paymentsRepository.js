@@ -35,19 +35,28 @@ export async function fetchPaymentHistory(studentId) {
  * @param {number} [limitCount=50]
  * @returns {Promise<Array<any>>}
  */
-export async function getRecentPayments(limitCount = 50) {
+export async function getRecentPayments(limitCount = 50, branchId = null) {
   try {
+    const constraints = [];
+    if (branchId) {
+      constraints.push(where("branchId", "==", branchId));
+    }
+    constraints.push(orderBy("recordedAt", "desc"), limit(limitCount));
     const q = query(
       collection(db, "payments"),
-      orderBy("recordedAt", "desc"),
-      limit(limitCount)
+      ...constraints
     );
     const snap = await getDocs(q);
     return snap.docs.map((d) => /** @type {any} */ ({ id: d.id, ...d.data() }));
   } catch (err) {
     // If composite index is pending, fallback to client-side sort
     console.warn("getRecentPayments fallback without orderBy:", err?.message);
-    const q = query(collection(db, "payments"), limit(limitCount));
+    const fallbackConstraints = [];
+    if (branchId) {
+      fallbackConstraints.push(where("branchId", "==", branchId));
+    }
+    fallbackConstraints.push(limit(limitCount));
+    const q = query(collection(db, "payments"), ...fallbackConstraints);
     const snap = await getDocs(q);
     const list = snap.docs.map((d) => /** @type {any} */ ({ id: d.id, ...d.data() }));
     list.sort((a, b) => new Date(b.recordedAt || 0).getTime() - new Date(a.recordedAt || 0).getTime());
@@ -61,15 +70,23 @@ export async function getRecentPayments(limitCount = 50) {
  * ensuring exact daily cash reconciliation.
  *
  * @param {Date} [witaDate=new Date()]
+ * @param {string|null} [branchId=null]
  * @returns {Promise<Array<any>>}
  */
-export async function getPaymentsForRecordedDay(witaDate = new Date()) {
+export async function getPaymentsForRecordedDay(witaDate = new Date(), branchId = null) {
   const { startIso, endIso } = getWitaDayRangeIso(witaDate);
   try {
-    const q = query(
-      collection(db, "payments"),
+    const constraints = [];
+    if (branchId) {
+      constraints.push(where("branchId", "==", branchId));
+    }
+    constraints.push(
       where("recordedAt", ">=", startIso),
       where("recordedAt", "<", endIso)
+    );
+    const q = query(
+      collection(db, "payments"),
+      ...constraints
     );
     const snap = await getDocs(q);
     const list = snap.docs.map((d) => /** @type {any} */ ({ id: d.id, ...d.data() }));
@@ -78,7 +95,12 @@ export async function getPaymentsForRecordedDay(witaDate = new Date()) {
   } catch (err) {
     console.warn("getPaymentsForRecordedDay range query error, falling back to recent scan:", err?.message);
     // Safe fallback if range index isn't created yet: fetch recent 200 and filter by WITA day
-    const q = query(collection(db, "payments"), limit(200));
+    const fallbackConstraints = [];
+    if (branchId) {
+      fallbackConstraints.push(where("branchId", "==", branchId));
+    }
+    fallbackConstraints.push(limit(200));
+    const q = query(collection(db, "payments"), ...fallbackConstraints);
     const snap = await getDocs(q);
     return snap.docs
       .map((d) => /** @type {any} */ ({ id: d.id, ...d.data() }))

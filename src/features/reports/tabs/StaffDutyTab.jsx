@@ -11,7 +11,7 @@ import {
   StaffLeaveModal,
 } from "../../attendance";
 import { exportTableCSV, Pagination, usePagination, useToast, useConfirm } from "../../shared";
-import { normalizeBranch, matchesBranchFilter } from "../../../constants/branches";
+import { normalizeBranch, matchesBranchFilter, branchToId } from "../../../constants/branches";
 import {
   Clock,
   Calendar,
@@ -53,7 +53,8 @@ const StaffDutyTab = forwardRef(
     const fetchShifts = useCallback(async () => {
       setShiftsLoading(true);
       try {
-        const data = await fetchStaffShifts(isAdminView, rangeToSince(rangeDays));
+        const branchId = branchFilter && branchFilter !== "all" ? branchToId(branchFilter) : null;
+        const data = await fetchStaffShifts(isAdminView, rangeToSince(rangeDays), branchId);
         setShifts(data.shifts || []);
         setStaffMembers(data.staffMembers || []);
         setLeaves(data.leaves || []);
@@ -62,7 +63,7 @@ const StaffDutyTab = forwardRef(
       } finally {
         setShiftsLoading(false);
       }
-    }, [isAdminView, rangeDays]);
+    }, [isAdminView, rangeDays, branchFilter]);
 
     useEffect(() => {
       fetchShifts();

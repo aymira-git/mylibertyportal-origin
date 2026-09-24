@@ -11,7 +11,7 @@ import {
   deleteUserProfile,
 } from "./usersRepository";
 import { markInquiryConverted } from "./frontoffice/deskInquiriesRepository";
-import { DEFAULT_BRANCH, normalizeBranch, matchesBranchFilter } from "../../constants/branches";
+import { DEFAULT_BRANCH, normalizeBranch, matchesBranchFilter, branchToId } from "../../constants/branches";
 import {
   DEFAULT_DIVISION,
   normalizeDivision,
@@ -105,8 +105,15 @@ export function useDashboardData({
   // per collection also means one collection's error (see invites below)
   // can't block the others from loading, unlike the old single try/catch.
   useEffect(() => {
-    const usersQuery = restrictedRead
-      ? query(collection(db, "users"), where("role", "in", ["student", "instructor"]))
+    const usersConstraints = [];
+    if (restrictedRead) {
+      usersConstraints.push(where("role", "in", ["student", "instructor"]));
+    }
+    if (branch && branch !== "all") {
+      usersConstraints.push(where("branchId", "==", branchToId(branch)));
+    }
+    const usersQuery = usersConstraints.length
+      ? query(collection(db, "users"), ...usersConstraints)
       : collection(db, "users");
 
     const handleListenerError = (name) => (err) => {
@@ -127,8 +134,17 @@ export function useDashboardData({
       (snap) => setClasses(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       handleListenerError("classes")
     );
+
+    const appConstraints = [];
+    if (branch && branch !== "all") {
+      appConstraints.push(where("branchId", "==", branchToId(branch)));
+    }
+    const applicationsQuery = appConstraints.length
+      ? query(collection(db, "applications"), ...appConstraints)
+      : collection(db, "applications");
+
     const unsubApplications = onSnapshot(
-      collection(db, "applications"),
+      applicationsQuery,
       (snap) => setApplications(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       handleListenerError("applications")
     );
@@ -156,7 +172,7 @@ export function useDashboardData({
       unsubTodos();
       unsubInvites();
     };
-  }, [restrictedRead]);
+  }, [restrictedRead, branch]);
 
   const handleSave = async (e) => {
     e.preventDefault();

@@ -6,14 +6,16 @@ import { normalizeBranch } from "../../constants/branches.js";
  * All direct Firestore reads for the Reports domain live here.
  */
 
-export async function fetchStaffShifts(isAdminView, since = null) {
+export async function fetchStaffShifts(isAdminView, since = null, branchId = null) {
   const shiftsRef = collection(db, "shifts");
   const filters = [];
   if (!isAdminView) filters.push(where("userId", "==", auth.currentUser?.uid));
+  if (branchId) filters.push(where("branchId", "==", branchId));
   if (since) filters.push(where("clockIn", ">=", since));
 
   const openFilters = [where("clockOut", "==", null)];
   if (!isAdminView) openFilters.push(where("userId", "==", auth.currentUser?.uid));
+  if (branchId) openFilters.push(where("branchId", "==", branchId));
 
   const [shiftsSnap, openSnap] = await Promise.all([
     getDocs(filters.length ? query(shiftsRef, ...filters) : shiftsRef),
@@ -27,7 +29,10 @@ export async function fetchStaffShifts(isAdminView, since = null) {
   const existingUsersMap = new Map();
 
   if (isAdminView) {
-    const usersSnap = await getDocs(collection(db, "users"));
+    const usersQuery = branchId
+      ? query(collection(db, "users"), where("branchId", "==", branchId))
+      : collection(db, "users");
+    const usersSnap = await getDocs(usersQuery);
     usersSnap.docs.forEach((u) => existingUsersMap.set(u.id, { id: u.id, ...u.data() }));
   } else if (auth.currentUser?.uid) {
     const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
@@ -38,7 +43,7 @@ export async function fetchStaffShifts(isAdminView, since = null) {
   let leaves = [];
   try {
     const leaveQuery = isAdminView
-      ? collection(db, "staffLeave")
+      ? (branchId ? query(collection(db, "staffLeave"), where("branchId", "==", branchId)) : collection(db, "staffLeave"))
       : query(collection(db, "staffLeave"), where("userId", "==", auth.currentUser?.uid));
     const leaveSnap = await getDocs(leaveQuery);
     leaves = leaveSnap.docs.map((d) => ({ id: d.id, ...d.data() }));

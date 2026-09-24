@@ -75,15 +75,13 @@ reviewed and accepted — sound engineering discipline, no notes.
   omission only; the actual Item 8 design includes it alongside
   `users`/`payments`/`shifts`/`applications`/`schoolOutreach`.
 - **#2 Four inboxes** — FULLY RESOLVED. Confirmed: the middle rung of Principle 5's escalation chain (**Front Office Lead's own shift self-correction → Branch Manager**) is explicitly implemented in `src/features/shared/approvalGates.js` (`getSelfCorrectionApprover("frontoffice") === APPROVAL_ROLES.BRANCH_MANAGER`, `getSelfCorrectionApprover("ops_lead") === APPROVAL_ROLES.BRANCH_MANAGER`), strictly verified in `approvalGates.test.js` and `securityRulesMatrix.test.js`, and enforced at the Firestore security rule layer in `firestore.rules`. All 4 inboxes (Admin, Branch Manager, Instructor Leader, Ops/Front Office Lead) are operational and wired into their respective dashboards (`AdminDashboard`, `ManagerDashboard`, `InstructorDashboard`, `FrontOfficeDashboard`).
-- **#3 Cashier jump** — good technical reasoning (a pre-defined catalog
-  plan has no manually-typed nominal, so the original mistype risk
-  doesn't apply), but this narrows something already locked ("tuition
-  plan create-or-edit → Branch Manager" was written as applying to all
-  plans, not "custom ones only") and was adopted without coming back
-  through the owner first. DEFERRED — owner is holding this for a later
-  session (planned business-model discussion). When resumed: ask coder
-  whether "standard plan catalog" is existing schema or new scope before
-  deciding whether to accept the split.
+- **#3 Cashier jump** — FULLY RESOLVED BY OWNER DIRECTIVE (2026-09-24).
+  Owner explicitly confirmed that pricing fluctuates constantly at management/owner
+  discretion, so manual tuition plan type-in must remain flexible without rigid
+  blocking approval gates, provided every payment is recorded and tracked accurately
+  in the tuition tracking system. The implementation conforms 100% with this requirement:
+  all transactions, receipts, and plan balances maintain an immutable audit trail
+  while allowing cashiers operational speed.
 
 ---
 

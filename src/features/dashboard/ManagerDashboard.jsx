@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { auth, db } from "../../firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, doc } from "firebase/firestore";
 import { AIAssistant, DashboardShell, useToast, ApprovalInbox } from "../shared";
 import { ReportsDashboard } from "../reports";
 import { createTodo, deleteTodo, toggleTodoComplete } from "../staff";
@@ -15,7 +15,7 @@ import {
 import { listenToSchools, listenToOutreachVisits, getStartOfWeekWita, getEndOfWeekWita } from "./marketing";
 import { reportError } from "../../utils/reportError";
 import { WalkInInquiryTab } from "./frontoffice";
-import { DEFAULT_BRANCH, normalizeBranch, matchesBranchFilter } from "../../constants/branches";
+import { DEFAULT_BRANCH, normalizeBranch, branchToId, matchesBranchFilter } from "../../constants/branches";
 import { getPaymentsForRecordedDay } from "../finance/paymentsRepository";
 
 export default function ManagerDashboard() {
@@ -42,6 +42,26 @@ export default function ManagerDashboard() {
   const [dailyPayments, setDailyPayments] = useState([]);
   const [dailyPaymentsLoading, setDailyPaymentsLoading] = useState(true);
   const [isScopedToBranch, setIsScopedToBranch] = useState(true);
+  const [managerProfile, setManagerProfile] = useState(null);
+
+  // Directly subscribe to logged in manager's own user doc to discover their branchId
+  useEffect(() => {
+    if (!auth.currentUser?.uid) return;
+    const unsubSelf = onSnapshot(
+      doc(db, "users", auth.currentUser.uid),
+      (snap) => {
+        if (snap.exists()) {
+          setManagerProfile({ id: snap.id, ...snap.data() });
+        }
+      },
+      (err) => console.warn("manager self profile listener:", err)
+    );
+    return () => unsubSelf();
+  }, []);
+
+  const managerBranchId = useMemo(() => {
+    return managerProfile?.branchId || branchToId(managerProfile?.branch || DEFAULT_BRANCH);
+  }, [managerProfile]);
 
   const outreachLoading = schoolsLoading || visitsLoading || weekVisitsLoading;
 
@@ -55,7 +75,7 @@ export default function ManagerDashboard() {
 
   useEffect(() => {
     const unsubUsers = onSnapshot(
-      collection(db, "users"),
+      query(collection(db, "users"), where("branchId", "==", managerBranchId)),
       (snap) => {
         setUsers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setLoading(false);
@@ -73,15 +93,18 @@ export default function ManagerDashboard() {
     );
 
     const unsubApplications = onSnapshot(
-      collection(db, "applications"),
+      query(collection(db, "applications"), where("branchId", "==", managerBranchId)),
       (snap) => setApplications(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       (err) => console.warn("applications listener:", err)
     );
 
-    // Only subscribe to still-open shifts (clockOut == null) to prevent downloading
-    // the entire unbounded shifts collection on the manager portal
+    // Only subscribe to still-open shifts (clockOut == null) for this branch
     const unsubShifts = onSnapshot(
-      query(collection(db, "shifts"), where("clockOut", "==", null)),
+      query(
+        collection(db, "shifts"),
+        where("branchId", "==", managerBranchId),
+        where("clockOut", "==", null)
+      ),
       (snap) => setShifts(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
       (err) => console.warn("shifts listener:", err)
     );
@@ -116,7 +139,7 @@ export default function ManagerDashboard() {
       unsubShifts();
       unsubTodos();
     };
-  }, []);
+  }, [managerBranchId]);
 
   // Isolated subscription lifecycle for outreach collections with retryability,
   // error logging to telemetry, and toast notifications.
@@ -191,7 +214,7 @@ export default function ManagerDashboard() {
   const fetchTodayPayments = useCallback(async () => {
     setDailyPaymentsLoading(true);
     try {
-      const list = await getPaymentsForRecordedDay(new Date());
+      const list = await getPaymentsForRecordedDay(new Date(), managerBranchId);
       setDailyPayments(list);
     } catch (err) {
       console.warn("fetchTodayPayments error:", err);
@@ -199,13 +222,13 @@ export default function ManagerDashboard() {
     } finally {
       setDailyPaymentsLoading(false);
     }
-  }, [toast]);
+  }, [managerBranchId, toast]);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const list = await getPaymentsForRecordedDay(new Date());
+        const list = await getPaymentsForRecordedDay(new Date(), managerBranchId);
         if (active) {
           setDailyPayments(list);
           setDailyPaymentsLoading(false);
@@ -221,7 +244,7 @@ export default function ManagerDashboard() {
     return () => {
       active = false;
     };
-  }, [toast]);
+  }, [managerBranchId, toast]);
 
   const handleAddTodo = async (todoData) => {
     try {
@@ -290,8 +313,8 @@ export default function ManagerDashboard() {
 
   // Derived branch for the logged-in manager
   const currentStaffProfile = useMemo(
-    () => users.find((u) => u.id === auth.currentUser?.uid),
-    [users]
+    () => managerProfile || users.find((u) => u.id === auth.currentUser?.uid),
+    [managerProfile, users]
   );
   const myBranch = normalizeBranch(currentStaffProfile?.branch || DEFAULT_BRANCH);
 

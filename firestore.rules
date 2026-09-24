@@ -39,10 +39,17 @@ service cloud.firestore {
     }
 
     function isSameBranch(data) {
-      let docBranch = data != null && 'branchId' in data 
-        ? data.branchId 
-        : (data != null && 'branch' in data ? (data.branch == 'Bone Bolango' ? 'bone_bolango' : (data.branch == 'Pohuwato' ? 'pohuwato' : (data.branch == 'Limboto' ? 'limboto' : 'kota_gorontalo'))) : 'kota_gorontalo');
-      return isAdmin() || (signedIn() && userBranch() == docBranch);
+      return isAdmin() || (signedIn() && (
+        (data != null && 'branchId' in data && data.branchId == userBranch()) ||
+        (data != null && !('branchId' in data) && 'branch' in data && (
+          (data.branch == 'Bone Bolango' && userBranch() == 'bone_bolango') ||
+          (data.branch == 'Pohuwato' && userBranch() == 'pohuwato') ||
+          (data.branch == 'Limboto' && userBranch() == 'limboto') ||
+          (data.branch == 'Cabang Utama' && userBranch() == 'kota_gorontalo') ||
+          (data.branch == 'Kota Gorontalo' && userBranch() == 'kota_gorontalo')
+        )) ||
+        (data != null && !('branchId' in data) && !('branch' in data) && userBranch() == 'kota_gorontalo')
+      ));
     }
 
     function isApproverForDoc(data) {
@@ -71,14 +78,19 @@ service cloud.firestore {
       return inv.email == request.auth.token.email.lower()
           && inv.role == request.resource.data.role
           && (!('expiresAt' in inv) || inv.expiresAt > request.time.toMillis())
-          && (!('branchId' in inv) || request.resource.data.branchId == inv.branchId);
+          && (!('branchId' in inv) || request.resource.data.branchId == inv.branchId)
+          && (!('division' in inv) || request.resource.data.division == inv.division);
     }
 
     match /users/{userId} {
-      allow read: if isAdmin()
+      allow get: if resource.data.role == 'student'
+        || isAdmin()
         || (isManager() && isSameBranch(resource.data))
         || (isStaff() && resource.data.role in ['student', 'instructor', 'instructorleader', 'instructor_leader'] && isSameBranch(resource.data))
         || (signedIn() && userId == request.auth.uid);
+      allow list: if isAdmin()
+        || (isManager() && isSameBranch(resource.data))
+        || (isStaff() && resource.data.role in ['student', 'instructor', 'instructorleader', 'instructor_leader'] && isSameBranch(resource.data));
       allow create: if isAdmin() 
         || (isFrontOffice() && request.resource.data.role == 'student' && isSameBranch(request.resource.data))
         || (signedIn()
@@ -87,7 +99,23 @@ service cloud.firestore {
             && isInviteValid(request.resource.data.inviteId));
       allow delete: if isAdmin() || (isFrontOffice() && resource.data.role == 'student' && isSameBranch(resource.data));
       allow update: if isAdmin()
-        || (isFrontOffice() && resource.data.role == 'student' && request.resource.data.role == 'student' && isSameBranch(resource.data) && isSameBranch(request.resource.data))
+        || (isFrontOffice()
+          && resource.data.role == 'student'
+          && request.resource.data.role == 'student'
+          && isSameBranch(resource.data)
+          && isSameBranch(request.resource.data)
+          && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'displayName', 'name', 'phone', 'dob', 'address', 'parentName', 'parentPhone',
+              'emergencyContact', 'emergencyPhone', 'notes', 'placementTests', 'status',
+              'level', 'currentLevel', 'tuitionPlan', 'tuitionFee', 'nominal', 'enrollmentDate',
+              'updatedAt', 'photoURL', 'nickname', 'gender', 'nis', 'school', 'grade',
+              'placeOfBirth', 'religion', 'programId', 'program', 'batchType', 'classType',
+              'schoolOrJob', 'classOrSemester', 'joinedDate', 'fatherName', 'fatherJob',
+              'fatherPhone', 'motherName', 'motherJob', 'motherPhone', 'referralSource',
+              'rating', 'paymentPlan', 'paymentStatus', 'lastPaymentPeriod', 'lastPaymentDate', 'branch'
+            ]))
         || (signedIn()
           && userId == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
@@ -111,7 +139,7 @@ service cloud.firestore {
     match /applications/{applicationId} {
       // Branch-isolated admissions
       allow read: if isAdmin() || ((isFrontOffice() || isManager() || hasRole('marketing')) && isSameBranch(resource.data));
-      allow update: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data) && isSameBranch(request.resource.data));
+      allow update: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data) && isSameBranch(request.resource.data) && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId));
       allow delete: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data));
       allow create: if false;
     }
@@ -141,25 +169,31 @@ service cloud.firestore {
 
     match /attendance/{attendanceId} {
       allow read: if isStaff();
-      // Student scans: Admin (reception station), Front Office, and Instructor; scanned person must be a student
-      allow create: if (isAdmin() || isFrontOffice() || hasRole('instructor'))
+      // Student scans: Admin (reception station), Front Office, Instructor, and Instructor Leader; scanned person must be a student
+      allow create: if (isAdmin() || isFrontOffice() || hasRole('instructor') || hasRole('instructorleader') || hasRole('instructor_leader'))
         && request.resource.data.userId is string
         && request.resource.data.timestamp is string
         && roleOf(request.resource.data.userId) == 'student';
-      allow update, delete: if isAdmin();
+      // Double-scan idempotency: allow Front Office and Instructors to update existing day scan as long as student identity is preserved
+      allow update: if isAdmin()
+        || ((isFrontOffice() || hasRole('instructor') || hasRole('instructorleader') || hasRole('instructor_leader'))
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
     }
 
     match /payments/{paymentId} {
-      allow read: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data));
+      allow get: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data)) || (resource.data.studentId is string);
+      allow list: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data));
       allow create: if isAdmin() || (isFrontOffice() && isSameBranch(request.resource.data));
-      allow update: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data) && isSameBranch(request.resource.data));
+      allow update: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data) && isSameBranch(request.resource.data) && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId));
       allow delete: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data));
     }
 
     match /deskInquiries/{inquiryId} {
       allow read: if isAdmin() || ((isManager() || isFrontOffice() || isStaff()) && isSameBranch(resource.data));
       allow create: if isAdmin() || ((isManager() || isFrontOffice() || isStaff()) && isSameBranch(request.resource.data));
-      allow update: if isAdmin() || ((isManager() || isFrontOffice() || isStaff()) && isSameBranch(resource.data) && isSameBranch(request.resource.data));
+      allow update: if isAdmin() || ((isManager() || isFrontOffice() || isStaff()) && isSameBranch(resource.data) && isSameBranch(request.resource.data) && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId));
       allow delete: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data));
     }
 
@@ -167,9 +201,15 @@ service cloud.firestore {
       allow read: if isAdmin()
         || isApproverForDoc(resource.data)
         || (signedIn() && resource.data.requestedByUid == request.auth.uid);
-      allow create: if isStaff();
+      allow create: if isStaff()
+        && request.resource.data.requestedByUid == request.auth.uid
+        && (!('status' in request.resource.data) || request.resource.data.status == 'pending');
       allow update: if isAdmin()
-        || (isApproverForDoc(resource.data) && request.auth.uid != resource.data.requestedByUid);
+        || (isApproverForDoc(resource.data)
+          && request.auth.uid != resource.data.requestedByUid
+          && request.resource.data.requestedByUid == resource.data.requestedByUid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'decision', 'reviewedAt', 'reviewedBy', 'reviewedByName', 'notes', 'rejectionReason', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
@@ -201,7 +241,13 @@ service cloud.firestore {
         || (isFrontOffice()
           && isSameBranch(resource.data)
           && resource.data.clockOut == null
-          && request.resource.data.clockOut is string);
+          && request.resource.data.clockOut is string
+          && request.resource.data.userId == resource.data.userId
+          && (!('branch' in resource.data) || request.resource.data.branch == resource.data.branch)
+          && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId)
+          && request.resource.data.clockIn == resource.data.clockIn
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['clockOut', 'updatedAt', 'cashReconciliation', 'notes', 'status', 'verifiedBy', 'verifiedAt']));
       allow delete: if isAdmin();
     }
 
@@ -249,7 +295,10 @@ service cloud.firestore {
     match /errorLogs/{logId} {
       allow create: if signedIn()
         && request.resource.data.message is string
-        && request.resource.data.timestamp is string;
+        && request.resource.data.message.size() <= 2000
+        && request.resource.data.timestamp is string
+        && (!('stack' in request.resource.data) || (request.resource.data.stack is string && request.resource.data.stack.size() <= 8000))
+        && (!('url' in request.resource.data) || (request.resource.data.url is string && request.resource.data.url.size() <= 1000));
       allow read, delete: if isAdmin();
       allow update: if false;
     }
@@ -269,9 +318,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /visits/{visitId} {
-        // Same role restriction as parent — only outreach-related roles may read visit records.
-        allow read: if isAdmin() || isManager() || hasRole('marketing');
-        allow create: if (isAdmin() || isManager() || hasRole('marketing'))
+        // Enforce branch check against parent school document so visits are isolated per branch
+        allow read: if isAdmin()
+          || ((isManager() || hasRole('marketing'))
+            && isSameBranch(get(/databases/$(database)/documents/schoolOutreach/$(schoolId)).data));
+        allow create: if (isAdmin() || ((isManager() || hasRole('marketing'))
+            && isSameBranch(get(/databases/$(database)/documents/schoolOutreach/$(schoolId)).data)))
           && request.resource.data.visitDate is string
           && request.resource.data.contactName is string
           && request.resource.data.contactRole is string;

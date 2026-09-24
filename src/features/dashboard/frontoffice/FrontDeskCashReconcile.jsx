@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { getPaymentsForRecordedDay } from "../../finance/paymentsRepository";
 import { summarizePaymentsByMethod } from "../../finance/financeUtils";
 import { formatIDR } from "../../finance/receiptMessages";
-import { matchesBranchFilter, normalizeBranch } from "../../../constants/branches";
+import { matchesBranchFilter, normalizeBranch, branchToId } from "../../../constants/branches";
 import { todayWita } from "../../../utils/dateWita";
 import { useToast } from "../../shared";
 import ShiftReconciliationModal from "./ShiftReconciliationModal";
@@ -54,10 +54,15 @@ export default function FrontDeskCashReconcile({
     return map;
   }, [students]);
 
+  const targetBranchId = useMemo(
+    () => (branchLabel ? branchToId(branchLabel) : null),
+    [branchLabel]
+  );
+
   const loadDailyPayments = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await getPaymentsForRecordedDay(new Date());
+      const list = await getPaymentsForRecordedDay(new Date(), targetBranchId);
       setPayments(list);
       setLastRefreshed(
         new Date().toLocaleTimeString("id-ID", {
@@ -73,11 +78,11 @@ export default function FrontDeskCashReconcile({
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [targetBranchId, toast]);
 
   useEffect(() => {
     let active = true;
-    getPaymentsForRecordedDay(new Date())
+    getPaymentsForRecordedDay(new Date(), targetBranchId)
       .then((list) => {
         if (active) {
           setPayments(list);
@@ -103,7 +108,7 @@ export default function FrontDeskCashReconcile({
     return () => {
       active = false;
     };
-  }, [toast]);
+  }, [targetBranchId, toast]);
 
   const filteredPayments = useMemo(() => {
     if (!branchLabel || branchLabel === "all" || studentBranchMap.size === 0) {
