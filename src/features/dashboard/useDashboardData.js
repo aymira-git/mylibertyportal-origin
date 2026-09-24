@@ -161,6 +161,7 @@ export function useDashboardData({
   const handleSave = async (e) => {
     e.preventDefault();
     try {
+      let savedRecord = null;
       if (formData.role === "student") {
         const studentDisplayName =
           formData.displayName?.trim() || `${formData.firstName} ${formData.lastName}`.trim();
@@ -202,11 +203,15 @@ export function useDashboardData({
         });
 
         const savedResult = await saveStudentRecord(editId, studentData);
+        const studentId =
+          editId ||
+          (savedResult && typeof savedResult === "object" && "id" in savedResult
+            ? String(savedResult.id)
+            : null);
         if (formData.inquiryId) {
-          const targetStudentId =
-            editId || (savedResult && typeof savedResult === "object" && "id" in savedResult ? String(savedResult.id) : null);
-          await markInquiryConverted(formData.inquiryId, targetStudentId);
+          await markInquiryConverted(formData.inquiryId, studentId);
         }
+        savedRecord = { id: studentId, ...studentData };
       } else {
         const staffDisplayName =
           `${formData.firstName} ${formData.lastName}`.trim() || formData.displayName?.trim() || "";
@@ -229,8 +234,10 @@ export function useDashboardData({
 
         if (editId) {
           await updateStaffRecord(editId, staffData);
+          savedRecord = { id: editId, ...staffData };
         } else {
-          await createStaffAccount(formData.email, formData.password, staffData);
+          const newStaff = await createStaffAccount(formData.email, formData.password, staffData);
+          savedRecord = { id: newStaff?.user?.uid || null, ...staffData };
         }
       }
 
@@ -244,8 +251,10 @@ export function useDashboardData({
       setEditId(null);
       setFormData(emptyFormData);
       setActiveTab?.(formData.role === "student" ? "students" : "directory");
+      return savedRecord;
     } catch (err) {
       toast(err.message, "error");
+      return null;
     }
   };
 

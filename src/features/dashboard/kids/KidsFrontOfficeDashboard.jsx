@@ -129,6 +129,13 @@ export default function KidsFrontOfficeDashboard() {
     });
   };
 
+  const handleSaveAndCollectPayment = async (e) => {
+    const savedRecord = await handleSave(e);
+    if (savedRecord && savedRecord.id) {
+      setPaymentModalStudent(savedRecord);
+    }
+  };
+
   const overviewTab = (
     <div className="space-y-6 w-full">
       <WelcomeBanner
@@ -357,6 +364,7 @@ export default function KidsFrontOfficeDashboard() {
           setFormData={setFormData}
           editId={editId}
           onSubmit={handleSave}
+          onSaveAndCollectPayment={handleSaveAndCollectPayment}
         />
       ),
     },

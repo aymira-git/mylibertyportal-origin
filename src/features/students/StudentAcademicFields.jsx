@@ -6,8 +6,6 @@ import {
   TIERS,
   TIER_KEYS,
   getTier,
-  PAYMENT_PLANS,
-  PAYMENT_PLAN_KEYS,
 } from "../shared";
 import { STANDARD_BRANCHES } from "../staff/staffUtils";
 import { normalizeBranch } from "../../constants/branches";
@@ -401,46 +399,23 @@ export default function StudentAcademicFields({ formData, field, setAcademicLeve
             className="w-full p-2.5 border rounded-xl"
           />
         </div>
-        <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {editId && (
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                Student Lifecycle Status *
-              </label>
-              <select
-                value={formData.status || "active"}
-                onChange={(e) => field("status", e.target.value)}
-                className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs capitalize text-slate-800 focus:border-[#1a3a8f] outline-none"
-              >
-                <option value="active">🟢 Active (Currently Enrolled &amp; Attending)</option>
-                <option value="on_leave">🟡 On Leave (Temporary Pause / Break)</option>
-                <option value="graduated">🟣 Graduated (Completed Course / Program)</option>
-                <option value="inactive">⚪ Inactive (Withdrawn / Dropped Out)</option>
-              </select>
-            </div>
-          )}
-          <div className={editId ? "" : "sm:col-span-2"}>
+        {editId && (
+          <div className="md:col-span-3">
             <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-              Tuition Payment Plan Preference
+              Student Lifecycle Status *
             </label>
             <select
-              value={formData.paymentPlan || "monthly"}
-              onChange={(e) => field("paymentPlan", e.target.value)}
+              value={formData.status || "active"}
+              onChange={(e) => field("status", e.target.value)}
               className="w-full p-2.5 border rounded-xl bg-white font-bold text-xs capitalize text-slate-800 focus:border-[#1a3a8f] outline-none"
             >
-              {PAYMENT_PLAN_KEYS.map((pKey) => {
-                const p = PAYMENT_PLANS[pKey];
-                return (
-                  <option key={pKey} value={pKey}>
-                    {p.label} ({p.termName})
-                    {p.discountPercent > 0 ? ` — Save ${p.discountPercent}%` : ""}
-                  </option>
-                );
-              })}
-              <option value="custom">Custom (Flexible / Manual Billing)</option>
+              <option value="active">🟢 Active (Currently Enrolled &amp; Attending)</option>
+              <option value="on_leave">🟡 On Leave (Temporary Pause / Break)</option>
+              <option value="graduated">🟣 Graduated (Completed Course / Program)</option>
+              <option value="inactive">⚪ Inactive (Withdrawn / Dropped Out)</option>
             </select>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

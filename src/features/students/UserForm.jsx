@@ -10,10 +10,18 @@ import { getStars } from "../shared";
 import { normalizeDivision } from "../../constants/divisions";
 import StudentPersonalFields from "./StudentPersonalFields";
 import StudentAcademicFields from "./StudentAcademicFields";
+import StudentTuitionFields from "./StudentTuitionFields";
 import StudentFamilyFields from "./StudentFamilyFields";
 import StaffProfileFields from "./StaffProfileFields";
+import { CreditCard } from "lucide-react";
 
-export default function UserForm({ formData, setFormData, editId, onSubmit }) {
+export default function UserForm({
+  formData,
+  setFormData,
+  editId,
+  onSubmit,
+  onSaveAndCollectPayment,
+}) {
   const isSelf = Boolean(editId && auth.currentUser && editId === auth.currentUser.uid);
   const field = (key, value) => setFormData((prev) => ({ ...prev, [key]: value }));
   const isStudent = formData.role === "student";
@@ -36,6 +44,13 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
     }
   };
 
+  const handleCollectPaymentClick = async (e) => {
+    if (onSaveAndCollectPayment) {
+      e.preventDefault();
+      await onSaveAndCollectPayment(e);
+    }
+  };
+
   return (
     <form
       onSubmit={onSubmit}
@@ -54,7 +69,7 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             {isStudent
-              ? "Update student registration and academic details."
+              ? "Update student registration, academic details, and tuition plan."
               : "Create credentials and set permissions for staff."}
           </p>
         </div>
@@ -93,6 +108,9 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
             setAcademicLevel={setAcademicLevel}
             editId={editId}
           />
+          <hr className="border-slate-100" />
+          <StudentTuitionFields formData={formData} field={field} />
+          <hr className="border-slate-100" />
           <StudentFamilyFields formData={formData} field={field} />
         </div>
       ) : (
@@ -105,13 +123,24 @@ export default function UserForm({ formData, setFormData, editId, onSubmit }) {
         />
       )}
 
-      <div className="pt-2">
+      <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
         <button
           type="submit"
-          className="w-full min-h-12 bg-[#1a3a8f] text-white p-3 rounded-xl font-bold hover:bg-[#122b6e] active:scale-[0.98] transition shadow-md"
+          className="w-full min-h-12 bg-[#1a3a8f] text-white p-3 rounded-xl font-bold hover:bg-[#122b6e] active:scale-[0.98] transition shadow-md cursor-pointer flex-1"
         >
           {editId ? "Update Profile" : "Create Account"}
         </button>
+
+        {isStudent && !editId && onSaveAndCollectPayment && (
+          <button
+            type="button"
+            onClick={handleCollectPaymentClick}
+            className="w-full sm:w-auto min-h-12 px-5 py-3 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white transition shadow-md flex items-center justify-center gap-2 cursor-pointer shrink-0"
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>Save &amp; Open Cashier</span>
+          </button>
+        )}
       </div>
     </form>
   );
