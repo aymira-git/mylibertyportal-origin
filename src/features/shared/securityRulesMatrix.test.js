@@ -84,7 +84,12 @@ function isApproverForDoc(data, user) {
     roleMatches = true;
   }
 
-  return roleMatches && isSameBranch(data, user);
+  const branchMatches =
+    data && "approverBranchId" in data
+      ? data.approverBranchId === userBranch(user)
+      : isSameBranch(data, user);
+
+  return roleMatches && branchMatches;
 }
 
 function canDecideApproval(doc, user) {
@@ -95,6 +100,55 @@ function canDecideApproval(doc, user) {
     return false;
   }
   return isApproverForDoc(doc, user);
+}
+
+/**
+ * Mirrors firestore.rules: payments get is owner-scoped — the world-readable
+ * "studentId is string" clause was replaced by studentId == request.auth.uid.
+ */
+function canGetPayment(doc, user) {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  if ((isManager(user) || isFrontOffice(user)) && isSameBranch(doc, user)) return true;
+  return doc.studentId === user.uid;
+}
+
+/**
+ * Mirrors firestore.rules: approvals update allow-list + decision invariants.
+ */
+const APPROVAL_DECISION_KEYS = [
+  "status",
+  "decidedBy",
+  "decidedByUid",
+  "decidedAt",
+  "decisionNotes",
+  "rejectionReason",
+  "updatedAt",
+];
+
+function canUpdateApproval(existing, incoming, user) {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+  if (!canDecideApproval(existing, user)) return false;
+  if (incoming.requestedByUid !== existing.requestedByUid) return false;
+  if (!["approved", "rejected"].includes(incoming.status)) return false;
+  if (incoming.decidedByUid !== user.uid) return false;
+  const keys = Object.keys(incoming).filter((k) => existing[k] !== incoming[k]);
+  return keys.every((k) => APPROVAL_DECISION_KEYS.includes(k));
+}
+
+/**
+ * Mirrors firestore.rules isApprovedShiftCorrection: the referenced approval
+ * doc must be an APPROVED self-correction for this exact shift.
+ */
+function isApprovedShiftCorrection(approval, shiftId) {
+  return (
+    approval &&
+    approval.actionId === "STAFF_SHIFT_SELF_CORRECTION" &&
+    approval.status === "approved" &&
+    approval.payload != null &&
+    approval.payload.shiftId === shiftId
+  );
 }
 
 describe("Security Rules Matrix & Branch Isolation", () => {
@@ -297,6 +351,114 @@ describe("Security Rules Matrix & Branch Isolation", () => {
 
       expect(checkValid).toBe(true);
       expect(checkSpoofed).toBe(false);
+    });
+  });
+
+  describe("Payments Get Owner Scoping (C1)", () => {
+    const payment = { id: "pay_9", branchId: "kota_gorontalo", studentId: "stu_1" };
+
+    it("allows the owning student to read their own payment", () => {
+      expect(canGetPayment(payment, { uid: "stu_1", role: "student" })).toBe(true);
+    });
+
+    it("blocks other signed-in users from reading someone else's payment", () => {
+      expect(canGetPayment(payment, { uid: "stu_2", role: "student" })).toBe(false);
+      expect(canGetPayment(payment, { uid: "ins_gtlo", role: "instructor" })).toBe(false);
+      expect(canGetPayment(payment, null)).toBe(false);
+    });
+
+    it("still allows admin and same-branch manager/frontoffice to read", () => {
+      expect(canGetPayment(payment, adminUser)).toBe(true);
+      expect(canGetPayment(payment, managerGorontalo)).toBe(true);
+      expect(canGetPayment(payment, foGorontalo)).toBe(true);
+      expect(canGetPayment(payment, managerBoneBolango)).toBe(false);
+    });
+  });
+
+  describe("Approval Decision Contract (C2)", () => {
+    const pendingApproval = {
+      id: "appr_1",
+      actionId: "DISCOUNT_OR_REFUND",
+      approverRole: "manager",
+      approverBranchId: "kota_gorontalo",
+      requestedByUid: "fo_gtlo",
+      status: "pending",
+    };
+
+    it("allows the designated approver to record a decision with canonical fields", () => {
+      const incoming = {
+        ...pendingApproval,
+        status: "approved",
+        decidedBy: "Manager GTLO",
+        decidedByUid: "mgr_gtlo",
+        decidedAt: "2026-09-25T10:00:00.000Z",
+        decisionNotes: "Verified with parent",
+        updatedAt: "ts",
+      };
+      expect(canUpdateApproval(pendingApproval, incoming, managerGorontalo)).toBe(true);
+    });
+
+    it("rejects decisions recorded under a different uid", () => {
+      const incoming = {
+        ...pendingApproval,
+        status: "approved",
+        decidedByUid: "someone_else",
+        decidedAt: "2026-09-25T10:00:00.000Z",
+      };
+      expect(canUpdateApproval(pendingApproval, incoming, managerGorontalo)).toBe(false);
+    });
+
+    it("rejects tampering with requester identity or non-decision fields", () => {
+      const tamperedRequester = {
+        ...pendingApproval,
+        requestedByUid: "admin_1",
+        status: "approved",
+        decidedByUid: "mgr_gtlo",
+      };
+      expect(canUpdateApproval(pendingApproval, tamperedRequester, managerGorontalo)).toBe(false);
+
+      const extraField = {
+        ...pendingApproval,
+        status: "approved",
+        decidedByUid: "mgr_gtlo",
+        amount: 999999,
+      };
+      expect(canUpdateApproval(pendingApproval, extraField, managerGorontalo)).toBe(false);
+    });
+
+    it("rejects statuses outside approved/rejected", () => {
+      const backToPending = {
+        ...pendingApproval,
+        status: "pending",
+        decidedByUid: "mgr_gtlo",
+      };
+      expect(canUpdateApproval(pendingApproval, backToPending, managerGorontalo)).toBe(false);
+    });
+  });
+
+  describe("Approved Shift Self-Correction Gate (C4)", () => {
+    const approvedCorrection = {
+      id: "appr_77",
+      actionId: "STAFF_SHIFT_SELF_CORRECTION",
+      status: "approved",
+      payload: { shiftId: "sh_42" },
+    };
+
+    it("accepts only approved self-correction envelopes for the exact shift", () => {
+      expect(isApprovedShiftCorrection(approvedCorrection, "sh_42")).toBe(true);
+      expect(isApprovedShiftCorrection(approvedCorrection, "sh_99")).toBe(false);
+      expect(
+        isApprovedShiftCorrection({ ...approvedCorrection, status: "pending" }, "sh_42")
+      ).toBe(false);
+      expect(
+        isApprovedShiftCorrection(
+          { ...approvedCorrection, actionId: "DISCOUNT_OR_REFUND" },
+          "sh_42"
+        )
+      ).toBe(false);
+      expect(isApprovedShiftCorrection({ ...approvedCorrection, payload: null }, "sh_42")).toBe(
+        false
+      );
     });
   });
 });

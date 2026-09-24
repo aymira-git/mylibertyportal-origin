@@ -1,4 +1,4 @@
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import {
   collection,
   doc,
@@ -214,12 +214,15 @@ export async function clockOutShiftWithCashReconciliation(
       reason: notes || `Discrepancy of IDR ${discrepancy.toLocaleString("id-ID")} exceeds IDR ${threshold.toLocaleString("id-ID")} threshold.`,
       payload: reconciliationData,
     });
-    payload.approval = envelope;
     if (envelope) {
       try {
         await submitApprovalRequest(envelope);
       } catch (err) {
-        console.warn("Failed to submit cash discrepancy approval request:", err);
+        console.error("Failed to submit cash discrepancy approval request:", err);
+        throw new Error(
+          "Shift not closed: the cash discrepancy escalation could not be submitted. Please retry or contact an administrator.",
+          { cause: err }
+        );
       }
     }
   }
@@ -305,6 +308,10 @@ export function recordStudentAttendance({
 /**
  * Performs an audited shift adjustment using an atomic batch write:
  * Updates the shift doc and creates an immutable audit event record.
+ *
+ * When appliedFromApproval is provided (maker-checker self-correction flow),
+ * both writes reference the approved approval doc so Firestore rules can
+ * verify dual-control authorization.
  */
 export async function adjustShiftWithAudit({
   shiftId,
@@ -314,6 +321,7 @@ export async function adjustShiftWithAudit({
   note = "",
   actorId,
   actorName = "Administrator",
+  appliedFromApproval = null,
 }) {
   const batch = writeBatch(db);
   const shiftRef = doc(db, "shifts", shiftId);
@@ -322,6 +330,7 @@ export async function adjustShiftWithAudit({
     ...afterData,
     corrected: true,
     reviewStatus: "reviewed",
+    ...(appliedFromApproval ? { appliedFromApproval } : {}),
   });
 
   const auditRef = doc(collection(db, "shiftAuditEvents"));
@@ -341,10 +350,36 @@ export async function adjustShiftWithAudit({
     note: note || "",
     actorId,
     actorNameSnapshot: actorName,
+    ...(appliedFromApproval ? { appliedFromApproval } : {}),
     createdAt: serverTimestamp(),
   });
 
   await batch.commit();
+}
+
+/**
+ * Applies an already-approved STAFF_SHIFT_SELF_CORRECTION approval envelope
+ * to its target shift, recording an immutable audit event. Firestore rules
+ * reject the write unless the referenced approval doc is approved, so this
+ * can safely be invoked by Front Office / Manager approvers.
+ */
+export async function applyApprovedShiftCorrection({ approval, actor = null }) {
+  const shiftId = approval?.payload?.shiftId || approval?.payload?.beforeShift?.id;
+  const afterData = approval?.payload?.afterData;
+  if (!approval?.id || !shiftId || !afterData?.clockIn) {
+    throw new Error("Approved correction is missing its shift payload.");
+  }
+  const currentUser = actor || auth.currentUser;
+  await adjustShiftWithAudit({
+    shiftId,
+    beforeShift: approval.payload.beforeShift || {},
+    afterData,
+    reasonCode: approval.payload.reasonCode || "other",
+    note: `Approved staff self-correction (ref ${approval.id})`,
+    actorId: currentUser?.uid || "approver",
+    actorName: currentUser?.displayName || currentUser?.email || "Approver",
+    appliedFromApproval: approval.id,
+  });
 }
 
 /**

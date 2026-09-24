@@ -58,7 +58,12 @@ service cloud.firestore {
         || (targetRole == 'manager' && isManager())
         || ((targetRole == 'instructor_leader' || targetRole == 'instructorleader') && (hasRole('instructorleader') || hasRole('instructor_leader')))
         || ((targetRole == 'ops_lead' || targetRole == 'opslead' || targetRole == 'frontoffice') && isFrontOffice());
-      return roleMatches && isSameBranch(data);
+      // Approval docs route by approverBranchId (see approvalGates.js); fall back
+      // to the generic branch fields for legacy docs.
+      let branchMatches = isAdmin() || (data != null && 'approverBranchId' in data
+        ? data.approverBranchId == userBranch()
+        : isSameBranch(data));
+      return roleMatches && branchMatches;
     }
 
     function roleOf(uid) {
@@ -80,6 +85,15 @@ service cloud.firestore {
           && (!('expiresAt' in inv) || inv.expiresAt > request.time.toMillis())
           && (!('branchId' in inv) || request.resource.data.branchId == inv.branchId)
           && (!('division' in inv) || request.resource.data.division == inv.division);
+    }
+
+    function isApprovedShiftCorrection(shiftId, approvalId) {
+      let approval = get(/databases/$(database)/documents/approvals/$(approvalId)).data;
+      return approval.actionId == 'STAFF_SHIFT_SELF_CORRECTION'
+        && approval.status == 'approved'
+        && 'payload' in approval
+        && approval.payload != null
+        && approval.payload.shiftId == shiftId;
     }
 
     match /users/{userId} {
@@ -109,7 +123,8 @@ service cloud.firestore {
             .hasOnly([
               'displayName', 'name', 'phone', 'dob', 'address', 'parentName', 'parentPhone',
               'emergencyContact', 'emergencyPhone', 'notes', 'placementTests', 'status',
-              'level', 'currentLevel', 'tuitionPlan', 'tuitionFee', 'nominal', 'enrollmentDate',
+              'statusUpdatedAt', 'statusUpdatedBy',
+              'level', 'currentLevel', 'enrollmentDate',
               'updatedAt', 'photoURL', 'nickname', 'gender', 'nis', 'school', 'grade',
               'placeOfBirth', 'religion', 'programId', 'program', 'batchType', 'classType',
               'schoolOrJob', 'classOrSemester', 'joinedDate', 'fatherName', 'fatherJob',
@@ -183,7 +198,7 @@ service cloud.firestore {
     }
 
     match /payments/{paymentId} {
-      allow get: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data)) || (resource.data.studentId is string);
+      allow get: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data)) || (signedIn() && resource.data.studentId == request.auth.uid);
       allow list: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data));
       allow create: if isAdmin() || (isFrontOffice() && isSameBranch(request.resource.data));
       allow update: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data) && isSameBranch(request.resource.data) && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId));
@@ -208,8 +223,10 @@ service cloud.firestore {
         || (isApproverForDoc(resource.data)
           && request.auth.uid != resource.data.requestedByUid
           && request.resource.data.requestedByUid == resource.data.requestedByUid
+          && request.resource.data.status in ['approved', 'rejected']
+          && request.resource.data.decidedByUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'decision', 'reviewedAt', 'reviewedBy', 'reviewedByName', 'notes', 'rejectionReason', 'updatedAt']));
+            .hasOnly(['status', 'decidedBy', 'decidedByUid', 'decidedAt', 'decisionNotes', 'rejectionReason', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
@@ -247,15 +264,30 @@ service cloud.firestore {
           && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId)
           && request.resource.data.clockIn == resource.data.clockIn
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['clockOut', 'updatedAt', 'cashReconciliation', 'notes', 'status', 'verifiedBy', 'verifiedAt']));
+            .hasOnly(['clockOut', 'updatedAt', 'cashReconciliation', 'notes', 'status', 'verifiedBy', 'verifiedAt', 'autoClosed']))
+        // Approved shift self-corrections: Front Office / Manager may only apply a correction
+        // already approved via the maker-checker approvals collection (dual-control enforced by rules).
+        || ((isFrontOffice() || isManager())
+          && isSameBranch(resource.data)
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.appliedFromApproval is string
+          && isApprovedShiftCorrection(shiftId, request.resource.data.appliedFromApproval)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['clockIn', 'clockOut', 'corrected', 'reviewStatus', 'appliedFromApproval']));
       allow delete: if isAdmin();
     }
 
     match /shiftAuditEvents/{eventId} {
       allow read: if isAdmin() || isManager();
-      allow create: if isAdmin()
-        && request.resource.data.actorId == request.auth.uid
-        && request.resource.data.shiftId is string;
+      allow create: if (isAdmin()
+          && request.resource.data.actorId == request.auth.uid
+          && request.resource.data.shiftId is string)
+        || ((isFrontOffice() || isManager())
+          && request.resource.data.actorId == request.auth.uid
+          && request.resource.data.shiftId is string
+          && request.resource.data.action == 'manual_adjustment'
+          && request.resource.data.appliedFromApproval is string
+          && isApprovedShiftCorrection(request.resource.data.shiftId, request.resource.data.appliedFromApproval));
       allow update, delete: if false; // append-only immutable audit trail
     }
 

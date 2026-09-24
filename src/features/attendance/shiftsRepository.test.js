@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fake } from "../../test/firestoreFake.js";
 import {
   adjustShiftWithAudit,
+  applyApprovedShiftCorrection,
   clockIn,
   clockOutShift,
   clockOutShiftWithCashReconciliation,
@@ -368,7 +369,7 @@ describe("Cash Reconciliation on Shift Clock-Out", () => {
     expect(getShiftCashReconciliation(op.data)).toEqual(op.data.cashReconciliation);
   });
 
-  it("attaches blocking Branch Manager approval gate when discrepancy exceeds threshold", async () => {
+  it("escalates to Branch Manager approval queue without polluting the shift payload", async () => {
     fake.seed("shifts", [{ id: "shift-2", userId: "fo-1", clockOut: null }]);
 
     // Expected 2,000,000 (1% is 20,000 threshold), Counted is short by 50,000
@@ -383,10 +384,18 @@ describe("Cash Reconciliation on Shift Clock-Out", () => {
     });
 
     const op = fake.opsOf("update")[0];
+    expect(op.path).toBe("shifts/shift-2");
+    expect(op.data.clockOut).toBe("2026-09-21T02:00:00.000Z");
     expect(op.data.cashReconciliation.discrepancy).toBe(-50000);
     expect(op.data.cashReconciliation.exceedsThreshold).toBe(true);
+    expect(op.data.approval).toBeUndefined();
 
-    expect(op.data.approval).toMatchObject({
+    // The escalation lives in the approvals collection, not on the shift doc
+    const escalation = fake
+      .opsOf("add")
+      .find((o) => o.path.startsWith("approvals/"));
+    expect(escalation).toBeDefined();
+    expect(escalation.data).toMatchObject({
       actionId: "CASH_DISCREPANCY",
       approverRole: "manager",
       mode: "blocking",
@@ -394,6 +403,95 @@ describe("Cash Reconciliation on Shift Clock-Out", () => {
       requestedBy: "Budi FO",
       requestedByUid: "fo-1",
     });
+  });
+
+  it("refuses to close the shift when the escalation cannot be submitted", async () => {
+    fake.seed("shifts", [{ id: "shift-3", userId: "fo-1", clockOut: null }]);
+    fake.failWhen = (op) =>
+      op.path.startsWith("approvals/") ? new Error("permission-denied") : null;
+
+    await expect(
+      clockOutShiftWithCashReconciliation("shift-3", {
+        clockOutAt: at,
+        countedCash: 1000000,
+        countedQris: 400000,
+        expectedCash: 1500000,
+        expectedQris: 500000,
+        notes: "Till short by 60k",
+        requester: { name: "Budi FO", uid: "fo-1", role: "frontoffice" },
+      })
+    ).rejects.toThrow("escalation could not be submitted");
+
+    // Shift must remain open so the discrepancy is never lost silently
+    expect(fake.opsOf("update")).toHaveLength(0);
+  });
+});
+
+describe("applyApprovedShiftCorrection", () => {
+  const approvedApproval = {
+    id: "appr-9",
+    actionId: "STAFF_SHIFT_SELF_CORRECTION",
+    status: "approved",
+    payload: {
+      shiftId: "shift-7",
+      reasonCode: "forgot_clock_out",
+      beforeShift: {
+        id: "shift-7",
+        clockIn: "2026-09-20T08:00:00.000Z",
+        clockOut: "2026-09-20T15:00:00.000Z",
+        autoClosed: true,
+      },
+      afterData: {
+        clockIn: "2026-09-20T08:00:00.000Z",
+        clockOut: "2026-09-20T17:30:00.000Z",
+      },
+    },
+  };
+
+  it("applies an approved correction atomically with a rules-verifiable approval link", async () => {
+    await applyApprovedShiftCorrection({
+      approval: approvedApproval,
+      actor: { uid: "fo-1", displayName: "Budi FO" },
+    });
+
+    const shiftUpdate = fake.find("shifts/shift-7");
+    expect(shiftUpdate).toMatchObject({
+      kind: "update",
+      via: "batch",
+      data: {
+        clockIn: "2026-09-20T08:00:00.000Z",
+        clockOut: "2026-09-20T17:30:00.000Z",
+        corrected: true,
+        reviewStatus: "reviewed",
+        appliedFromApproval: "appr-9",
+      },
+    });
+
+    const audit = fake
+      .opsOf("set")
+      .find((o) => o.path.startsWith("shiftAuditEvents/"));
+    expect(audit).toBeDefined();
+    expect(audit.data).toMatchObject({
+      shiftId: "shift-7",
+      action: "manual_adjustment",
+      reasonCode: "forgot_clock_out",
+      actorId: "fo-1",
+      actorNameSnapshot: "Budi FO",
+      appliedFromApproval: "appr-9",
+      before: { autoClosed: true },
+      after: { clockOut: "2026-09-20T17:30:00.000Z" },
+    });
+  });
+
+  it("rejects an approval envelope missing its shift payload", async () => {
+    await expect(
+      applyApprovedShiftCorrection({
+        approval: { id: "appr-10", actionId: "STAFF_SHIFT_SELF_CORRECTION", payload: null },
+        actor: { uid: "fo-1", displayName: "Budi FO" },
+      })
+    ).rejects.toThrow("missing its shift payload");
+
+    expect(fake.ops).toHaveLength(0);
   });
 });
 

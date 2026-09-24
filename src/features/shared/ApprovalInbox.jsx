@@ -4,6 +4,7 @@ import {
   approveApprovalRequest,
   rejectApprovalRequest,
 } from "./approvalsRepository";
+import { applyApprovedShiftCorrection } from "../attendance/shiftsRepository";
 import { useToast } from "./useToast";
 import { useConfirm } from "./useConfirm";
 import { idToBranch } from "../../constants/branches";
@@ -61,7 +62,20 @@ export function ApprovalInbox({
     setProcessingId(approval.id);
     try {
       await approveApprovalRequest(approval.id);
-      toast(`Authorized: ${approval.label}`, "success");
+
+      if (approval.actionId === "STAFF_SHIFT_SELF_CORRECTION" && approval.payload?.afterData) {
+        try {
+          await applyApprovedShiftCorrection({ approval });
+          toast(`Authorized & applied: ${approval.label}`, "success");
+        } catch (applyErr) {
+          toast(
+            `Approved, but the correction could not be applied (${applyErr.message}). An admin can apply it from Staff Duty Reports.`,
+            "warning"
+          );
+        }
+      } else {
+        toast(`Authorized: ${approval.label}`, "success");
+      }
     } catch (err) {
       toast("Failed to approve: " + err.message, "error");
     } finally {
