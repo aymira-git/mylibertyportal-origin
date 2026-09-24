@@ -35,6 +35,8 @@ export function useInstructorRoster() {
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
   const [instructorName, setInstructorName] = useState("");
+  const [instructorRole, setInstructorRole] = useState("");
+  const [instructorBranch, setInstructorBranch] = useState("");
   const [loading, setLoading] = useState(() => Boolean(uid));
   const [error, setError] = useState(() =>
     uid ? "" : "You appear to be signed out. Please log in again."
@@ -152,7 +154,18 @@ export function useInstructorRoster() {
 
     const unsubMe = onSnapshot(
       doc(db, "users", uid),
-      (snap) => setInstructorName(snap.exists() ? snap.data().displayName || "" : ""),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          setInstructorName(data.displayName || "");
+          setInstructorRole(data.role || "");
+          setInstructorBranch(data.branch || data.branchId || "");
+        } else {
+          setInstructorName("");
+          setInstructorRole("");
+          setInstructorBranch("");
+        }
+      },
       (err) => console.error("instructor profile listener:", err)
     );
 
@@ -164,5 +177,14 @@ export function useInstructorRoster() {
     };
   }, [uid]);
 
-  return { uid, classes, students, instructorName, loading, error };
+  return {
+    uid,
+    classes,
+    students,
+    instructorName,
+    instructorRole,
+    instructorBranch,
+    loading,
+    error,
+  };
 }

@@ -1,4 +1,4 @@
-import { normalizeBranch } from "../../constants/branches.js";
+import { normalizeBranch, branchToId } from "../../constants/branches.js";
 import { normalizeProgram, getProgram } from "../../constants/programs.js";
 import { divisionOfProgram } from "../../constants/divisions.js";
 import { normalizeBatchType } from "../../constants/batchTypes.js";
@@ -45,6 +45,7 @@ export function buildStudentRecord(fields = {}) {
     religion: clean(fields.religion),
     address: clean(fields.address),
     branch: normalizeBranch(fields.branch),
+    branchId: branchToId(fields.branchId || fields.branch),
     program,
     programId,
     division,

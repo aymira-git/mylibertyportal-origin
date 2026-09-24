@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { normalizeBranch } from "../constants/branches.js";
+import { normalizeBranch, branchToId } from "../constants/branches.js";
 import { normalizeProgram } from "../constants/programs.js";
 import { divisionOfProgram } from "../constants/divisions.js";
 import { normalizeBatchType } from "../constants/batchTypes.js";
@@ -36,6 +36,7 @@ export const batchSchema = z
       .trim()
       .optional()
       .transform((b) => normalizeBranch(b)),
+    branchId: z.string().trim().optional(),
     maxCapacity: z.coerce.number().int().positive().default(15),
     minQuorum: z.coerce.number().int().nonnegative().default(4),
     status: z.string().trim().default("open"),
@@ -59,5 +60,6 @@ export const batchSchema = z
     ...data,
     division: divisionOfProgram(data.programId),
     batchType: normalizeBatchType(data.batchType),
+    branchId: branchToId(data.branchId || data.branch),
   }));
 

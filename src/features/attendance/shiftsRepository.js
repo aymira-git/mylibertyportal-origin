@@ -15,6 +15,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { createApprovalEnvelope } from "../shared/approvalGates";
+import { submitApprovalRequest } from "../shared/approvalsRepository";
 import { branchToId, idToBranch, DEFAULT_BRANCH_ID } from "../../constants/branches";
 
 export const DEFAULT_CASH_DISCREPANCY_THRESHOLD_IDR = 25000;
@@ -160,7 +161,7 @@ export function clockOutShift(shiftId, clockOutAt = new Date()) {
  * If discrepancy exceeds the configurable threshold, automatically attaches
  * a maker-checker approval gate routed to Branch Manager.
  */
-export function clockOutShiftWithCashReconciliation(
+export async function clockOutShiftWithCashReconciliation(
   shiftId,
   {
     clockOutAt = new Date(),
@@ -207,10 +208,19 @@ export function clockOutShiftWithCashReconciliation(
   };
 
   if (exceedsThreshold) {
-    payload.approval = createApprovalEnvelope("CASH_DISCREPANCY", requester, {
+    const envelope = createApprovalEnvelope("CASH_DISCREPANCY", requester, {
+      shiftId,
       reason: notes || `Discrepancy of IDR ${discrepancy.toLocaleString("id-ID")} exceeds IDR ${threshold.toLocaleString("id-ID")} threshold.`,
       payload: reconciliationData,
     });
+    payload.approval = envelope;
+    if (envelope) {
+      try {
+        await submitApprovalRequest(envelope);
+      } catch (err) {
+        console.warn("Failed to submit cash discrepancy approval request:", err);
+      }
+    }
   }
 
   return updateDoc(doc(db, "shifts", shiftId), payload);

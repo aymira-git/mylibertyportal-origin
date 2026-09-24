@@ -39,10 +39,19 @@ service cloud.firestore {
     }
 
     function isSameBranch(data) {
-      let docBranch = 'branchId' in data 
+      let docBranch = data != null && 'branchId' in data 
         ? data.branchId 
-        : ('branch' in data ? (data.branch == 'Bone Bolango' ? 'bone_bolango' : (data.branch == 'Pohuwato' ? 'pohuwato' : (data.branch == 'Limboto' ? 'limboto' : 'kota_gorontalo'))) : 'kota_gorontalo');
+        : (data != null && 'branch' in data ? (data.branch == 'Bone Bolango' ? 'bone_bolango' : (data.branch == 'Pohuwato' ? 'pohuwato' : (data.branch == 'Limboto' ? 'limboto' : 'kota_gorontalo'))) : 'kota_gorontalo');
       return isAdmin() || (signedIn() && userBranch() == docBranch);
+    }
+
+    function isApproverForDoc(data) {
+      let targetRole = data != null && 'approverRole' in data ? data.approverRole : 'manager';
+      let roleMatches = (targetRole == 'admin' && isAdmin())
+        || (targetRole == 'manager' && isManager())
+        || ((targetRole == 'instructor_leader' || targetRole == 'instructorleader') && (hasRole('instructorleader') || hasRole('instructor_leader')))
+        || ((targetRole == 'ops_lead' || targetRole == 'opslead' || targetRole == 'frontoffice') && isFrontOffice());
+      return roleMatches && isSameBranch(data);
     }
 
     function roleOf(uid) {
@@ -61,7 +70,8 @@ service cloud.firestore {
       let inv = get(/databases/$(database)/documents/invites/$(inviteId)).data;
       return inv.email == request.auth.token.email.lower()
           && inv.role == request.resource.data.role
-          && (!('expiresAt' in inv) || inv.expiresAt > request.time.toMillis());
+          && (!('expiresAt' in inv) || inv.expiresAt > request.time.toMillis())
+          && (!('branchId' in inv) || request.resource.data.branchId == inv.branchId);
     }
 
     match /users/{userId} {
@@ -77,7 +87,7 @@ service cloud.firestore {
             && isInviteValid(request.resource.data.inviteId));
       allow delete: if isAdmin() || (isFrontOffice() && resource.data.role == 'student' && isSameBranch(resource.data));
       allow update: if isAdmin()
-        || (isFrontOffice() && resource.data.role == 'student' && request.resource.data.role == 'student' && isSameBranch(resource.data))
+        || (isFrontOffice() && resource.data.role == 'student' && request.resource.data.role == 'student' && isSameBranch(resource.data) && isSameBranch(request.resource.data))
         || (signedIn()
           && userId == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
@@ -101,7 +111,8 @@ service cloud.firestore {
     match /applications/{applicationId} {
       // Branch-isolated admissions
       allow read: if isAdmin() || ((isFrontOffice() || isManager() || hasRole('marketing')) && isSameBranch(resource.data));
-      allow update, delete: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data));
+      allow update: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data) && isSameBranch(request.resource.data));
+      allow delete: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data));
       allow create: if false;
     }
 
@@ -111,6 +122,8 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
       allow update: if isAdmin()
         || (isFrontOffice()
+          && isSameBranch(resource.data)
+          && isSameBranch(request.resource.data)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['studentIds', 'enrollments', 'updatedAt']));
     }
 
@@ -138,21 +151,25 @@ service cloud.firestore {
 
     match /payments/{paymentId} {
       allow read: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data));
-      allow create, update, delete: if isAdmin() || (isFrontOffice() && isSameBranch(request.resource.data));
+      allow create: if isAdmin() || (isFrontOffice() && isSameBranch(request.resource.data));
+      allow update: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data) && isSameBranch(request.resource.data));
+      allow delete: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data));
     }
 
     match /deskInquiries/{inquiryId} {
       allow read: if isAdmin() || ((isManager() || isFrontOffice() || isStaff()) && isSameBranch(resource.data));
-      allow create, update: if isAdmin() || ((isManager() || isFrontOffice() || isStaff()) && isSameBranch(request.resource.data));
+      allow create: if isAdmin() || ((isManager() || isFrontOffice() || isStaff()) && isSameBranch(request.resource.data));
+      allow update: if isAdmin() || ((isManager() || isFrontOffice() || isStaff()) && isSameBranch(resource.data) && isSameBranch(request.resource.data));
       allow delete: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data));
     }
 
     match /approvals/{approvalId} {
       allow read: if isAdmin()
-        || (isManager() && isSameBranch(resource.data))
+        || isApproverForDoc(resource.data)
         || (signedIn() && resource.data.requestedByUid == request.auth.uid);
       allow create: if isStaff();
-      allow update: if isAdmin() || (isManager() && isSameBranch(resource.data));
+      allow update: if isAdmin()
+        || (isApproverForDoc(resource.data) && request.auth.uid != resource.data.requestedByUid);
       allow delete: if isAdmin();
     }
 
@@ -175,13 +192,14 @@ service cloud.firestore {
         || (isManager() && isSameBranch(resource.data))
         || (signedIn() && resource.data.userId == request.auth.uid);
       // Staff scans: Admin and Front Office (reception kiosk station), for tracked roles only, new shifts start open
-      allow create: if (isAdmin() || isFrontOffice())
+      allow create: if (isAdmin() || (isFrontOffice() && isSameBranch(request.resource.data)))
         && request.resource.data.userId is string
         && request.resource.data.clockOut == null
         && isTrackedShiftRole(roleOf(request.resource.data.userId));
       // Shift clock-out and updates: Admin or Front Office (kiosk clock-out)
       allow update: if isAdmin()
         || (isFrontOffice()
+          && isSameBranch(resource.data)
           && resource.data.clockOut == null
           && request.resource.data.clockOut is string);
       allow delete: if isAdmin();
@@ -245,7 +263,7 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.lat is number
         && request.resource.data.lng is number;
-      allow update: if (isAdmin() || ((isManager() || hasRole('marketing')) && isSameBranch(resource.data)))
+      allow update: if (isAdmin() || ((isManager() || hasRole('marketing')) && isSameBranch(resource.data) && isSameBranch(request.resource.data)))
         && (!('createdBy' in resource.data) || request.resource.data.createdBy == resource.data.createdBy)
         && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
       allow delete: if isAdmin();

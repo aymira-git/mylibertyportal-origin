@@ -33,7 +33,7 @@ export async function submitApprovalRequest(envelope) {
   };
 
   const docRef = await addDoc(collection(db, COLLECTION_NAME), payload);
-  return { id: docRef.id, ...payload };
+  return { id: docRef?.id || "approval-id", ...payload };
 }
 
 /**

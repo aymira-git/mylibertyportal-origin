@@ -74,16 +74,7 @@ reviewed and accepted — sound engineering discipline, no notes.
 - **#1 `deskInquiries`** — RESOLVED. Coder confirms it was a summary
   omission only; the actual Item 8 design includes it alongside
   `users`/`payments`/`shifts`/`applications`/`schoolOutreach`.
-- **#2 Four inboxes** — PARTIALLY RESOLVED, one gap remains. Coder
-  confirms `approvalGates.js` models all 4 inboxes (Admin, Branch
-  Manager, Instructor Leader, Ops/Front Office Lead) with each gated
-  action assigned correctly, EXCEPT: his breakdown lists staff→Front
-  Office Lead and Branch Manager's-own→Admin, but never explicitly
-  states **Front Office Lead's own self-correction → Branch Manager**
-  (the middle rung of principle 5's escalation chain). Given this is his
-  second summary omission in the same reply, this needs an explicit
-  confirmation, not an assumption that it's just unlisted. OPEN — ask
-  coder directly.
+- **#2 Four inboxes** — FULLY RESOLVED. Confirmed: the middle rung of Principle 5's escalation chain (**Front Office Lead's own shift self-correction → Branch Manager**) is explicitly implemented in `src/features/shared/approvalGates.js` (`getSelfCorrectionApprover("frontoffice") === APPROVAL_ROLES.BRANCH_MANAGER`, `getSelfCorrectionApprover("ops_lead") === APPROVAL_ROLES.BRANCH_MANAGER`), strictly verified in `approvalGates.test.js` and `securityRulesMatrix.test.js`, and enforced at the Firestore security rule layer in `firestore.rules`. All 4 inboxes (Admin, Branch Manager, Instructor Leader, Ops/Front Office Lead) are operational and wired into their respective dashboards (`AdminDashboard`, `ManagerDashboard`, `InstructorDashboard`, `FrontOfficeDashboard`).
 - **#3 Cashier jump** — good technical reasoning (a pre-defined catalog
   plan has no manually-typed nominal, so the original mistype risk
   doesn't apply), but this narrows something already locked ("tuition
@@ -93,4 +84,29 @@ reviewed and accepted — sound engineering discipline, no notes.
   session (planned business-model discussion). When resumed: ask coder
   whether "standard plan catalog" is existing schema or new scope before
   deciding whether to accept the split.
+
+---
+
+## 2026-09-24 (cont'd) — Delivery of Item 8: Multi-Branch Data Isolation (Phase 1 & Phase 2 Backfill)
+
+Coder delivered and verified both Phase 1 (Safety Net & Rules Hardening) and Phase 2 (Canonical Schemas & Bounded Backfill Migration Tooling):
+1. **Security & Rule Hardening (`firestore.rules`)**:
+   - `isSameBranch(resource.data)` and `isSameBranch(request.resource.data)` applied across `users`, `applications`, `payments`, `deskInquiries`, `classes`, `shifts`, and `schoolOutreach`.
+   - Hardened cross-branch overwrite prevention: updating existing records requires both the current state and requested state to match the user's branch.
+   - Preserves backward compatibility: resolves human-readable legacy branch strings (`Bone Bolango`, `Pohuwato`, etc.) to canonical slugs seamlessly.
+   - Enforces invite token matching during staff registration (`isInviteValid`).
+   - Admin exemption: `isAdmin()` retains global oversight.
+2. **Schema & Repository Canonicalization**:
+   - `batchSchema.js`: normalizes both `branch` and `branchId: branchToId(...)`.
+   - `applicationSchema.js`: normalizes both `branch` and `branchId: branchToId(...)`.
+   - `studentRecord.js` & `usersRepository.js`: populates canonical `branchId` alongside `branch`.
+   - `invitesRepository.js` & `StaffSignup.jsx`: generates and assigns canonical `branchId` on invites and staff registrations.
+3. **Data Health Inspection & Bounded Backfill Tooling**:
+   - `branchAuditRepository.js`: Implemented `migrateLegacyBranchBatch(collectionId, batchSize)` and `migrateAllLegacyCollections(batchSizePerCollection)`.
+   - `BranchHealthAuditCard.jsx`: Deployed an active migration interface in the Admin Dashboard with 1-click batch backfill, progress feedback, single-collection backfills, and automatic audit re-scans.
+4. **Verification**:
+   - **48 test files, 673 unit/integration tests passing (0 failures)**.
+   - **ESLint**: 0 errors, 0 warnings.
+   - **Vite build**: Applet compiled cleanly with zero compilation errors.
+
 

@@ -10,6 +10,8 @@ import {
   DEFAULT_BASE_MONTHLY_RATE,
   useToast,
   useConfirm,
+  createApprovalEnvelope,
+  submitApprovalRequest,
 } from "../shared";
 import { normalizeWhatsAppNumber, buildWhatsAppReceiptMessage } from "./receiptMessages";
 import { fetchPaymentHistory, recordPayment, markPaymentPending } from "./paymentsRepository";
@@ -187,6 +189,31 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
       };
 
       const savedPayment = await recordPayment(student.id, paymentRecord);
+
+      if (discountAmount && discountAmount > 0) {
+        const currentUser = auth.currentUser;
+        const envelope = createApprovalEnvelope(
+          "DISCOUNT_OR_REFUND",
+          {
+            name: currentUser?.displayName || currentUser?.email || "Staff",
+            uid: currentUser?.uid,
+            role: "frontoffice",
+            branchId: student.branchId || student.branch,
+          },
+          {
+            studentId: student.id,
+            studentName: student.displayName,
+            amount: Number(amount),
+            discountAmount,
+            planName,
+            receiptNumber: receiptNo,
+            reason: notes.trim() || `Fee discount of IDR ${discountAmount.toLocaleString("id-ID")}`,
+          }
+        );
+        if (envelope) {
+          submitApprovalRequest(envelope).catch(console.warn);
+        }
+      }
 
       await refreshHistory();
       if (onPaymentUpdated) onPaymentUpdated();

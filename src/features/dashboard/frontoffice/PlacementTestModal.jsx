@@ -27,16 +27,17 @@ function PlacementTestModalContent({
   const [testedAt, setTestedAt] = useState(() => todayWita());
   const [notes, setNotes] = useState("");
 
-  const handleLevelRecommendation = (scoreNum) => {
-    if (isNaN(scoreNum) || scoreNum === "" || isKindergarten) return;
+  const getRecommendedLevel = (scoreNum) => {
+    if (isNaN(scoreNum) || scoreNum === "" || isKindergarten) return null;
     const num = Number(scoreNum);
-    if (num >= 85) {
-      setAssessedLevel("epic");
-    } else if (num >= 65) {
-      setAssessedLevel("master");
-    } else {
-      setAssessedLevel("warrior");
-    }
+    if (num >= 85) return "epic";
+    if (num >= 65) return "master";
+    return "warrior";
+  };
+
+  const handleLevelRecommendation = (scoreNum) => {
+    const rec = getRecommendedLevel(scoreNum);
+    if (rec) setAssessedLevel(rec);
   };
 
   const handleScoreChange = (val) => {
@@ -47,10 +48,15 @@ function PlacementTestModalContent({
   const handleSubmit = (e, enrollImmediately = false) => {
     e.preventDefault();
     if (!assessedLevel) return;
+    const recLevel = getRecommendedLevel(score);
+    const isOverride = Boolean(recLevel && assessedLevel !== recLevel);
+
     onSaveTest(
       {
         score: score !== "" ? Number(score) : null,
         assessedLevel,
+        recommendedLevel: recLevel,
+        isOverride,
         testedBy: testedBy.trim(),
         testedAt,
         notes: notes.trim(),

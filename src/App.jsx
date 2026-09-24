@@ -432,7 +432,7 @@ function App() {
                 {division === "kindergarten" ? (
                   <KidsInstructorDashboard />
                 ) : (
-                  <InstructorDashboard />
+                  <InstructorDashboard role={role} />
                 )}
               </ErrorBoundary>
             )}

@@ -10,7 +10,10 @@ import {
 import {
   useToast,
   uploadFileToCloudinary,
+  createApprovalEnvelope,
+  submitApprovalRequest,
 } from "../shared";
+import { auth } from "../../firebase";
 import { createClass, updateClass } from "./classesRepository";
 import { DEFAULT_BRANCH, normalizeBranch } from "../../constants/branches";
 import {
@@ -234,6 +237,55 @@ function BatchForm({ batch, instructors, existingClasses = [], onClose, onSucces
       };
 
       if (isEditing) {
+        // Dual-control logged audit trail for substitute instructor assignment
+        if (
+          payload.substituteInstructorId &&
+          payload.substituteInstructorId !== batch?.substituteInstructorId
+        ) {
+          const currentUser = auth.currentUser;
+          const envelope = createApprovalEnvelope(
+            "SUBSTITUTE_INSTRUCTOR",
+            {
+              name: currentUser?.displayName || currentUser?.email || "Staff",
+              uid: currentUser?.uid,
+              role: "frontoffice",
+              branchId: payload.branch,
+            },
+            {
+              classId: batch.id,
+              className: payload.className,
+              primaryInstructor: payload.instructorName,
+              substituteInstructor: payload.substituteInstructorName,
+              reason: `Assigned substitute instructor ${payload.substituteInstructorName} for ${payload.className}`,
+            }
+          );
+          if (envelope) {
+            submitApprovalRequest(envelope).catch(console.warn);
+          }
+        }
+
+        // Dual-control logged audit trail for whole-class cancellation
+        if (payload.status === "cancelled" && batch?.status !== "cancelled") {
+          const currentUser = auth.currentUser;
+          const envelope = createApprovalEnvelope(
+            "CLASS_CANCELLATION_OR_RESCHEDULE",
+            {
+              name: currentUser?.displayName || currentUser?.email || "Staff",
+              uid: currentUser?.uid,
+              role: "frontoffice",
+              branchId: payload.branch,
+            },
+            {
+              classId: batch.id,
+              className: payload.className,
+              reason: payload.notes || `Whole-class cancellation for ${payload.className}`,
+            }
+          );
+          if (envelope) {
+            submitApprovalRequest(envelope).catch(console.warn);
+          }
+        }
+
         await updateClass(batch.id, payload);
         toast(`Batch "${className}" updated successfully.`, "success");
       } else {

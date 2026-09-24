@@ -15,7 +15,8 @@ import {
 } from "./walkInUtils";
 import { INQUIRY_STATUSES } from "../../../schemas/deskInquirySchema";
 import { normalizeWhatsAppNumber } from "../../finance/receiptMessages";
-import { useToast } from "../../shared";
+import { useToast, createApprovalEnvelope, submitApprovalRequest } from "../../shared";
+import { auth } from "../../../firebase";
 import { reportError } from "../../../utils/reportError";
 import { getProgram } from "../../../constants/programs";
 import { UserCheck, PlusCircle, Search, RefreshCw } from "lucide-react";
@@ -85,6 +86,35 @@ export default function WalkInInquiryTab({
     if (!selectedInquiryForTest) return;
     setSubmitting(true);
     try {
+      if (testData.isOverride) {
+        const currentUser = auth.currentUser;
+        const envelope = createApprovalEnvelope(
+          "PLACEMENT_LEVEL_OVERRIDE",
+          {
+            name: currentUser?.displayName || testData.testedBy || "Assessor",
+            uid: currentUser?.uid || "staff",
+            role: "frontoffice",
+            branchId: selectedInquiryForTest.branchId || branchLabel,
+          },
+          {
+            inquiryId: selectedInquiryForTest.id,
+            studentName: selectedInquiryForTest.studentName,
+            recommendedLevel: testData.recommendedLevel,
+            assessedLevel: testData.assessedLevel,
+            score: testData.score,
+            reason: testData.notes || `Placement level override: recommended ${testData.recommendedLevel}, assigned ${testData.assessedLevel}`,
+          }
+        );
+
+        if (envelope) {
+          try {
+            await submitApprovalRequest(envelope);
+          } catch (err) {
+            console.warn("Failed to submit placement level override approval request:", err);
+          }
+        }
+      }
+
       const updated = await addPlacementTestToInquiry(selectedInquiryForTest.id, testData);
       setInquiries((prev) =>
         prev.map((i) =>

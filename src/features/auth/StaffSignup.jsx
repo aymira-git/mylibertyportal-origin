@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import schoolLogo from "../../assets/school-logo.webp";
 import { fetchInviteByToken, completeStaffSignup } from "./authRepository";
 import { AlertCircle, CheckCircle2, Mail, ArrowRight, Loader2 } from "lucide-react";
-import { normalizeBranch } from "../../constants/branches";
+import { normalizeBranch, branchToId } from "../../constants/branches";
 import { normalizeDivision } from "../../constants/divisions";
 
 /**
@@ -135,6 +135,7 @@ export default function StaffSignup() {
         email: invite.email.toLowerCase().trim(),
         role: invite.role,
         branch: normalizeBranch(invite.branch),
+        branchId: branchToId(invite.branchId || invite.branch),
         division: normalizeDivision(invite.division),
         status: "active",
         phone,

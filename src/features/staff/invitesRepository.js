@@ -8,7 +8,7 @@ import { doc, deleteDoc, setDoc } from "firebase/firestore";
  */
 
 import { inviteSchema } from "../../schemas";
-import { DEFAULT_BRANCH } from "../../constants/branches.js";
+import { DEFAULT_BRANCH, branchToId } from "../../constants/branches.js";
 import { DEFAULT_DIVISION } from "../../constants/divisions.js";
 
 export const INVITE_EXPIRATION_DAYS = 7;
@@ -23,6 +23,7 @@ export function createInvite(email, role, branch = DEFAULT_BRANCH, division = DE
     email: validated.email,
     role: validated.role,
     branch: validated.branch,
+    branchId: branchToId(validated.branch),
     division: validated.division,
     createdAt: new Date(now).toISOString(),
     expiresAt,

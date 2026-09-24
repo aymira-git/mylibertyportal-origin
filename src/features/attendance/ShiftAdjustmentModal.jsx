@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, ShieldAlert, Check } from "lucide-react";
 import { adjustShiftWithAudit } from "./shiftsRepository";
-import { useToast } from "../shared";
+import { useToast, createApprovalEnvelope, submitApprovalRequest } from "../shared";
 import { formatWitaForInput, parseWitaInputToUtcIso } from "../../utils/dateWita";
 
 const REASON_CODES = [
@@ -46,6 +46,34 @@ export default function ShiftAdjustmentModal({ shift, actor, onClose, onSuccess 
         clockIn: parsedClockIn,
         clockOut: parsedClockOut,
       };
+
+      const isSelfCorrection = actor?.uid && shift.uid && actor.uid === shift.uid;
+      const isAdmin = actor?.role === "admin";
+
+      if (isSelfCorrection && !isAdmin) {
+        const envelope = createApprovalEnvelope(
+          "STAFF_SHIFT_SELF_CORRECTION",
+          {
+            name: actor.displayName || shift.displayName || "Staff Member",
+            uid: actor.uid,
+            role: actor.role || shift.role || "staff",
+            branchId: shift.branchId || actor.branchId,
+          },
+          {
+            shiftId: shift.id,
+            reason: `${reasonCode}: ${note.trim()}`,
+            payload: { beforeShift: shift, afterData, reasonCode },
+          }
+        );
+
+        if (envelope) {
+          await submitApprovalRequest(envelope);
+          toast("Shift self-correction submitted to leadership for approval.", "info");
+          if (onSuccess) onSuccess();
+          onClose();
+          return;
+        }
+      }
 
       await adjustShiftWithAudit({
         shiftId: shift.id,

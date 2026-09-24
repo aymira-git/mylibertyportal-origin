@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useInstructorRoster } from "./useInstructorRoster";
-import { AIAssistant, DashboardShell } from "../shared";
+import { AIAssistant, DashboardShell, ApprovalInbox } from "../shared";
 import { KioskModal, KioskSidebarButton } from "../attendance";
 import { ClassPhotoShare, TeachingMaterial } from "../classes";
 import { ReportsDashboard } from "../reports";
@@ -14,7 +14,7 @@ import {
   uniqueClasses,
 } from "./instructor";
 
-export default function InstructorDashboard() {
+export default function InstructorDashboard({ role = "", branch = "" }) {
   const [activeTab, setActiveTab] = useState("overview");
   const isClassPhotoAction = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -40,9 +40,18 @@ export default function InstructorDashboard() {
     classes: rawClasses,
     students,
     instructorName,
+    instructorRole,
+    instructorBranch,
     loading,
     error,
   } = useInstructorRoster();
+
+  const effectiveRole = (role || instructorRole || "").toLowerCase().trim();
+  const effectiveBranch = branch || instructorBranch || "kota_gorontalo";
+  const isLeader =
+    effectiveRole === "instructorleader" ||
+    effectiveRole === "instructor_leader" ||
+    effectiveRole === "head_instructor";
   const classes = useMemo(() => uniqueClasses(rawClasses), [rawClasses]);
   const [allClasses, setAllClasses] = useState([]);
 
@@ -125,6 +134,22 @@ export default function InstructorDashboard() {
     },
     { id: "materials", label: "Lesson Materials", component: <TeachingMaterial /> },
     { id: "reports", label: "Reports", component: <ReportsDashboard /> },
+    ...(isLeader
+      ? [
+          {
+            id: "approvals",
+            label: "Academic Approvals",
+            component: (
+              <ApprovalInbox
+                userRole="instructor_leader"
+                branchId={effectiveBranch}
+                title="Academic & Faculty Approval Registry"
+                subtitle="Dual-control authorization queue for placement level overrides and substitute instructor assignments."
+              />
+            ),
+          },
+        ]
+      : []),
     { id: "ai", label: "AI Assistant", component: <AIAssistant /> },
   ];
 

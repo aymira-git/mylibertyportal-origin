@@ -9,6 +9,7 @@ import { KioskModal, KioskSidebarButton, CorporateEventsPanel } from "../attenda
 import { ClassManager, AvailableBatches } from "../classes";
 import { StaffDirectory, InvitesPanel, TasksPanel } from "../staff";
 import LogRetentionCard from "./LogRetentionCard";
+import BranchHealthAuditCard from "./BranchHealthAuditCard";
 import { TuitionDueWidget } from "./frontoffice";
 
 export default function AdminDashboard() {
@@ -158,6 +159,9 @@ export default function AdminDashboard() {
         onNavigateToClasses={() => handleTabChange("classes")}
       />
 
+      {/* Multi-Branch Isolation & Partition Health */}
+      <BranchHealthAuditCard />
+
       {/* Housekeeping & Free Tier Protection */}
       <LogRetentionCard />
     </div>
@@ -287,6 +291,7 @@ export default function AdminDashboard() {
           setFormData={setFormData}
           editId={editId}
           onSubmit={handleSave}
+          onSaveAndCollectPayment={() => {}}
         />
       ),
     },

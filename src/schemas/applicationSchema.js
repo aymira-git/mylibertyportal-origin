@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { normalizeBranch } from "../constants/branches.js";
+import { normalizeBranch, branchToId } from "../constants/branches.js";
 import { normalizeProgram } from "../constants/programs.js";
 import { divisionOfProgram } from "../constants/divisions.js";
 import { normalizeBatchType } from "../constants/batchTypes.js";
@@ -20,6 +20,7 @@ export const applicationSchema = z
       .trim()
       .optional()
       .transform((b) => normalizeBranch(b)),
+    branchId: z.string().trim().optional(),
     program: z.string().trim().optional().default(""),
     programId: z.string().trim().optional(),
     division: z.string().trim().optional(),
@@ -62,6 +63,7 @@ export const applicationSchema = z
       programId,
       division: divisionOfProgram(programId),
       batchType,
+      branchId: branchToId(data.branchId || data.branch),
     };
   });
 

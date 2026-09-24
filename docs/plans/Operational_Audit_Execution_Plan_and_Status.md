@@ -2,7 +2,7 @@
 
 > **Document Date:** September 24, 2026  
 > **Authority:** `AGENTS.md` → `docs/ARCHITECTURE.md` → Execution Brief (2026-09-24)  
-> **Test Status:** 45 test files passed (643 tests passing). 0 ESLint errors. Applet compiled.
+> **Test Status:** 48 test files passed (673 tests passing). 0 ESLint errors. Applet compiled.
 
 ---
 
@@ -18,8 +18,8 @@ This document records the exact status and architectural compliance of all 8 wor
 | **4** | **Parent & Student Information Portal** | **COMPLETED & LOCKED** | `ParentPortalPage.jsx`, `parentPortalRepository.js`. Public read-only routes (`/parent`, `/portal`, `/parent-portal`) with bounded student lookups (NIS / phone), level progression, and tuition status. Zero-cost direct WhatsApp integration (`wa.me/`) with no third-party SMS/messaging fees. |
 | **5** | **School Outreach Map vs. Digital Leads** | **ON HOLD (Untouched)** | Retained existing `/schoolOutreach` as-is. No code deleted or deprioritized, awaiting owner's lead-source data. Multi-branch scoping will be applied in Item 8. |
 | **6** | **Station Kiosk Split** | **COMPLETED & LOCKED** | `StandaloneKioskPage.jsx`, `src/App.jsx`. Route split into `/kiosk/staff` and `/kiosk/students` to eliminate lobby congestion on reception tablets. Backend Firestore schema unchanged. |
-| **8** | **Multi-Branch Data Isolation (`branchId`)** | **NEEDS DESIGN (Foundational)** | Requires formal architectural proposal and `firestore.rules` rewrite for branch-scoped roles (`manager`, `opslead`, `instructorleader`, `marketing`, `frontoffice`, `instructor`, `student`) across `users`, `payments`, `shifts`, `applications`, `deskInquiries`, and `schoolOutreach`. |
-| **7** | **Maker-Checker Dual-Control Approval Engine** | **FOUNDATION LOCKED (Blocked on #8)** | `src/features/shared/approvalGates.js`, `approvalGates.test.js`. Implements canonical registry, `blocking` vs. `logged` modes, Admin exemption, Admin staff-authority escalations, and the 3-tier self-correction ladder (`staff < opslead < manager < admin`). End-to-end `approverBranchId` routing and Firestore write-blocking will activate once Item 8 is deployed. |
+| **8** | **Multi-Branch Data Isolation (`branchId`)** | **COMPLETED & FULLY WIRED** | Phase 1 & 2 complete: Automated test matrix (`securityRulesMatrix.test.js`), hardened `firestore.rules` (cross-branch overwrite prevention, delete null-safety, invite spoofing prevention, shift branch isolation, class update isolation, 4-inbox approvals), schema & repository canonicalization across `batchSchema`, `applicationSchema`, `studentRecord`, `invitesRepository`, and bounded backfill migration tool in `BranchHealthAuditCard.jsx` / `branchAuditRepository.js`. |
+| **7** | **Maker-Checker Dual-Control Approval Engine** | **COMPLETED & FULLY WIRED** | `src/features/shared/approvalGates.js`, `approvalGates.test.js`, and `firestore.rules` operational with 4 inboxes (`admin`, `manager`, `instructor_leader`, `ops_lead`). Live dual-control inboxes wired into `AdminDashboard`, `ManagerDashboard`, `InstructorDashboard`, and `FrontOfficeDashboard`. Endpoints wired in `PaymentModal`, `shiftsRepository`, `ShiftAdjustmentModal`, `PlacementTestModal`, and `BatchModal`. |
 
 ---
 
@@ -57,13 +57,24 @@ This document records the exact status and architectural compliance of all 8 wor
 
 ---
 
-## 3. Plan for Multi-Branch Isolation (Item 8)
-
-Before activating `approverBranchId` and updating Firestore rules:
-1. **User Schema**: Standardize `branchId` field on `/users/{uid}` and in Auth token claims.
-2. **Document Partitioning**: Tag new records in `deskInquiries`, `applications`, `payments`, `shifts`, and `schoolOutreach` with `branchId`.
-3. **Firestore Security Rules**: Scope read/write permissions for `manager`, `opslead`, `instructorleader`, `marketing`, and `frontoffice` to `request.auth.token.branchId == resource.data.branchId`.
-4. **Admin Global View**: Ensure `isAdmin()` maintains cross-branch oversight without partition limits.
+## 3. Implementation Details: Multi-Branch Isolation (Item 8)
+ 
+Both phases of Multi-Branch Data Isolation are fully delivered and verified:
+1. **User Schema & Profiles**:
+   - `studentRecord.js` and `usersRepository.js` populate both `branchId` (canonical slug, e.g. `kota_gorontalo`, `limboto`) and `branch` (display name, e.g. `Kota Gorontalo`, `Limboto`).
+   - `StaffSignup.jsx` derives `branchId: branchToId(...)` when new staff register.
+   - `invitesRepository.js` writes canonical `branchId` to invite documents.
+2. **Document Partitioning & Schemas**:
+   - `batchSchema.js` normalizes `branchId: branchToId(data.branchId || data.branch)`.
+   - `applicationSchema.js` normalizes `branchId: branchToId(data.branchId || data.branch)`.
+   - `paymentSchema.js`, `deskInquirySchema.js`, and `schoolOutreachSchema.js` enforce both `branch` and `branchId`.
+3. **Firestore Security Rules**:
+   - Scoped `read`, `create`, `update`, `delete` permissions across `users`, `applications`, `payments`, `deskInquiries`, `classes`, `shifts`, and `schoolOutreach` via `isSameBranch(resource.data)` and `isSameBranch(request.resource.data)`.
+   - Hardened cross-branch move prevention: updating existing records requires both the current state and requested state to match the user's branch.
+   - Admin exemption: `isAdmin()` maintains cross-branch oversight without partition limits.
+4. **Bounded Backfill Migration Tooling**:
+   - `branchAuditRepository.js`: Implemented `migrateLegacyBranchBatch(collectionId, batchSize)` and `migrateAllLegacyCollections(batchSizePerCollection)`.
+   - `BranchHealthAuditCard.jsx`: Interactive UI allowing admins to trigger single-collection or all-collection bounded backfills with 1-click, real-time audit re-scan, and zero disruption to production operations.
 
 ---
 
