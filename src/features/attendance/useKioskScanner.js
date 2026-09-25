@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { getInstantPunctuality } from ".";
 import {
-  clockIn,
+  kioskClockInWithProof,
   clockOutShift,
   switchClassAtomic,
 } from "./shiftsRepository";
@@ -64,6 +64,16 @@ export function useKioskScanner({ studentsOnly = false, staffOnly = false } = {}
 
     if (!isEvent && !selectedClass) return;
 
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      showStatus(
+        "Kiosk Offline",
+        "error",
+        "Cannot clock in while offline. Please reconnect to branch Wi-Fi.",
+        pendingClockIn?.userData?.displayName || ""
+      );
+      return;
+    }
+
     try {
       const clockInAt = new Date();
       const isLeave = (pendingClockIn.userData.status || "active") === "on_leave";
@@ -71,13 +81,10 @@ export function useKioskScanner({ studentsOnly = false, staffOnly = false } = {}
 
       if (isEvent) {
         const event = pendingClockIn.matchedEvent;
-        await clockIn({
-          uid: pendingClockIn.uid,
-          displayName: name,
-          role: pendingClockIn.userData.role,
+        await kioskClockInWithProof({
+          badgeToken: pendingClockIn.uid,
           classId: `corporate_event:${event.id}`,
           className: event.name,
-          clockInAt,
           shiftType: "corporate_event",
           eventId: event.id,
           punctuality: {
@@ -107,13 +114,10 @@ export function useKioskScanner({ studentsOnly = false, staffOnly = false } = {}
 
       const punctuality = getInstantPunctuality(selectedClass, clockInAt);
 
-      await clockIn({
-        uid: pendingClockIn.uid,
-        displayName: name,
-        role: pendingClockIn.userData.role,
+      await kioskClockInWithProof({
+        badgeToken: pendingClockIn.uid,
         classId: selectedClass.id,
         className: selectedClass.className,
-        clockInAt,
         punctuality,
       });
 
@@ -208,6 +212,14 @@ export function useKioskScanner({ studentsOnly = false, staffOnly = false } = {}
       async (uid) => {
         scanner.clear();
         setKioskScanning(false);
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          showStatus(
+            "Kiosk Offline",
+            "error",
+            "Network required for attendance scanning. Reconnect to branch Wi-Fi."
+          );
+          return;
+        }
         try {
           await handleKioskScan(uid, {
             studentsOnly,

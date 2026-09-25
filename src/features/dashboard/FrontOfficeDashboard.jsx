@@ -36,7 +36,7 @@ import {
   UserCheck,
 } from "lucide-react";
 
-export default function FrontOfficeDashboard() {
+export default function FrontOfficeDashboard({ role = "frontoffice" }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [waPhone, setWaPhone] = useState("");
   const [paymentModalStudent, setPaymentModalStudent] = useState(null);
@@ -285,6 +285,15 @@ export default function FrontOfficeDashboard() {
     </div>
   );
 
+  const effectiveRole = (role || "").toLowerCase().trim();
+  const isLeader =
+    effectiveRole === "opslead" ||
+    effectiveRole === "ops_lead" ||
+    effectiveRole === "frontofficelead" ||
+    effectiveRole === "front_office_lead" ||
+    effectiveRole === "manager" ||
+    effectiveRole === "admin";
+
   const tabs = [
     { id: "overview", label: "Overview", component: overviewTab },
     {
@@ -370,18 +379,22 @@ export default function FrontOfficeDashboard() {
         />
       ),
     },
-    {
-      id: "approvals",
-      label: "Approvals",
-      component: (
-        <ApprovalInbox
-          userRole="frontoffice"
-          branchId={myBranch}
-          title="Front Desk Operational Approvals"
-          subtitle="Dual-control authorization requests for desk operations and instructor escalations."
-        />
-      ),
-    },
+    ...(isLeader
+      ? [
+          {
+            id: "approvals",
+            label: "Approvals",
+            component: (
+              <ApprovalInbox
+                userRole="ops_lead"
+                branchId={myBranch}
+                title="Front Desk Operational Approvals"
+                subtitle="Dual-control authorization requests for desk operations and instructor escalations."
+              />
+            ),
+          },
+        ]
+      : []),
     {
       id: "misc",
       label: "Tasks",

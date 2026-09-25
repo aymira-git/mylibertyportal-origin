@@ -186,7 +186,9 @@ service cloud.firestore {
         || (isFrontOffice()
           && isSameBranch(resource.data)
           && isSameBranch(request.resource.data)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['studentIds', 'enrollments', 'updatedAt']));
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['studentIds', 'enrollments', 'updatedAt'])
+          && (!('capacity' in resource.data) || request.resource.data.studentIds.size() <= resource.data.capacity)
+          && (!('maxStudents' in resource.data) || request.resource.data.studentIds.size() <= resource.data.maxStudents));
     }
 
     match /todos/{todoId} {
@@ -270,6 +272,9 @@ service cloud.firestore {
       // Staff scans: Admin and Front Office (reception kiosk station), for tracked roles only, new shifts start open
       allow create: if (isAdmin() || (isFrontOffice() && isSameBranch(request.resource.data)))
         && request.resource.data.userId is string
+        && request.resource.data.userId.size() > 0
+        && request.resource.data.clockIn is string
+        && request.resource.data.clockIn.size() > 0
         && request.resource.data.clockOut == null
         && isTrackedShiftRole(roleOf(request.resource.data.userId));
       // Shift clock-out and updates: Admin or Front Office (kiosk clock-out)
@@ -292,7 +297,11 @@ service cloud.firestore {
           && request.resource.data.appliedFromApproval is string
           && isApprovedShiftCorrection(shiftId, request.resource.data.appliedFromApproval)
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['clockIn', 'clockOut', 'corrected', 'reviewStatus', 'appliedFromApproval']));
+            .hasOnly(['clockIn', 'clockOut', 'corrected', 'reviewStatus', 'appliedFromApproval']))
+        // Front Office and Manager can mark a completed/closed shift as reviewed
+        || ((isFrontOffice() || isManager())
+          && isSameBranch(resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reviewStatus']));
       allow delete: if isAdmin();
     }
 
@@ -326,7 +335,7 @@ service cloud.firestore {
 
     match /staffLeave/{leaveId} {
       allow read: if isAdmin()
-        || isManager()
+        || (isManager() && isSameBranch(resource.data))
         || (signedIn() && resource.data.userId == request.auth.uid);
       allow create: if isAdmin()
         && request.resource.data.status == 'approved'
@@ -380,6 +389,21 @@ service cloud.firestore {
           && request.resource.data.contactRole is string;
         allow update, delete: if isAdmin();
       }
+    }
+
+    match /kioskDevices/{deviceId} {
+      allow read: if isAdmin()
+        || ((isFrontOffice() || isManager()) && isSameBranch(resource.data));
+      allow write: if false; // Provisioning and revocation managed server-side
+    }
+
+    match /kioskChallenges/{deviceId} {
+      allow read, write: if false; // Ephemeral challenge nonces strictly managed server-side
+    }
+
+    match /kioskAuditEvents/{eventId} {
+      allow read: if isAdmin() || isManager();
+      allow write: if false; // Append-only audit events created server-side
     }
 
     match /{document=**} {

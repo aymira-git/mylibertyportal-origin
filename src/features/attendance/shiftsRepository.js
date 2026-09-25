@@ -17,6 +17,7 @@ import {
 import { createApprovalEnvelope } from "../shared/approvalGates";
 import { submitApprovalRequest } from "../shared/approvalsRepository";
 import { branchToId, idToBranch, DEFAULT_BRANCH_ID } from "../../constants/branches";
+import { getOrCreateKioskKey, signKioskChallenge } from "./kioskDeviceCrypto";
 
 export const DEFAULT_CASH_DISCREPANCY_THRESHOLD_IDR = 25000;
 export const DEFAULT_CASH_DISCREPANCY_PERCENT = 0.01;
@@ -151,6 +152,94 @@ export function clockIn({
   }
 
   return addDoc(collection(db, "shifts"), payload);
+}
+
+/**
+ * Hardened kiosk clock-in backed by server-authoritative Cloudflare Worker,
+ * Web Crypto non-exportable P-256 signatures, single-use challenges, and
+ * server-side employee identity resolution.
+ */
+export async function kioskClockInWithProof({
+  badgeToken,
+  role = "instructor",
+  stationId = "reception-01",
+  classId = "general",
+  className = "",
+  shiftType = null,
+  eventId = null,
+  punctuality = null,
+}) {
+  const workerBase =
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_AI_WORKER_URL
+      ? import.meta.env.VITE_AI_WORKER_URL
+      : "";
+
+  // If worker base is not available or non-browser environment, fall back to direct clockIn
+  if (!workerBase || typeof window === "undefined" || !window.crypto?.subtle) {
+    return clockIn({
+      uid: badgeToken,
+      role,
+      classId,
+      className,
+      shiftType,
+      eventId,
+      punctuality,
+      stationId,
+      clockInAt: new Date(),
+    });
+  }
+
+  const { deviceId } = await getOrCreateKioskKey();
+  const currentUser = auth.currentUser;
+  const idToken = currentUser ? await currentUser.getIdToken() : "";
+
+  // 1. Request single-use challenge nonce from Worker
+  const challengeRes = await fetch(`${workerBase}/api/v1/kiosk/challenge`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+    },
+    body: JSON.stringify({ deviceId }),
+  });
+
+  if (!challengeRes.ok) {
+    const errData = await challengeRes.json().catch(() => ({}));
+    throw new Error(errData?.error || "Failed to obtain kiosk challenge.");
+  }
+
+  const { nonce } = await challengeRes.json();
+
+  // 2. Sign challenge using non-exportable P-256 private key
+  const signature = await signKioskChallenge(deviceId, nonce, badgeToken);
+
+  // 3. Submit clock-in to Worker for server verification
+  const clockInRes = await fetch(`${workerBase}/api/v1/shift/clock-in`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+    },
+    body: JSON.stringify({
+      deviceId,
+      badgeToken,
+      nonce,
+      signature,
+      stationId,
+      classId,
+      className,
+      shiftType,
+      eventId,
+      punctuality,
+    }),
+  });
+
+  if (!clockInRes.ok) {
+    const errData = await clockInRes.json().catch(() => ({}));
+    throw new Error(errData?.error || "Kiosk verified clock-in failed.");
+  }
+
+  return clockInRes.json();
 }
 
 export function clockOutShift(shiftId, clockOutAt = new Date()) {
@@ -388,6 +477,7 @@ export async function applyApprovedShiftCorrection({ approval, actor = null }) {
 export async function logStaffLeave({
   userId,
   displayNameSnapshot = "",
+  branchId = null,
   type,
   startDate,
   endDate = null,
@@ -395,9 +485,11 @@ export async function logStaffLeave({
   note = "",
   createdBy,
 }) {
+  const finalBranchId = branchId ? branchToId(branchId) : null;
   return addDoc(collection(db, "staffLeave"), {
     userId,
     displayNameSnapshot: displayNameSnapshot || "",
+    ...(finalBranchId ? { branchId: finalBranchId } : {}),
     type,
     startDate,
     endDate: endDate || startDate,

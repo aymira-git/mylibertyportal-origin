@@ -5,7 +5,7 @@ import { AIAssistant, DashboardShell, WelcomeBanner, ApprovalInbox } from "../sh
 import { UserPlus, GraduationCap, BookOpen, AlertCircle, ArrowRight } from "lucide-react";
 import { ReportsDashboard } from "../reports";
 import { StudentApplications, UserForm, StudentRoster, BadgeModal } from "../students";
-import { KioskModal, KioskSidebarButton, CorporateEventsPanel } from "../attendance";
+import { KioskModal, KioskSidebarButton, CorporateEventsPanel, KioskProvisioningPanel } from "../attendance";
 import { ClassManager, AvailableBatches } from "../classes";
 import { StaffDirectory, InvitesPanel, TasksPanel } from "../staff";
 import LogRetentionCard from "./LogRetentionCard";
@@ -258,6 +258,11 @@ export default function AdminDashboard() {
           subtitle="Dual-control operational authorization queue for sensitive transactions, discounts, cash discrepancy, and data overrides."
         />
       ),
+    },
+    {
+      id: "terminals",
+      label: "Kiosks",
+      component: <KioskProvisioningPanel onClose={() => handleTabChange("overview")} />,
     },
     {
       id: "reports",

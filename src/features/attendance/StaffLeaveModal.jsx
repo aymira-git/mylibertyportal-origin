@@ -44,6 +44,7 @@ export default function StaffLeaveModal({ staff = [], actor, onClose, onSuccess 
       await logStaffLeave({
         userId,
         displayNameSnapshot: selectedStaff?.displayName || selectedStaff?.name || "Staff Member",
+        branchId: selectedStaff?.branchId || actor?.branchId || null,
         type,
         startDate,
         endDate,

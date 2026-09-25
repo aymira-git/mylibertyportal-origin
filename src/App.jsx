@@ -441,7 +441,7 @@ function App() {
                 {division === "kindergarten" ? (
                   <KidsFrontOfficeDashboard />
                 ) : (
-                  <FrontOfficeDashboard />
+                  <FrontOfficeDashboard role={role} />
                 )}
               </ErrorBoundary>
             )}

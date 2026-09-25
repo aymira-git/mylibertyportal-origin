@@ -88,6 +88,18 @@ function onFormSubmit(e) {
     application[firestoreField] = answer ? answer[0] : "";
   }
 
+  // Normalize branch to standard branchId so branch-isolated admissions views display it
+  const rawBranch = String(application.branch || "").toLowerCase();
+  let branchId = "kota_gorontalo";
+  if (rawBranch.includes("bone")) {
+    branchId = "bone_bolango";
+  } else if (rawBranch.includes("pohuwato")) {
+    branchId = "pohuwato";
+  } else if (rawBranch.includes("limboto")) {
+    branchId = "limboto";
+  }
+  application.branchId = branchId;
+
   const token = getAccessToken_();
   const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/applications`;
 

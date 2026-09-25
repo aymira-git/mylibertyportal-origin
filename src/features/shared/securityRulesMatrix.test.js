@@ -461,4 +461,93 @@ describe("Security Rules Matrix & Branch Isolation", () => {
       );
     });
   });
+
+  describe("Staff Leave Branch Read Isolation", () => {
+    function canReadStaffLeave(leaveDoc, user) {
+      if (isAdmin(user)) return true;
+      if (isManager(user) && isSameBranch(leaveDoc, user)) return true;
+      if (user && leaveDoc && leaveDoc.userId === user.uid) return true;
+      return false;
+    }
+
+    const leaveKota = { id: "lv_1", userId: "ins_gtlo", branchId: "kota_gorontalo" };
+    const leaveBoba = { id: "lv_2", userId: "ins_boba", branchId: "bone_bolango" };
+
+    it("allows managers to read leave records only within their branch", () => {
+      expect(canReadStaffLeave(leaveKota, managerGorontalo)).toBe(true);
+      expect(canReadStaffLeave(leaveBoba, managerGorontalo)).toBe(false);
+      expect(canReadStaffLeave(leaveBoba, managerBoneBolango)).toBe(true);
+      expect(canReadStaffLeave(leaveKota, managerBoneBolango)).toBe(false);
+    });
+
+    it("allows staff members to read their own leave regardless of branch", () => {
+      expect(canReadStaffLeave(leaveKota, instructorGorontalo)).toBe(true);
+      expect(canReadStaffLeave(leaveBoba, instructorGorontalo)).toBe(false);
+    });
+
+    it("grants Admin global read access to all staff leave", () => {
+      expect(canReadStaffLeave(leaveKota, adminUser)).toBe(true);
+      expect(canReadStaffLeave(leaveBoba, adminUser)).toBe(true);
+    });
+  });
+
+  describe("Class Capacity Rule Invariant", () => {
+    function canUpdateClass(existing, incoming, user) {
+      if (isAdmin(user)) return true;
+      if (!isFrontOffice(user)) return false;
+      if (!isSameBranch(existing, user) || !isSameBranch(incoming, user)) return false;
+      if (existing.capacity != null && incoming.studentIds.length > existing.capacity) return false;
+      if (existing.maxStudents != null && incoming.studentIds.length > existing.maxStudents) return false;
+      return true;
+    }
+
+    const cls = { id: "c_1", branchId: "kota_gorontalo", capacity: 10, studentIds: ["s1", "s2"] };
+
+    it("allows enrollment updates within capacity limit", () => {
+      const incoming = { ...cls, studentIds: ["s1", "s2", "s3"] };
+      expect(canUpdateClass(cls, incoming, foGorontalo)).toBe(true);
+    });
+
+    it("rejects enrollment updates exceeding class capacity", () => {
+      const fullStudentList = Array.from({ length: 11 }, (_, i) => `s_${i}`);
+      const incoming = { ...cls, studentIds: fullStudentList };
+      expect(canUpdateClass(cls, incoming, foGorontalo)).toBe(false);
+    });
+  });
+
+  describe("Shift Review Status Updates", () => {
+    function canReviewShift(existing, incoming, user) {
+      if (isAdmin(user)) return true;
+      if ((isFrontOffice(user) || isManager(user)) && isSameBranch(existing, user)) {
+        const diffKeys = Object.keys(incoming).filter((k) => existing[k] !== incoming[k]);
+        return diffKeys.length === 1 && diffKeys[0] === "reviewStatus";
+      }
+      return false;
+    }
+
+    const closedShift = {
+      id: "sh_closed",
+      userId: "ins_gtlo",
+      branchId: "kota_gorontalo",
+      clockIn: "2026-09-25T01:00:00.000Z",
+      clockOut: "2026-09-25T03:00:00.000Z",
+    };
+
+    it("allows Front Office and Manager of the same branch to mark closed shift reviewed", () => {
+      const updated = { ...closedShift, reviewStatus: "reviewed" };
+      expect(canReviewShift(closedShift, updated, foGorontalo)).toBe(true);
+      expect(canReviewShift(closedShift, updated, managerGorontalo)).toBe(true);
+    });
+
+    it("blocks cross-branch staff from marking shift reviewed", () => {
+      const updated = { ...closedShift, reviewStatus: "reviewed" };
+      expect(canReviewShift(closedShift, updated, foBoneBolango)).toBe(false);
+      expect(canReviewShift(closedShift, updated, managerBoneBolango)).toBe(false);
+    });
+
+    it("rejects modifying other fields under the reviewStatus permission", () => {
+      const tampered = { ...closedShift, reviewStatus: "reviewed", clockOut: "2026-09-25T05:00:00.000Z" };
+      expect(canReviewShift(closedShift, tampered, foGorontalo)).toBe(false);
+    });
+  });
 });
