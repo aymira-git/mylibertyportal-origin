@@ -43,7 +43,7 @@ export default function DashboardShell({
       {/* Desktop & Tablet: Grouped Sidebar with Refined Lucide Icons & Active Brand Pill */}
       <div className="hidden md:flex md:flex-row gap-5 lg:gap-6 items-start w-full">
         {/* Modern School Management Sidebar */}
-        <aside className="w-56 lg:w-60 shrink-0 bg-gradient-to-br from-[#1a3a8f] via-[#152e74] to-indigo-950 text-white rounded-2xl border border-indigo-800/40 p-3 shadow-md flex flex-col gap-3 sticky top-5 self-start">
+        <aside className="w-64 lg:w-72 shrink-0 bg-gradient-to-br from-[#1a3a8f] via-[#152e74] to-indigo-950 text-white rounded-2xl border border-indigo-800/40 p-3.5 shadow-md flex flex-col gap-3.5 sticky top-5 self-start">
           {/* Header Identity & Quick Action */}
           <div>
             {title && (
@@ -57,7 +57,9 @@ export default function DashboardShell({
                 </p>
               </div>
             )}
-            {extraSidebarContent && <div className="mt-1">{extraSidebarContent}</div>}
+            {extraSidebarContent && (
+              <div className="mt-1.5 mb-0.5">{extraSidebarContent}</div>
+            )}
           </div>
 
           {/* Grouped Navigation */}

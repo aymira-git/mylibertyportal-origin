@@ -391,6 +391,7 @@ export default function FrontOfficeDashboard() {
           todos={todos}
           users={users}
           currentUser={auth.currentUser}
+          userRole="frontoffice"
           onAddTodo={handleAddTodo}
           onDeleteTodo={handleDeleteTodo}
           onToggleTodo={handleToggleTodo}

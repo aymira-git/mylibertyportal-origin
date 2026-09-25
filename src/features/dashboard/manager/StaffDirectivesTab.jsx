@@ -79,6 +79,7 @@ export function StaffDirectivesTab({
         todos={todos}
         users={users}
         currentUser={currentUser}
+        userRole="manager"
         onAddTodo={onAddTodo}
         onDeleteTodo={onDeleteTodo}
         onToggleTodo={onToggleTodo}

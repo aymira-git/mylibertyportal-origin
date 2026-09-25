@@ -347,6 +347,7 @@ export default function KidsFrontOfficeDashboard() {
           todos={todos}
           users={users}
           currentUser={auth.currentUser}
+          userRole="frontoffice"
           onAddTodo={handleAddTodo}
           onDeleteTodo={handleDeleteTodo}
           onToggleTodo={handleToggleTodo}

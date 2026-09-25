@@ -387,12 +387,19 @@ export function useDashboardData({
   };
 
   const handleAddTodo = async (todoData) => {
+    const isDirective = todoData?.type === "directive";
     try {
       await createTodo(todoData);
-      toast("Directive issued successfully.", "success");
+      toast(
+        isDirective ? "Directive issued successfully." : "Task created successfully.",
+        "success"
+      );
       return true;
     } catch (err) {
-      toast("Failed to issue directive: " + err.message, "error");
+      toast(
+        `Failed to create ${isDirective ? "directive" : "task"}: ` + err.message,
+        "error"
+      );
       return false;
     }
   };
@@ -401,16 +408,16 @@ export function useDashboardData({
     try {
       await toggleTodoComplete(todoId, completed, auth.currentUser);
     } catch (err) {
-      toast("Error updating directive: " + err.message, "error");
+      toast("Error updating task: " + err.message, "error");
     }
   };
 
   const handleDeleteTodo = async (todoId) => {
     try {
       await deleteTodo(todoId);
-      toast("Directive deleted.", "info");
+      toast("Task deleted.", "info");
     } catch (err) {
-      toast("Error deleting directive: " + err.message, "error");
+      toast("Error deleting task: " + err.message, "error");
     }
   };
 

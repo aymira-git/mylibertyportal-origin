@@ -8,6 +8,7 @@ export default function TasksPanel({
   todos = [],
   users = [],
   currentUser = null,
+  userRole = "manager",
   onAddTodo,
   onDeleteTodo,
   onToggleTodo,
@@ -15,9 +16,15 @@ export default function TasksPanel({
   const confirm = useConfirm();
   const toast = useToast();
 
+  const isManagerOrAdmin =
+    userRole === "manager" ||
+    userRole === "admin" ||
+    userRole === "director" ||
+    userRole === "owner";
+
   // Form State
   const [newText, setNewText] = useState("");
-  const [newType, setNewType] = useState("directive");
+  const [newType, setNewType] = useState(() => (isManagerOrAdmin ? "directive" : "task"));
   const [newPriority, setNewPriority] = useState("normal");
   const [newAssigneeValue, setNewAssigneeValue] = useState("all");
   const [newDueDate, setNewDueDate] = useState("");
@@ -70,19 +77,25 @@ export default function TasksPanel({
         assigneeType,
         assigneeName,
         dueDate: newDueDate || null,
-        isPinned: newPinned,
+        isPinned: isManagerOrAdmin ? newPinned : false,
         createdBy: currentUser?.uid || null,
-        createdByName: currentUser?.displayName || currentUser?.email || "Leadership",
+        createdByName:
+          currentUser?.displayName ||
+          currentUser?.email ||
+          (isManagerOrAdmin ? "Leadership" : "Front Desk"),
       });
 
       setNewText("");
-      setNewType("directive");
+      setNewType(isManagerOrAdmin ? "directive" : "task");
       setNewPriority("normal");
       setNewAssigneeValue("all");
       setNewDueDate("");
       setNewPinned(false);
     } catch (err) {
-      toast("Failed to create directive: " + err.message, "error");
+      toast(
+        `Failed to create ${isManagerOrAdmin ? "directive" : "task"}: ` + err.message,
+        "error"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -93,18 +106,19 @@ export default function TasksPanel({
       try {
         await onToggleTodo(t.id, !t.completed);
       } catch (err) {
-        toast("Error updating directive: " + err.message, "error");
+        toast("Error updating task: " + err.message, "error");
       }
     }
   };
 
   const handleDelete = async (t) => {
-    const prompt = `Delete directive: "${t.text}"?`;
+    const itemLabel = t.type === "directive" ? "directive" : "task";
+    const prompt = `Delete ${itemLabel}: "${t.text}"?`;
     if (!(await confirm(prompt))) return;
     try {
       await onDeleteTodo(t.id);
     } catch (err) {
-      toast("Error deleting directive: " + err.message, "error");
+      toast(`Error deleting ${itemLabel}: ` + err.message, "error");
     }
   };
 
@@ -165,7 +179,7 @@ export default function TasksPanel({
                 key={t.id}
                 t={t}
                 onToggle={onToggleTodo ? handleToggle : null}
-                onDelete={handleDelete}
+                onDelete={isManagerOrAdmin ? handleDelete : null}
               />
             ))}
           </div>
@@ -179,21 +193,27 @@ export default function TasksPanel({
           <div>
             <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
               <Plus className="w-4 h-4 text-[#1a3a8f]" />
-              <span>Issue New Directive</span>
+              <span>{isManagerOrAdmin ? "Issue New Directive" : "Create New Task"}</span>
             </h3>
             <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
-              Create an operational task or mandate for your team.
+              {isManagerOrAdmin
+                ? "Create an operational task or mandate for your team."
+                : "Create an operational task or reminder for desk operations."}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
-                Directive / Task Description *
+                {isManagerOrAdmin ? "Directive / Task Description *" : "Task Description *"}
               </label>
               <textarea
                 rows={3}
-                placeholder="e.g., Submit CEFR progress reports by Friday 5 PM..."
+                placeholder={
+                  isManagerOrAdmin
+                    ? "e.g., Submit CEFR progress reports by Friday 5 PM..."
+                    : "e.g., Follow up on student placement test documents..."
+                }
                 value={newText}
                 onChange={(e) => setNewText(e.target.value)}
                 className="w-full p-3 border border-slate-200 rounded-2xl text-xs focus:ring-2 focus:ring-[#1a3a8f]/20 focus:border-[#1a3a8f] outline-none"
@@ -211,7 +231,7 @@ export default function TasksPanel({
                   onChange={(e) => setNewType(e.target.value)}
                   className="w-full min-h-11 px-2.5 py-1.5 border border-slate-200 rounded-xl bg-white font-semibold text-xs text-slate-700"
                 >
-                  <option value="directive">Directive</option>
+                  {isManagerOrAdmin && <option value="directive">Directive</option>}
                   <option value="task">Task</option>
                   <option value="deadline">Deadline</option>
                   <option value="appointment">Appointment</option>
@@ -236,7 +256,7 @@ export default function TasksPanel({
 
             <div>
               <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
-                Assign Directive To *
+                {isManagerOrAdmin ? "Assign Directive To *" : "Assign Task To *"}
               </label>
               <select
                 value={newAssigneeValue}
@@ -274,23 +294,29 @@ export default function TasksPanel({
               />
             </div>
 
-            <label className="flex items-center gap-2 p-2.5 rounded-xl bg-yellow-50/70 border border-yellow-200 font-bold text-xs text-amber-900 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={newPinned}
-                onChange={(e) => setNewPinned(e.target.checked)}
-                className="w-4 h-4 text-amber-600 rounded"
-              />
-              <Pin className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-              <span>Pin to Leadership Corkboard</span>
-            </label>
+            {isManagerOrAdmin && (
+              <label className="flex items-center gap-2 p-2.5 rounded-xl bg-yellow-50/70 border border-yellow-200 font-bold text-xs text-amber-900 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newPinned}
+                  onChange={(e) => setNewPinned(e.target.checked)}
+                  className="w-4 h-4 text-amber-600 rounded"
+                />
+                <Pin className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+                <span>Pin to Leadership Corkboard</span>
+              </label>
+            )}
 
             <button
               type="submit"
               disabled={submitting || !newText.trim()}
               className="w-full min-h-12 bg-[#1a3a8f] hover:bg-[#122b6e] text-white p-3 rounded-2xl font-black text-xs shadow-xs active:scale-[0.98] transition disabled:opacity-50 cursor-pointer"
             >
-              {submitting ? "Publishing..." : "Issue Directive"}
+              {submitting
+                ? "Saving..."
+                : isManagerOrAdmin
+                  ? "Issue Directive"
+                  : "Create Task"}
             </button>
           </form>
         </div>
@@ -305,7 +331,11 @@ export default function TasksPanel({
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search directives, staff names, or issuers..."
+                  placeholder={
+                    isManagerOrAdmin
+                      ? "Search directives, staff names, or issuers..."
+                      : "Search tasks, staff names, or creators..."
+                  }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9.5 pr-3 py-2 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 outline-none focus:border-[#1a3a8f]"
@@ -396,11 +426,17 @@ export default function TasksPanel({
             {filteredTodos.length === 0 ? (
               <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-300 text-center space-y-2">
                 <p className="text-3xl">📋</p>
-                <p className="text-sm font-extrabold text-slate-700">No directives found</p>
+                <p className="text-sm font-extrabold text-slate-700">
+                  {isManagerOrAdmin ? "No directives found" : "No tasks found"}
+                </p>
                 <p className="text-xs text-slate-400">
                   {todos.length === 0
-                    ? "No directives created yet. Use the form on the left to issue your first order."
-                    : "No directives match your selected filters."}
+                    ? isManagerOrAdmin
+                      ? "No directives created yet. Use the form on the left to issue your first order."
+                      : "No tasks created yet. Use the form on the left to create your first task."
+                    : isManagerOrAdmin
+                      ? "No directives match your selected filters."
+                      : "No tasks match your selected filters."}
                 </p>
               </div>
             ) : (

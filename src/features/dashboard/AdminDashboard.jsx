@@ -272,6 +272,7 @@ export default function AdminDashboard() {
           todos={todos}
           users={users}
           currentUser={auth.currentUser}
+          userRole="admin"
           onAddTodo={handleAddTodo}
           onDeleteTodo={handleDeleteTodo}
           onToggleTodo={handleToggleTodo}
