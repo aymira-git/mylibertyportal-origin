@@ -19,9 +19,13 @@ import { branchToId, idToBranch, DEFAULT_BRANCH_ID } from "../../constants/branc
  * All direct Firestore reads/writes for payments live here.
  */
 
-export async function fetchPaymentHistory(studentId) {
+export async function fetchPaymentHistory(studentId, branchId = null) {
   const validStudentId = studentIdSchema.parse(studentId);
-  const q = query(collection(db, "payments"), where("studentId", "==", validStudentId));
+  const constraints = [where("studentId", "==", validStudentId)];
+  if (branchId) {
+    constraints.push(where("branchId", "==", branchId));
+  }
+  const q = query(collection(db, "payments"), ...constraints);
   const snap = await getDocs(q);
   const list = snap.docs.map((d) => /** @type {any} */ ({ id: d.id, ...d.data() }));
   list.sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime());

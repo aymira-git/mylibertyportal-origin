@@ -4,6 +4,7 @@ import { formatIDR, buildWhatsAppReceiptMessage, normalizeWhatsAppNumber } from 
 import { PaymentModal } from "../../finance";
 import FrontDeskCashReconcile from "./FrontDeskCashReconcile";
 import { useToast } from "../../shared";
+import { branchToId } from "../../../constants/branches";
 import {
   CreditCard,
   PlusCircle,
@@ -38,10 +39,12 @@ export default function PaymentCashierTab({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState("");
 
+  const cashierBranchId = branchToId(branchLabel || "");
+
   const loadPayments = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await getRecentPayments(50);
+      const list = await getRecentPayments(50, cashierBranchId);
       setPayments(list);
     } catch (err) {
       console.error("Failed to load recent payments:", err);
@@ -49,11 +52,11 @@ export default function PaymentCashierTab({
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, cashierBranchId]);
 
   useEffect(() => {
     let active = true;
-    getRecentPayments(50)
+    getRecentPayments(50, cashierBranchId)
       .then((list) => {
         if (active) {
           setPayments(list);
@@ -71,7 +74,7 @@ export default function PaymentCashierTab({
     return () => {
       active = false;
     };
-  }, [toast]);
+  }, [toast, cashierBranchId]);
 
   const filteredPayments = useMemo(() => {
     return payments.filter((p) => {

@@ -15,6 +15,7 @@ import {
 } from "../shared";
 import { normalizeWhatsAppNumber, buildWhatsAppReceiptMessage } from "./receiptMessages";
 import { fetchPaymentHistory, recordPayment, markPaymentPending } from "./paymentsRepository";
+import { branchToId } from "../../constants/branches";
 import RecordPaymentTab from "./RecordPaymentTab";
 import PaymentHistoryTab from "./PaymentHistoryTab";
 import DigitalReceiptTab from "./DigitalReceiptTab";
@@ -30,6 +31,7 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
   const [activeTab, setActiveTab] = useState("record"); // "record" | "history" | "receipt"
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  const studentBranchId = student.branchId || branchToId(student.branch || "");
   const existingHealth = getPaymentHealthStatus(student.paidUntil);
   const hasFutureCoverage =
     existingHealth.status === "active" || existingHealth.status === "due_soon";
@@ -97,7 +99,7 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
   const refreshHistory = async () => {
     if (!student?.id) return;
     try {
-      setHistory(await fetchPaymentHistory(student.id));
+      setHistory(await fetchPaymentHistory(student.id, studentBranchId));
     } catch (err) {
       console.error("Failed to load payment history:", err);
     }
@@ -108,7 +110,7 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
     const studentId = student?.id;
     if (!studentId) return;
 
-    fetchPaymentHistory(studentId)
+    fetchPaymentHistory(studentId, studentBranchId)
       .then((list) => {
         if (!ignore) setHistory(list);
       })
@@ -122,7 +124,7 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
     return () => {
       ignore = true;
     };
-  }, [student?.id]);
+  }, [student?.id, studentBranchId]);
 
   const handleRecordPayment = async (e) => {
     e.preventDefault();
@@ -172,6 +174,7 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
         studentName: student.displayName || "Student",
         parentName: student.parentName || "",
         parentPhone: student.parentPhone || student.phone || "",
+        branchId: studentBranchId,
         amount: Number(amount),
         period: finalPeriod,
         planId: selectedPlan,

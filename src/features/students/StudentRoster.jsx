@@ -17,6 +17,7 @@ import {
 import { fetchPendingPromotions, promoteStudentLevel } from "./progressReportsRepository";
 import { updateStudentStatus, checkStudentHasHistory } from "../dashboard/usersRepository";
 import { removeStudentFromClass } from "../classes/classesRepository";
+import { branchToId } from "../../constants/branches";
 import { isActiveStudent, STUDENT_STATUS_MAP } from "./studentRecord";
 import { getStudentPlanLabel } from "./studentRosterBadges";
 import StudentRosterFilters from "./StudentRosterFilters";
@@ -109,7 +110,8 @@ export default function StudentRoster({
 
     try {
       const { hasPayments, hasAttendance, hasReports, error } = await checkStudentHasHistory(
-        student.id
+        student.id,
+        student.branchId || branchToId(student.branch || "")
       );
       if (error) {
         toast(

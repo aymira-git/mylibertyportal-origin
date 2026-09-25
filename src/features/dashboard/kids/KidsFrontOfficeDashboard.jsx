@@ -268,7 +268,7 @@ export default function KidsFrontOfficeDashboard() {
       component: (
         <PaymentCashierTab
           students={students}
-          branchLabel="Kota Gorontalo (Kids)"
+          branchLabel="Kota Gorontalo"
         />
       ),
     },

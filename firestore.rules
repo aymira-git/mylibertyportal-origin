@@ -52,6 +52,24 @@ service cloud.firestore {
       ));
     }
 
+    // For `list` only: isSameBranch's no-branch-fields -> kota_gorontalo fallback
+    // is unsound there. List rules are evaluated against a synthetic document
+    // built from the query's where clauses, so a query with no branch filter
+    // produces a fieldless synthetic doc that the fallback treats as Kota
+    // Gorontalo — letting Kota Gorontalo staff list every branch's documents.
+    // get/update/delete keep the lenient form so legacy branchless docs stay
+    // readable/writable to Kota Gorontalo staff.
+    function isSameBranchStrict(data) {
+      return (data != null && 'branchId' in data && data.branchId == userBranch())
+        || (data != null && !('branchId' in data) && 'branch' in data && (
+          (data.branch == 'Bone Bolango' && userBranch() == 'bone_bolango') ||
+          (data.branch == 'Pohuwato' && userBranch() == 'pohuwato') ||
+          (data.branch == 'Limboto' && userBranch() == 'limboto') ||
+          (data.branch == 'Cabang Utama' && userBranch() == 'kota_gorontalo') ||
+          (data.branch == 'Kota Gorontalo' && userBranch() == 'kota_gorontalo')
+        ));
+    }
+
     function isApproverForDoc(data) {
       let targetRole = data != null && 'approverRole' in data ? data.approverRole : 'manager';
       let roleMatches = (targetRole == 'admin' && isAdmin())
@@ -200,7 +218,7 @@ service cloud.firestore {
 
     match /payments/{paymentId} {
       allow get: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data)) || (signedIn() && resource.data.studentId == request.auth.uid);
-      allow list: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranch(resource.data));
+      allow list: if isAdmin() || ((isManager() || isFrontOffice()) && isSameBranchStrict(resource.data));
       allow create: if isAdmin() || (isFrontOffice() && isSameBranch(request.resource.data));
       allow update: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data) && isSameBranch(request.resource.data) && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId));
       allow delete: if isAdmin() || (isFrontOffice() && isSameBranch(resource.data));

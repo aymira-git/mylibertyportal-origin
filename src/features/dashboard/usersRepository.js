@@ -98,11 +98,12 @@ export async function checkStaffHasAttendanceHistory(uid) {
  * Used as an async guardrail before hard-deleting a student profile.
  * Fails closed on query errors to prevent accidental data loss.
  */
-export async function checkStudentHasHistory(uid) {
+export async function checkStudentHasHistory(uid, branchId = null) {
   if (!uid) return { hasPayments: false, hasAttendance: false, hasReports: false, error: null };
   try {
     const paymentsQuery = query(
       collection(db, "payments"),
+      ...(branchId ? [where("branchId", "==", branchId)] : []),
       where("studentId", "==", uid),
       limit(1)
     );
