@@ -196,6 +196,7 @@ export default function AdminDashboard() {
           handleEdit={handleEdit}
           handleDelete={handleDelete}
           handleAddStudent={handleAddStudent}
+          isAdmin={true}
         />
       ),
     },

@@ -107,4 +107,65 @@ Coder delivered and verified both Phase 1 (Safety Net & Rules Hardening) and Pha
    - **ESLint**: 0 errors, 0 warnings.
    - **Vite build**: Applet compiled cleanly with zero compilation errors.
 
+---
+
+## 2026-09-25 — H5 (Payment Discount Approval Gate) — Partial Fix by Claude (chat), coding agent unavailable (quota)
+
+Context: the coding agent hit its daily quota mid-session while working through
+`docs/audits/2026-09-25-full-architecture-audit.md`. C1–C4 and the student-status
+allow-list fix were confirmed already shipped (rules + repository code checked
+against the audit's exact evidence lines, all match the recommended fix). H5
+("Blocking" approval gates never block — `PaymentModal.jsx` records the discount
+first and fires the manager-approval request fire-and-forget) was still open.
+
+**What changed** (`src/schemas/paymentSchema.js`, `src/features/finance/PaymentModal.jsx`,
+`PaymentHistoryTab.jsx`, `DigitalReceiptTab.jsx`):
+- The payment record now carries `approvalStatus: "pending"` when it includes a
+  discount, so the unreviewed state is visible in payment history and on the
+  receipt (small amber badge), not just buried in a background approval doc.
+- `submitApprovalRequest` is now awaited with a visible failure path (toast
+  warning telling front office to notify a manager directly) instead of
+  `.catch(console.warn)` silently swallowing errors.
+- **Not done**: the payment itself is still recorded immediately, before
+  approval — money has already changed hands at the front desk by the time
+  this code runs, so refusing to save the payment isn't a safe option. This is
+  a "make the pending state visible + don't lose approval failures silently"
+  fix, not a true pre-commit block. If a hard block is actually wanted (e.g.
+  hold the receipt until a manager approves), that's a bigger redesign and
+  should be scoped separately — open for debate, not decided here.
+- **Also not done**: `createApprovalEnvelope` is called with `role: "frontoffice"`
+  hardcoded in `PaymentModal.jsx`, regardless of who's actually recording the
+  payment, so an admin's discount would still (redundantly, harmlessly) create
+  an approval request. Fixing this needs the logged-in user's role threaded
+  down as a prop from `App.jsx` through `StudentRoster.jsx` /
+  `PaymentCashierTab.jsx` — deferred as a separate, larger change.
+- Verified: all four edited files parse cleanly (Babel parser). Vitest could not
+  be run in this environment (no `node_modules`), so the coding agent should
+  run the existing finance/payments test suite before treating this as done.
+
+### Follow-up, same session: admin exemption fixed
+
+Turned out the full role-threading wasn't needed — `DISCOUNT_OR_REFUND`'s
+approver is always Branch Manager regardless of which non-admin role is
+requesting it, so the only distinction that actually matters to
+`createApprovalEnvelope` is admin vs. not-admin. `PaymentModal` is only ever
+reachable by an actual admin through one path:
+`AdminDashboard → StudentRoster → PaymentModal`. So:
+- `PaymentModal` now takes an `isAdmin` prop (default `false`) and passes
+  `role: isAdmin ? "admin" : "frontoffice"` into `createApprovalEnvelope` —
+  admins are now correctly exempted (the envelope comes back `null`, no
+  approval request, no `approvalStatus: "pending"` on the payment).
+- `StudentRoster` takes the same `isAdmin` prop (default `false`) and forwards
+  it to `PaymentModal`.
+- `AdminDashboard` passes `isAdmin={true}` on its `<StudentRoster>` — the only
+  place that should.
+- The other three `StudentRoster`/`PaymentModal` call sites
+  (`FrontOfficeDashboard`, `KidsFrontOfficeDashboard`,
+  `InstructorClasses`, `PaymentCashierTab`) are never reachable by an admin
+  per `App.jsx`'s role router, so they correctly default to `isAdmin=false`
+  and needed no change.
+- Verified: all three touched files (`PaymentModal.jsx`, `StudentRoster.jsx`,
+  `AdminDashboard.jsx`) parse cleanly. Not run through the test suite — same
+  caveat as above.
+
 

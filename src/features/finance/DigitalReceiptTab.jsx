@@ -28,6 +28,11 @@ export default function DigitalReceiptTab({ activeReceipt, onSendWhatsApp, onPri
             <span className="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full font-black text-[10px] uppercase">
               Official Receipt
             </span>
+            {activeReceipt.approvalStatus === "pending" && (
+              <p className="text-[10px] text-amber-700 font-bold mt-1">
+                ⏳ Discount pending manager review
+              </p>
+            )}
             <p className="text-[11px] text-slate-400 font-mono mt-1">
               {activeReceipt.receiptNumber || "REC-ONLINE"}
             </p>

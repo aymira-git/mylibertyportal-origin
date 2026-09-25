@@ -37,6 +37,7 @@ export default function StudentRoster({
   handleAddStudent = null,
   readOnly = false,
   canEditStatus = true,
+  isAdmin = false,
 }) {
   const toast = useToast();
   const confirm = useConfirm();
@@ -461,6 +462,7 @@ export default function StudentRoster({
         <PaymentModal
           student={students.find((s) => s.id === paymentStudent.id) || paymentStudent}
           onClose={() => setPaymentStudent(null)}
+          isAdmin={isAdmin}
         />
       )}
 

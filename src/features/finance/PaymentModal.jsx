@@ -25,7 +25,7 @@ function getDefaultPeriod() {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-export default function PaymentModal({ student, onClose, onPaymentUpdated = null }) {
+export default function PaymentModal({ student, onClose, onPaymentUpdated = null, isAdmin = false }) {
   const toast = useToast();
   const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("record"); // "record" | "history" | "receipt"
@@ -191,16 +191,15 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
         recordedBy: auth.currentUser?.email || "Staff",
       };
 
-      const savedPayment = await recordPayment(student.id, paymentRecord);
-
+      let discountEnvelope = null;
       if (discountAmount && discountAmount > 0) {
         const currentUser = auth.currentUser;
-        const envelope = createApprovalEnvelope(
+        discountEnvelope = createApprovalEnvelope(
           "DISCOUNT_OR_REFUND",
           {
             name: currentUser?.displayName || currentUser?.email || "Staff",
             uid: currentUser?.uid,
-            role: "frontoffice",
+            role: isAdmin ? "admin" : "frontoffice",
             branchId: student.branchId || student.branch,
           },
           {
@@ -213,8 +212,27 @@ export default function PaymentModal({ student, onClose, onPaymentUpdated = null
             reason: notes.trim() || `Fee discount of IDR ${discountAmount.toLocaleString("id-ID")}`,
           }
         );
-        if (envelope) {
-          submitApprovalRequest(envelope).catch(console.warn);
+        if (discountEnvelope) {
+          // Flag the payment itself as carrying an unreviewed discount so
+          // payment history, reports, and the receipt can show that the
+          // discount still needs manager sign-off. We still record the
+          // payment now (the cash/transfer already happened) — see the
+          // reasoning note in docs/plans/myliberty-audit-log.md.
+          paymentRecord.approvalStatus = "pending";
+        }
+      }
+
+      const savedPayment = await recordPayment(student.id, paymentRecord);
+
+      if (discountEnvelope) {
+        try {
+          await submitApprovalRequest(discountEnvelope);
+        } catch (approvalErr) {
+          console.error("Failed to submit discount approval request:", approvalErr);
+          toast(
+            "Payment saved, but the manager approval request for this discount could not be sent. Please notify a manager directly so it gets reviewed.",
+            "warning"
+          );
         }
       }
 

@@ -44,6 +44,11 @@ export default function PaymentHistoryTab({
                   {h.planName}
                 </span>
               )}
+              {h.approvalStatus === "pending" && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                  ⏳ Discount Pending Manager Review
+                </span>
+              )}
             </div>
             <p className="font-semibold text-slate-700">Period: {h.period}</p>
             <p className="text-[11px] text-slate-400">
