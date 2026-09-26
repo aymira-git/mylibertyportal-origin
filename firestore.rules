@@ -114,6 +114,48 @@ service cloud.firestore {
         && approval.payload.shiftId == shiftId;
     }
 
+    function classDoc(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId)).data;
+    }
+
+    function isAssignedToClass(classId) {
+      let c = classDoc(classId);
+      return signedIn()
+        && (
+          c.instructorId == request.auth.uid
+          || ('substituteInstructorId' in c && c.substituteInstructorId == request.auth.uid)
+        );
+    }
+
+    function canManageClassAttendance(classId) {
+      return isAdmin()
+        || (
+          isFrontOffice()
+          && isSameBranch(classDoc(classId))
+        )
+        || (
+          (
+            hasRole('instructor')
+            || hasRole('instructorleader')
+            || hasRole('instructor_leader')
+          )
+          && isAssignedToClass(classId)
+        );
+    }
+
+    function studentIsEnrolled(classId, studentId) {
+      let c = classDoc(classId);
+      return ('studentIds' in c) && c.studentIds.hasAny([studentId]);
+    }
+
+    function validClassAttendanceIdentity(data) {
+      return data.classId is string
+        && data.studentId is string
+        && data.attendanceDate is string
+        && data.markedBy is string
+        && data.markedBy == request.auth.uid;
+    }
+
     match /users/{userId} {
       allow get: if resource.data.role == 'student'
         || isAdmin()
@@ -215,6 +257,50 @@ service cloud.firestore {
         || ((isFrontOffice() || hasRole('instructor') || hasRole('instructorleader') || hasRole('instructor_leader'))
           && request.resource.data.userId == resource.data.userId
           && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /classAttendance/{attendanceId} {
+      allow read: if
+        isAdmin()
+        || (
+          (isManager() || isFrontOffice())
+          && isSameBranch(classDoc(resource.data.classId))
+        )
+        || (
+          (
+            hasRole('instructor')
+            || hasRole('instructorleader')
+            || hasRole('instructor_leader')
+          )
+          && isAssignedToClass(resource.data.classId)
+        )
+        || (
+          signedIn()
+          && resource.data.studentId == request.auth.uid
+        );
+
+      // First attendance creation only.
+      allow create: if
+        canManageClassAttendance(request.resource.data.classId)
+        && validClassAttendanceIdentity(request.resource.data)
+        && studentIsEnrolled(
+          request.resource.data.classId,
+          request.resource.data.studentId
+        )
+        && request.resource.data.status in ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
+        && request.resource.data.method in ['SCAN', 'MANUAL', 'CLOSE_OUT'];
+
+      // Existing records must not be overwritten by scan.
+      allow update: if
+        canManageClassAttendance(resource.data.classId)
+        && request.resource.data.classId == resource.data.classId
+        && request.resource.data.studentId == resource.data.studentId
+        && request.resource.data.attendanceDate == resource.data.attendanceDate
+        && validClassAttendanceIdentity(request.resource.data)
+        && request.resource.data.method == 'MANUAL'
+        && request.resource.data.status in ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
+
       allow delete: if isAdmin();
     }
 

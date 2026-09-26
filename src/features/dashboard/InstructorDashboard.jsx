@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useInstructorRoster } from "./useInstructorRoster";
 import { AIAssistant, DashboardShell, ApprovalInbox } from "../shared";
-import { KioskModal, KioskSidebarButton } from "../attendance";
+import { KioskModal, KioskSidebarButton, InstructorAttendanceView } from "../attendance";
 import { ClassPhotoShare, TeachingMaterial } from "../classes";
 import { ReportsDashboard } from "../reports";
 import { useStaffDirectives, StaffDirectivesWidget } from "../staff";
@@ -15,7 +15,16 @@ import {
 } from "./instructor";
 
 export default function InstructorDashboard({ role = "", branch = "" }) {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return "overview";
+    try {
+      const action = new URLSearchParams(window.location.search).get("action");
+      if (action === "attendance") return "attendance";
+      return "overview";
+    } catch {
+      return "overview";
+    }
+  });
   const isClassPhotoAction = useMemo(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -28,7 +37,7 @@ export default function InstructorDashboard({ role = "", branch = "" }) {
     if (typeof window === "undefined") return false;
     try {
       const action = new URLSearchParams(window.location.search).get("action");
-      return action === "attendance" || action === "class-photo";
+      return action === "kiosk" || action === "class-photo";
     } catch {
       return false;
     }
@@ -86,6 +95,19 @@ export default function InstructorDashboard({ role = "", branch = "" }) {
           onOpenKiosk={() => setKioskOpen(true)}
           onSelectClass={(classId) => setSelectedClassFilter(classId)}
           allClasses={allClasses}
+        />
+      ),
+    },
+    {
+      id: "attendance",
+      label: "Attendance",
+      component: (
+        <InstructorAttendanceView
+          classes={classes}
+          students={students}
+          uid={uid}
+          instructorName={instructorName}
+          instructorBranch={effectiveBranch}
         />
       ),
     },

@@ -11,21 +11,29 @@ import { isKindergartenDivision } from "../../constants/divisions.js";
 import { getTodayWitaWeekday, todayWita } from "../../utils/dateWita.js";
 import { fetchActiveCorporateEventsForDate } from "./corporateEventsRepository";
 import { findMatchingCorporateEvents } from "./corporateEvents";
+import { recordClassAttendanceScan } from "./classAttendanceRepository";
+import { resolveStudentClass } from "./classResolution";
 
 /**
- * Core business resolution for QR badge scan at the kiosk station.
- * Evaluates role, permissions, status, corporate events, and shifts.
+ * Core business resolution for QR badge scan at the kiosk station or class session.
+ * Evaluates role, permissions, status, corporate events, shifts, and class attendance.
  */
 export async function handleKioskScan(
   uid,
   {
     studentsOnly = false,
     staffOnly = false,
-    showStatus,
-    setLastScanned,
-    setPendingClockIn,
-    setPendingTransition,
-  }
+    attendanceMode = "STATION",
+    classId = null,
+    todayClasses = [],
+    markedBy = null,
+    markedByName = "",
+    showStatus = (_title = "", _type = "", _message = "", _name = "") => {},
+    setLastScanned = null,
+    setPendingClockIn = null,
+    setPendingTransition = null,
+    onClassResolved = null,
+  } = {}
 ) {
   const rawId = typeof uid === "string" ? uid.trim() : "";
   if (!rawId || rawId.includes("/") || rawId.length < 5) {
@@ -42,6 +50,124 @@ export async function handleKioskScan(
       "error",
       "No user profile found matching this QR badge."
     );
+  }
+
+  if (attendanceMode === "CLASS") {
+    if (userData.role !== "student") {
+      return showStatus(
+        "Not a Student",
+        "error",
+        "This scanner is for student class attendance only.",
+        userData.displayName
+      );
+    }
+
+    const studentStatus = userData.status || "active";
+    if (studentStatus === "inactive" || studentStatus === "graduated") {
+      return showStatus(
+        "Pass Inactive",
+        "error",
+        studentStatus === "graduated"
+          ? "This student has graduated. Please contact the administration."
+          : "This student pass is inactive. Please contact the front office.",
+        userData.displayName
+      );
+    }
+
+    const resolution = resolveStudentClass({
+      studentId: uid,
+      todayClasses,
+      selectedClassId: classId,
+    });
+
+    if (!resolution.resolved) {
+      if (resolution.reason === "NOT_ENROLLED_IN_SELECTED_CLASS") {
+        return showStatus(
+          "Student Not Enrolled In This Class",
+          "error",
+          `${userData.displayName} is not enrolled in ${resolution.classItem?.className || "this class"}.`,
+          userData.displayName
+        );
+      }
+      if (resolution.reason === "AMBIGUOUS_CLASSES") {
+        if (onClassResolved) {
+          onClassResolved({
+            ambiguous: true,
+            candidateClasses: resolution.candidateClasses,
+            student: userData,
+          });
+        }
+        return showStatus(
+          "Multiple Classes Scheduled",
+          "info",
+          "Please select a specific class to record attendance for this student.",
+          userData.displayName
+        );
+      }
+      if (resolution.reason === "NO_ENROLLED_CLASS_TODAY") {
+        return showStatus(
+          "No Class Scheduled Today",
+          "error",
+          "No active class scheduled today for this student.",
+          userData.displayName
+        );
+      }
+      return showStatus(
+        "Class Not Found",
+        "error",
+        "The target class could not be resolved.",
+        userData.displayName
+      );
+    }
+
+    const targetClass = resolution.classItem;
+    const todayDate = todayWita();
+
+    const recordResult = await recordClassAttendanceScan({
+      classId: targetClass.id,
+      studentId: uid,
+      attendanceDate: todayDate,
+      markedBy: markedBy || "station_kiosk",
+      markedByName: markedByName || "",
+      studentName: userData.displayName || "",
+      className: targetClass.className || "",
+      branchId: targetClass.branchId || userData.branchId || "",
+    });
+
+    if (recordResult.status === "created") {
+      showStatus(
+        "Attendance Recorded",
+        "success",
+        `Checked in to ${targetClass.className}. Welcome!`,
+        userData.displayName
+      );
+    } else {
+      if (recordResult.record.method === "MANUAL") {
+        showStatus(
+          "Attendance Already Decided",
+          "info",
+          `Attendance was previously decided manually (${recordResult.record.status}).`,
+          userData.displayName
+        );
+      } else {
+        showStatus(
+          "Already Checked In",
+          "info",
+          `Student was already checked in to ${targetClass.className}.`,
+          userData.displayName
+        );
+      }
+    }
+
+    if (setLastScanned) {
+      setLastScanned({
+        name: userData.displayName,
+        role: "student",
+        time: new Date(),
+        type: `Class: ${targetClass.className} (${recordResult.status === "created" ? "Checked In" : "Already Present"})`,
+      });
+    }
+    return;
   }
 
   if (studentsOnly && userData.role !== "student") {

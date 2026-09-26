@@ -22,7 +22,7 @@ export default function InstructorOverview({
   students,
   instructorName,
   onNavigate,
-  onOpenKiosk,
+  onOpenKiosk = () => {},
   onSelectClass,
   allClasses = [],
 }) {
@@ -77,12 +77,12 @@ export default function InstructorOverview({
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <button
-            onClick={onOpenKiosk}
+            onClick={() => onNavigate("attendance")}
             className="p-3 bg-slate-50 hover:bg-indigo-50/60 border border-slate-200/80 hover:border-indigo-200 rounded-2xl text-left transition group cursor-pointer"
           >
             <Clock className="w-4 h-4 text-[#1a3a8f] mb-1.5 group-hover:scale-110 transition-transform" />
-            <p className="font-extrabold text-xs text-slate-800">Scan Attendance</p>
-            <p className="text-[10px] text-slate-500">Student QR scanner</p>
+            <p className="font-extrabold text-xs text-slate-800">Class Attendance</p>
+            <p className="text-[10px] text-slate-500">Live roster & QR scanner</p>
           </button>
 
           <button

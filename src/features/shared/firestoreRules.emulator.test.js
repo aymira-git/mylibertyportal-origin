@@ -515,6 +515,81 @@ describe.skipIf(!HAS_EMULATOR)("firestore.rules against the real emulator", () =
     });
   });
 
+  describe("classAttendance collection", () => {
+    const CLASS_DOC = {
+      instructorId: "insGto",
+      substituteInstructorId: "insSub",
+      studentIds: ["student1"],
+      branchId: "kota_gorontalo",
+    };
+
+    beforeEach(async () => {
+      await seedDoc(["classes", "class1"], CLASS_DOC);
+      await seedDoc(["users", "insSub"], { displayName: "insSub", role: "instructor", branchId: "kota_gorontalo" });
+    });
+
+    it("allows assigned instructor to create attendance for enrolled student", async () => {
+      await assertSucceeds(
+        setDoc(doc(authed("insGto"), "classAttendance", "att1"), {
+          classId: "class1",
+          studentId: "student1",
+          attendanceDate: "2026-09-27",
+          status: "PRESENT",
+          method: "SCAN",
+          markedBy: "insGto",
+        })
+      );
+    });
+
+    it("denies unassigned instructor or unenrolled student", async () => {
+      await assertFails(
+        setDoc(doc(authed("insSub"), "classAttendance", "att2"), {
+          classId: "class1",
+          studentId: "student2",
+          attendanceDate: "2026-09-27",
+          status: "PRESENT",
+          method: "SCAN",
+          markedBy: "insSub",
+        })
+      );
+    });
+
+    it("blocks updates via scan method and enforces method == MANUAL", async () => {
+      await seedDoc(["classAttendance", "att1"], {
+        classId: "class1",
+        studentId: "student1",
+        attendanceDate: "2026-09-27",
+        status: "PRESENT",
+        method: "SCAN",
+        markedBy: "insGto",
+      });
+
+      // Attempt update with SCAN method -> fails
+      await assertFails(
+        setDoc(doc(authed("insGto"), "classAttendance", "att1"), {
+          classId: "class1",
+          studentId: "student1",
+          attendanceDate: "2026-09-27",
+          status: "PRESENT",
+          method: "SCAN",
+          markedBy: "insGto",
+        })
+      );
+
+      // Attempt update with MANUAL method -> succeeds
+      await assertSucceeds(
+        setDoc(doc(authed("insGto"), "classAttendance", "att1"), {
+          classId: "class1",
+          studentId: "student1",
+          attendanceDate: "2026-09-27",
+          status: "ABSENT",
+          method: "MANUAL",
+          markedBy: "insGto",
+        })
+      );
+    });
+  });
+
   describe("fallback deny-all", () => {
     it("denies unauthenticated access to collections without public rules", async () => {
       const anon = testEnv.unauthenticatedContext().firestore();

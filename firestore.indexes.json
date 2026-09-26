@@ -113,6 +113,14 @@
         { "fieldPath": "createdBy", "order": "ASCENDING" },
         { "fieldPath": "visitDate", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "classAttendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "attendanceDate", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

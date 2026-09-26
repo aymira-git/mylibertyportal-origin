@@ -14,3 +14,6 @@ export { KioskProvisioningPanel } from "./KioskProvisioningPanel";
 export * from "./kioskDeviceCrypto";
 export * from "./corporateEvents";
 export * from "./corporateEventsRepository";
+export * from "./classAttendanceRepository";
+export * from "./classResolution";
+export { default as InstructorAttendanceView } from "./InstructorAttendanceView";

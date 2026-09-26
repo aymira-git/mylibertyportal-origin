@@ -546,8 +546,166 @@ describe("Security Rules Matrix & Branch Isolation", () => {
     });
 
     it("rejects modifying other fields under the reviewStatus permission", () => {
-      const tampered = { ...closedShift, reviewStatus: "reviewed", clockOut: "2026-09-25T05:00:00.000Z" };
+      const tampered = { ...closedShift, reviewStatus: "reviewed", clockOut: "2026-09-27T05:00:00.000Z" };
       expect(canReviewShift(closedShift, tampered, foGorontalo)).toBe(false);
     });
   });
+
+  describe("Class Attendance Security Rules Logic", () => {
+    function isAssignedToClass(classDoc, user) {
+      if (!user) return false;
+      return (
+        classDoc.instructorId === user.uid ||
+        classDoc.substituteInstructorId === user.uid
+      );
+    }
+
+    function canManageClassAttendance(classDoc, user) {
+      if (isAdmin(user)) return true;
+      if (isFrontOffice(user) && isSameBranch(classDoc, user)) return true;
+      if (
+        ["instructor", "instructorleader", "instructor_leader"].includes(user?.role) &&
+        isAssignedToClass(classDoc, user)
+      ) {
+        return true;
+      }
+      return false;
+    }
+
+    function studentIsEnrolled(classDoc, studentId) {
+      return Array.isArray(classDoc.studentIds) && classDoc.studentIds.includes(studentId);
+    }
+
+    function canCreateClassAttendance(classDoc, requestData, user) {
+      if (!user) return false;
+      if (!canManageClassAttendance(classDoc, user)) return false;
+      if (
+        typeof requestData.classId !== "string" ||
+        typeof requestData.studentId !== "string" ||
+        typeof requestData.attendanceDate !== "string" ||
+        typeof requestData.markedBy !== "string" ||
+        requestData.markedBy !== user.uid
+      ) {
+        return false;
+      }
+      if (!studentIsEnrolled(classDoc, requestData.studentId)) return false;
+      if (!["PRESENT", "ABSENT", "LATE", "EXCUSED"].includes(requestData.status)) return false;
+      if (!["SCAN", "MANUAL", "CLOSE_OUT"].includes(requestData.method)) return false;
+      return true;
+    }
+
+    function canUpdateClassAttendance(classDoc, existing, requestData, user) {
+      if (!user) return false;
+      if (!canManageClassAttendance(classDoc, user)) return false;
+      if (
+        requestData.classId !== existing.classId ||
+        requestData.studentId !== existing.studentId ||
+        requestData.attendanceDate !== existing.attendanceDate
+      ) {
+        return false;
+      }
+      if (
+        typeof requestData.markedBy !== "string" ||
+        requestData.markedBy !== user.uid
+      ) {
+        return false;
+      }
+      if (requestData.method !== "MANUAL") return false; // Scans cannot overwrite
+      if (!["PRESENT", "ABSENT", "LATE", "EXCUSED"].includes(requestData.status)) return false;
+      return true;
+    }
+
+    function canReadClassAttendance(classDoc, attendanceDoc, user) {
+      if (!user) return false;
+      if (isAdmin(user)) return true;
+      if ((isManager(user) || isFrontOffice(user)) && isSameBranch(classDoc, user)) return true;
+      if (
+        ["instructor", "instructorleader", "instructor_leader"].includes(user.role) &&
+        isAssignedToClass(classDoc, user)
+      ) {
+        return true;
+      }
+      if (attendanceDoc.studentId === user.uid) return true;
+      return false;
+    }
+
+    const testClass = {
+      id: "class_gtlo_1",
+      branchId: "kota_gorontalo",
+      instructorId: "ins_1",
+      substituteInstructorId: "ins_sub",
+      studentIds: ["std_1", "std_2"],
+    };
+
+    const instructorAssigned = { uid: "ins_1", role: "instructor", branchId: "kota_gorontalo" };
+    const instructorSubstitute = { uid: "ins_sub", role: "instructor", branchId: "kota_gorontalo" };
+    const instructorUnassigned = { uid: "ins_other", role: "instructor", branchId: "kota_gorontalo" };
+    const studentEnrolled = { uid: "std_1", role: "student", branchId: "kota_gorontalo" };
+    const studentUnenrolled = { uid: "std_stranger", role: "student", branchId: "kota_gorontalo" };
+
+    const validRecord = {
+      classId: "class_gtlo_1",
+      studentId: "std_1",
+      attendanceDate: "2026-09-27",
+      status: "PRESENT",
+      method: "SCAN",
+      markedBy: "ins_1",
+    };
+
+    it("allows primary and substitute instructors to create attendance for enrolled students", () => {
+      expect(canCreateClassAttendance(testClass, validRecord, instructorAssigned)).toBe(true);
+
+      const subRecord = { ...validRecord, markedBy: "ins_sub" };
+      expect(canCreateClassAttendance(testClass, subRecord, instructorSubstitute)).toBe(true);
+    });
+
+    it("allows same-branch front office to create attendance", () => {
+      const foRecord = { ...validRecord, markedBy: foGorontalo.uid };
+      expect(canCreateClassAttendance(testClass, foRecord, foGorontalo)).toBe(true);
+    });
+
+    it("blocks cross-branch front office and unassigned instructors", () => {
+      const crossFoRecord = { ...validRecord, markedBy: foBoneBolango.uid };
+      expect(canCreateClassAttendance(testClass, crossFoRecord, foBoneBolango)).toBe(false);
+
+      const unassignedRecord = { ...validRecord, markedBy: "ins_other" };
+      expect(canCreateClassAttendance(testClass, unassignedRecord, instructorUnassigned)).toBe(false);
+    });
+
+    it("blocks creating attendance for students not in class studentIds", () => {
+      const unenrolledRecord = { ...validRecord, studentId: "std_stranger" };
+      expect(canCreateClassAttendance(testClass, unenrolledRecord, instructorAssigned)).toBe(false);
+    });
+
+    it("enforces scan idempotency: updates must be method MANUAL only", () => {
+      const existing = { ...validRecord };
+      const scanUpdate = { ...validRecord, status: "PRESENT", method: "SCAN" };
+      expect(canUpdateClassAttendance(testClass, existing, scanUpdate, instructorAssigned)).toBe(false);
+
+      const manualUpdate = { ...validRecord, status: "ABSENT", method: "MANUAL" };
+      expect(canUpdateClassAttendance(testClass, existing, manualUpdate, instructorAssigned)).toBe(true);
+    });
+
+    it("blocks tampering with classId, studentId, or date on update", () => {
+      const existing = { ...validRecord };
+      const tamperedClass = { ...validRecord, classId: "other_class", method: "MANUAL" };
+      expect(canUpdateClassAttendance(testClass, existing, tamperedClass, instructorAssigned)).toBe(false);
+
+      const tamperedStudent = { ...validRecord, studentId: "std_2", method: "MANUAL" };
+      expect(canUpdateClassAttendance(testClass, existing, tamperedStudent, instructorAssigned)).toBe(false);
+    });
+
+    it("allows enrolled student to read own attendance, but not other students", () => {
+      expect(canReadClassAttendance(testClass, validRecord, studentEnrolled)).toBe(true);
+      expect(canReadClassAttendance(testClass, validRecord, studentUnenrolled)).toBe(false);
+    });
+
+    it("blocks unassigned instructors and cross-branch managers from reading class attendance", () => {
+      expect(canReadClassAttendance(testClass, validRecord, instructorAssigned)).toBe(true);
+      expect(canReadClassAttendance(testClass, validRecord, instructorUnassigned)).toBe(false);
+      expect(canReadClassAttendance(testClass, validRecord, managerGorontalo)).toBe(true);
+      expect(canReadClassAttendance(testClass, validRecord, managerBoneBolango)).toBe(false);
+    });
+  });
 });
+
