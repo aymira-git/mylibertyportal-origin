@@ -88,6 +88,7 @@ export default function InstructorAttendanceView({
   }, [selectedClass]);
 
   const studentsMap = useMemo(() => {
+    /** @type {Record<string, { displayName?: string; name?: string; id?: string }>} */
     const map = {};
     students.forEach((s) => {
       if (s?.id) map[s.id] = s;
@@ -250,8 +251,20 @@ export default function InstructorAttendanceView({
               });
             }
           },
-          () => {}
-        );
+          (errorMessage) => {
+            // Ignore frequent "not found" frames — only surface real failures
+            if (
+              typeof errorMessage === "string" &&
+              !errorMessage.includes("No MultiFormat Readers") &&
+              !errorMessage.includes("NotFoundException")
+            ) {
+              setScannerStatus({
+                title: "Scanner Error",
+                type: "error",
+                message: errorMessage,
+              });
+            }
+          });
       } catch (e) {
         console.warn("Failed to initialize camera scanner:", e);
       }

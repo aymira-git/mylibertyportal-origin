@@ -121,6 +121,22 @@
         { "fieldPath": "studentId", "order": "ASCENDING" },
         { "fieldPath": "attendanceDate", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "classAttendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "studentId", "order": "ASCENDING" },
+        { "fieldPath": "attendanceDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "classAttendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "classId", "order": "ASCENDING" },
+        { "fieldPath": "attendanceDate", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

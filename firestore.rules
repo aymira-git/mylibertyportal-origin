@@ -120,7 +120,8 @@ service cloud.firestore {
 
     function isAssignedToClass(classId) {
       let c = classDoc(classId);
-      return signedIn()
+      return c != null
+        && signedIn()
         && (
           c.instructorId == request.auth.uid
           || ('substituteInstructorId' in c && c.substituteInstructorId == request.auth.uid)
@@ -128,24 +129,28 @@ service cloud.firestore {
     }
 
     function canManageClassAttendance(classId) {
-      return isAdmin()
-        || (
-          isFrontOffice()
-          && isSameBranch(classDoc(classId))
-        )
-        || (
-          (
-            hasRole('instructor')
-            || hasRole('instructorleader')
-            || hasRole('instructor_leader')
+      let c = classDoc(classId);
+      return c != null
+        && (
+          isAdmin()
+          || (
+            isFrontOffice()
+            && isSameBranch(c)
           )
-          && isAssignedToClass(classId)
+          || (
+            (
+              hasRole('instructor')
+              || hasRole('instructorleader')
+              || hasRole('instructor_leader')
+            )
+            && isAssignedToClass(classId)
+          )
         );
     }
 
     function studentIsEnrolled(classId, studentId) {
       let c = classDoc(classId);
-      return ('studentIds' in c) && c.studentIds.hasAny([studentId]);
+      return c != null && ('studentIds' in c) && c.studentIds.hasAny([studentId]);
     }
 
     function validClassAttendanceIdentity(data) {

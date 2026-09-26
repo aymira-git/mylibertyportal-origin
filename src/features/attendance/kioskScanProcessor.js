@@ -75,7 +75,7 @@ export async function handleKioskScan(
     }
 
     const resolution = resolveStudentClass({
-      studentId: uid,
+      studentId: rawId,
       todayClasses,
       selectedClassId: classId,
     });
@@ -125,7 +125,7 @@ export async function handleKioskScan(
 
     const recordResult = await recordClassAttendanceScan({
       classId: targetClass.id,
-      studentId: uid,
+      studentId: rawId,
       attendanceDate: todayDate,
       markedBy: markedBy || "station_kiosk",
       markedByName: markedByName || "",

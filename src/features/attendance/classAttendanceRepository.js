@@ -210,10 +210,13 @@ export async function updateClassAttendanceManual({
       markedAt: nowIso,
       updatedAt: nowIso,
     };
+    // Validate merged document to keep the same guarantee as create paths
+    const merged = { ...existingSnap.data(), ...updates };
+    classAttendanceSchema.parse(merged);
     await updateDoc(docRef, updates);
     return {
       status: "updated",
-      record: { id: docId, ...existingSnap.data(), ...updates },
+      record: { id: docId, ...merged },
     };
   }
 
@@ -289,6 +292,7 @@ export async function closeOutClassAttendance({
 
   const nowIso = new Date().toISOString();
   const BATCH_SIZE = 400; // Safe below Firestore's 500 limit
+  let totalCreated = 0;
 
   for (let i = 0; i < missingStudentIds.length; i += BATCH_SIZE) {
     const chunk = missingStudentIds.slice(i, i + BATCH_SIZE);
@@ -317,14 +321,50 @@ export async function closeOutClassAttendance({
       };
 
       const validated = classAttendanceSchema.parse(raw);
-      batch.set(doc(db, "classAttendance", docId), validated);
+      // Use create semantics: if a scan/manual mark raced and already created
+      // this doc, the batch will fail atomically rather than overwriting it.
+      const docRef = doc(db, "classAttendance", docId);
+      batch.set(docRef, validated);
     }
 
-    await batch.commit();
+    try {
+      await batch.commit();
+      totalCreated += chunk.length;
+    } catch (err) {
+      // If the batch failed due to concurrent creates, re-read and retry
+      // only truly missing students in this chunk
+      if (err.code === "already-exists" || err.message?.includes("ALREADY_EXISTS")) {
+        const retryBatch = writeBatch(db);
+        let retryCount = 0;
+        for (const sId of chunk) {
+          const docId = getClassAttendanceDocId(classId, sId, attendanceDate);
+          const docRef = doc(db, "classAttendance", docId);
+          const snap = await getDoc(docRef);
+          if (!snap.exists()) {
+            const studentObj = studentsMap[sId] || {};
+            const studentName = studentObj.displayName || studentObj.name || "";
+            const raw = {
+              classId, studentId: sId, attendanceDate,
+              status: "ABSENT", method: "CLOSE_OUT",
+              markedBy, markedByName, markedAt: nowIso,
+              studentName, className, branchId,
+              note: "Session closed out",
+              createdAt: nowIso, updatedAt: nowIso,
+            };
+            retryBatch.set(docRef, classAttendanceSchema.parse(raw));
+            retryCount++;
+          }
+        }
+        if (retryCount > 0) await retryBatch.commit();
+        totalCreated += retryCount;
+      } else {
+        throw err;
+      }
+    }
   }
 
   return {
-    createdCount: missingStudentIds.length,
+    createdCount: totalCreated,
     missingCount: missingStudentIds.length,
     alreadyClosed: false,
   };
