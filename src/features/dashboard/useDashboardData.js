@@ -137,7 +137,8 @@ export function useDashboardData({
     if (isKindergarten) {
       // Split user queries to satisfy Firestore rule proof for division isolation:
       // (1) Students query: explicitly filtered by division == "kindergarten"
-      // (2) Staff/Parents query: role in ["instructor", "parent"], no division filter needed
+      // (2) Instructors query: filtered by role, branch, and kindergarten division
+      // (3) Parents query: filtered by role and branch; parent docs are exempt from division checks
       const studentConstraints = [
         where("role", "==", "student"),
         where("division", "==", "kindergarten"),
@@ -147,17 +148,27 @@ export function useDashboardData({
       }
       const studentQuery = query(collection(db, "users"), ...studentConstraints);
 
-      const staffConstraints = [where("role", "in", ["instructor", "parent"])];
+      const instructorConstraints = [
+        where("role", "in", ["instructor", "instructorleader", "instructor_leader"]),
+        where("division", "==", "kindergarten"),
+      ];
       if (targetBranchId) {
-        staffConstraints.push(where("branchId", "==", targetBranchId));
+        instructorConstraints.push(where("branchId", "==", targetBranchId));
       }
-      const staffQuery = query(collection(db, "users"), ...staffConstraints);
+      const instructorQuery = query(collection(db, "users"), ...instructorConstraints);
+
+      const parentConstraints = [where("role", "==", "parent")];
+      if (targetBranchId) {
+        parentConstraints.push(where("branchId", "==", targetBranchId));
+      }
+      const parentQuery = query(collection(db, "users"), ...parentConstraints);
 
       let studentsMap = new Map();
-      let staffMap = new Map();
+      let instructorsMap = new Map();
+      let parentsMap = new Map();
 
       const syncMergedUsers = () => {
-        const merged = new Map([...staffMap, ...studentsMap]);
+        const merged = new Map([...parentsMap, ...instructorsMap, ...studentsMap]);
         setUsers(Array.from(merged.values()));
       };
 
@@ -170,18 +181,28 @@ export function useDashboardData({
         handleListenerError("users-students")
       );
 
-      const unsubStaff = onSnapshot(
-        staffQuery,
+      const unsubInstructors = onSnapshot(
+        instructorQuery,
         (snap) => {
-          staffMap = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+          instructorsMap = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
           syncMergedUsers();
         },
-        handleListenerError("users-staff")
+        handleListenerError("users-instructors")
+      );
+
+      const unsubParents = onSnapshot(
+        parentQuery,
+        (snap) => {
+          parentsMap = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+          syncMergedUsers();
+        },
+        handleListenerError("users-parents")
       );
 
       unsubUsers = () => {
         unsubStudents();
-        unsubStaff();
+        unsubInstructors();
+        unsubParents();
       };
     } else {
       const usersConstraints = [];

@@ -122,6 +122,116 @@ describe.skipIf(!HAS_EMULATOR)("firestore.rules against the real emulator", () =
     await seedUsers();
   });
 
+  describe("Kindergarten Front Office user list queries", () => {
+    beforeEach(async () => {
+      await seedDoc(["users", "instructorKg"], {
+        role: "instructor",
+        branchId: "kota_gorontalo",
+        division: "kindergarten",
+      });
+      await seedDoc(["users", "instructorLeaderKg"], {
+        role: "instructorleader",
+        branchId: "kota_gorontalo",
+        division: "kindergarten",
+      });
+      await seedDoc(["users", "instructorLegacyLeaderKg"], {
+        role: "instructor_leader",
+        branchId: "kota_gorontalo",
+        division: "kindergarten",
+      });
+      await seedDoc(["users", "instructorCourses"], {
+        role: "instructor",
+        branchId: "kota_gorontalo",
+        division: "courses",
+      });
+      await seedDoc(["users", "instructorKgBoba"], {
+        role: "instructor",
+        branchId: "bone_bolango",
+        division: "kindergarten",
+      });
+      await seedDoc(["users", "studentKg"], {
+        role: "student",
+        branchId: "kota_gorontalo",
+        division: "kindergarten",
+      });
+    });
+
+    it("lists only same-branch kindergarten instructors, including supported instructor aliases", async () => {
+      const snapshot = await assertSucceeds(
+        getDocs(
+          query(
+            collection(authed("foKgGto"), "users"),
+            where("role", "in", ["instructor", "instructorleader", "instructor_leader"]),
+            where("division", "==", "kindergarten"),
+            where("branchId", "==", "kota_gorontalo")
+          )
+        )
+      );
+      const ids = snapshot.docs.map((userDoc) => userDoc.id);
+      expect(ids).toEqual(
+        expect.arrayContaining(["instructorKg", "instructorLeaderKg", "instructorLegacyLeaderKg"])
+      );
+      expect(ids).not.toContain("instructorCourses");
+      expect(ids).not.toContain("instructorKgBoba");
+    });
+
+    it("rejects an instructor query without the required division constraint", async () => {
+      await assertFails(
+        getDocs(
+          query(
+            collection(authed("foKgGto"), "users"),
+            where("role", "in", ["instructor", "instructorleader", "instructor_leader"]),
+            where("branchId", "==", "kota_gorontalo")
+          )
+        )
+      );
+    });
+
+    it("lists same-branch parents independently of instructor division", async () => {
+      const snapshot = await assertSucceeds(
+        getDocs(
+          query(
+            collection(authed("foKgGto"), "users"),
+            where("role", "==", "parent"),
+            where("branchId", "==", "kota_gorontalo")
+          )
+        )
+      );
+      const ids = snapshot.docs.map((userDoc) => userDoc.id);
+      expect(ids).toContain("parent1");
+      expect(ids).not.toContain("parent2");
+    });
+
+    it("blocks a kindergarten instructor query for another branch", async () => {
+      await assertFails(
+        getDocs(
+          query(
+            collection(authed("foKgGto"), "users"),
+            where("role", "in", ["instructor", "instructorleader", "instructor_leader"]),
+            where("division", "==", "kindergarten"),
+            where("branchId", "==", "bone_bolango")
+          )
+        )
+      );
+    });
+
+    it("keeps the separate kindergarten student query intact", async () => {
+      const snapshot = await assertSucceeds(
+        getDocs(
+          query(
+            collection(authed("foKgGto"), "users"),
+            where("role", "==", "student"),
+            where("division", "==", "kindergarten"),
+            where("branchId", "==", "kota_gorontalo")
+          )
+        )
+      );
+      const ids = snapshot.docs.map((userDoc) => userDoc.id);
+      expect(ids).toContain("studentKg");
+      expect(ids).not.toContain("student1");
+    });
+  });
+
   describe("users own profile get", () => {
     beforeEach(async () => {
       await seedDoc(["users", FRONT_OFFICE_PROFILE_UID], FRONT_OFFICE_PROFILE);
