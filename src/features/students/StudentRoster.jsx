@@ -80,15 +80,17 @@ export default function StudentRoster({
     const currentStatus = student.status || "active";
     if (currentStatus === newStatus) return;
 
-    if (newStatus === "graduated" || newStatus === "inactive") {
+    if (newStatus === "graduated" || newStatus === "inactive" || newStatus === "archived") {
       const targetLabel = STUDENT_STATUS_MAP[newStatus]?.label || newStatus;
       const ok = await confirm(
-        `Are you sure you want to mark ${student.displayName || "this student"} as ${targetLabel}?`
+        newStatus === "archived"
+          ? `Archive ${student.displayName || "this student"}? This removes them from active classes and ends linked parent access.`
+          : `Are you sure you want to mark ${student.displayName || "this student"} as ${targetLabel}?`
       );
       if (!ok) return;
 
       const enrolledClasses = classes.filter((c) => (c.studentIds || []).includes(student.id));
-      if (enrolledClasses.length > 0) {
+      if (enrolledClasses.length > 0 && newStatus !== "archived") {
         const classNames = enrolledClasses.map((c) => c.className).join(", ");
         const shouldRemove = await confirm(
           `${student.displayName || "This student"} is currently enrolled in ${enrolledClasses.length} cohort(s): ${classNames}.\n\n` +

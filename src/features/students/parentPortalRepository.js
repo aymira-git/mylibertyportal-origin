@@ -1,5 +1,6 @@
 import { db } from "../../firebase";
 import { collection, query, where, getDocs, limit, doc, getDoc, orderBy } from "firebase/firestore";
+import { branchToId } from "../../constants/branches.js";
 
 /**
  * Normalizes phone string to clean digit format for matching.
@@ -53,16 +54,12 @@ export async function getAuthenticatedParentBundle(parentUid) {
 
   const children = [];
   for (const childId of childStudentIds) {
-    try {
-      const childDoc = await getDoc(doc(db, "users", childId));
-      if (childDoc.exists()) {
-        const child = childDoc.data();
-        if (child.role === "student" && (!child.status || child.status === "active")) {
-          children.push({ id: childDoc.id, ...child });
-        }
+    const childDoc = await getDoc(doc(db, "users", childId));
+    if (childDoc.exists()) {
+      const child = childDoc.data();
+      if (child.role === "student" && (!child.status || child.status === "active")) {
+        children.push({ id: childDoc.id, ...child });
       }
-    } catch (err) {
-      console.warn(`Failed to read linked child ${childId}:`, err);
     }
   }
 
@@ -76,36 +73,26 @@ export async function getAuthenticatedParentBundle(parentUid) {
  * @param {string} childId
  * @returns {Promise<{ classes: any[], attendance: any[] }>}
  */
-export async function getChildAttendanceAndClasses(childId) {
+export async function getChildAttendanceAndClasses(childId, childBranch) {
   if (!childId) return { classes: [], attendance: [] };
 
-  let classes = [];
-  try {
-    const qClasses = query(
-      collection(db, "classes"),
-      where("studentIds", "array-contains", childId),
-      where("status", "==", "open"),
-      limit(20)
-    );
-    const snapClasses = await getDocs(qClasses);
-    classes = snapClasses.docs.map((d) => ({ id: d.id, ...d.data() }));
-  } catch (err) {
-    console.warn("Failed fetching enrolled classes for child:", err);
-  }
+  const qClasses = query(
+    collection(db, "classes"),
+    where("studentIds", "array-contains", childId),
+    where("status", "==", "open"),
+    where("branchId", "==", branchToId(childBranch)),
+    limit(20)
+  );
+  const qAtt = query(
+    collection(db, "classAttendance"),
+    where("studentId", "==", childId),
+    orderBy("attendanceDate", "desc"),
+    limit(30)
+  );
+  const [snapClasses, snapAtt] = await Promise.all([getDocs(qClasses), getDocs(qAtt)]);
 
-  let attendance = [];
-  try {
-    const qAtt = query(
-      collection(db, "classAttendance"),
-      where("studentId", "==", childId),
-      orderBy("attendanceDate", "desc"),
-      limit(30)
-    );
-    const snapAtt = await getDocs(qAtt);
-    attendance = snapAtt.docs.map((d) => ({ id: d.id, ...d.data() }));
-  } catch (err) {
-    console.warn("Failed fetching attendance history for child:", err);
-  }
-
-  return { classes, attendance };
+  return {
+    classes: snapClasses.docs.map((d) => ({ id: d.id, ...d.data() })),
+    attendance: snapAtt.docs.map((d) => ({ id: d.id, ...d.data() })),
+  };
 }

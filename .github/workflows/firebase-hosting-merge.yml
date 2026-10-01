@@ -18,10 +18,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - name: Install dependencies
         run: npm ci || npm install
-      - name: Test and build
-        run: npm test && npm run build
+      - name: Install Worker runtime dependency for endpoint tests
+        run: npm ci --prefix cloudflare-worker --omit=dev
+      - name: Validate and build
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run test:rules
+          npm test
+          npm run build
         env:
           VITE_AI_WORKER_URL: ${{ vars.VITE_AI_WORKER_URL || 'https://myliberty-ai-proxy.kifryh.workers.dev' }}
 
@@ -33,4 +44,3 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MYLIBERTYIES_F2F38 }}
           channelId: live
           projectId: mylibertyies-f2f38
-

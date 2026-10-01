@@ -10,7 +10,7 @@ import {
   limit,
   getDocs,
   getDoc,
-  arrayRemove,
+  deleteDoc,
 } from "firebase/firestore";
 import { createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 import { branchToId, idToBranch, DEFAULT_BRANCH_ID } from "../../constants/branches";
@@ -67,6 +67,13 @@ export function updateStaffStatus(uid, status, updatedBy = auth.currentUser?.uid
 }
 
 export function updateStudentStatus(uid, status, updatedBy = auth.currentUser?.uid || null) {
+  if (status === "archived") {
+    return archiveStudentProfile(uid, {
+      uid: updatedBy,
+      displayName: auth.currentUser?.displayName,
+      email: auth.currentUser?.email,
+    });
+  }
   return setDoc(
     doc(db, "users", uid),
     {
@@ -178,50 +185,27 @@ export async function createStaffAccount(email, password, staffData) {
 }
 
 /**
- * Deletes a user profile and scrubs any active enrollment references from
- * the /classes collection and linked student references from /users (parents)
- * in an atomic batch to avoid leaving orphaned student IDs.
+ * Deletes a profile and its active class-roster references. For students,
+ * parent links are revoked through the Worker before the Firestore batch.
  */
 export async function deleteUserProfile(uid, branchId = null) {
   if (!uid) return;
 
-  // 1. Find all classes where this student is currently enrolled
-  const classesQuery = query(
-    collection(db, "classes"),
-    ...(branchId ? [where("branchId", "==", branchId)] : []),
-    where("studentIds", "array-contains", uid)
-  );
-
-  // 2. Find any parents who have this student linked.
-  // Multi-branch parents may be assigned to a different branch than the student.
-  // Query unconstrained first; fallback to branch-scoped if permission denied.
-  const classesPromise = getDocs(classesQuery);
-  const parentsPromise = (async () => {
-    try {
-      const unconstrainedParentsQuery = query(
-        collection(db, "users"),
-        where("role", "==", "parent"),
-        where("childStudentIds", "array-contains", uid)
-      );
-      return await getDocs(unconstrainedParentsQuery);
-    } catch {
-      if (branchId) {
-        const scopedParentsQuery = query(
-          collection(db, "users"),
-          where("role", "==", "parent"),
-          where("branchId", "==", branchId),
-          where("childStudentIds", "array-contains", uid)
-        );
-        return await getDocs(scopedParentsQuery);
-      }
-      return { docs: [] };
-    }
-  })();
-
-  const [classesSnap, parentsSnap] = await Promise.all([
-    classesPromise,
-    parentsPromise,
+  const [userSnap, classesSnap] = await Promise.all([
+    getDoc(doc(db, "users", uid)),
+    getDocs(
+      query(
+        collection(db, "classes"),
+        ...(branchId ? [where("branchId", "==", branchId)] : []),
+        where("studentIds", "array-contains", uid)
+      )
+    ),
   ]);
+
+  const removesParentLinks = userSnap.exists() && userSnap.data()?.role === "student";
+  if (removesParentLinks) {
+    await unlinkStudentFromAllParents(uid);
+  }
 
   const batch = writeBatch(db);
   batch.delete(doc(db, "users", uid));
@@ -238,29 +222,37 @@ export async function deleteUserProfile(uid, branchId = null) {
     });
   }
 
-  for (const parentDoc of parentsSnap.docs) {
-    const parentData = parentDoc.data();
-    const updatedChildren = (parentData.childStudentIds || []).filter((id) => id !== uid);
-    batch.update(parentDoc.ref, {
-      childStudentIds: updatedChildren,
-      updatedAt: now,
-    });
+  try {
+    return await batch.commit();
+  } catch (err) {
+    if (removesParentLinks) {
+      throw new Error(
+        "Parent access was removed, but profile deletion failed. Retry deletion to finish the cleanup.",
+        { cause: err }
+      );
+    }
+    throw err;
   }
-
-  return batch.commit();
 }
 
 /**
  * Archives a student profile instead of hard deleting it.
  * Preserves financial payment logs, attendance records, and progress reports
- * while removing active roster enrollment and marking status as 'archived'.
+ * while removing active roster enrollment and parent access.
  */
 export async function archiveStudentProfile(uid, actor = null, branchId = null) {
   if (!uid) return;
 
+  const studentRef = doc(db, "users", uid);
+  const studentSnap = await getDoc(studentRef);
+  if (!studentSnap.exists() || studentSnap.data()?.role !== "student") {
+    throw new Error("Cannot archive a student profile that does not exist.");
+  }
+  const student = studentSnap.data();
+  const effectiveBranchId = branchId || branchToId(student.branchId || student.branch);
   const classesQuery = query(
     collection(db, "classes"),
-    ...(branchId ? [where("branchId", "==", branchId)] : []),
+    where("branchId", "==", effectiveBranchId),
     where("studentIds", "array-contains", uid)
   );
   const classesSnap = await getDocs(classesQuery);
@@ -268,7 +260,7 @@ export async function archiveStudentProfile(uid, actor = null, branchId = null) 
   const batch = writeBatch(db);
   const now = new Date().toISOString();
 
-  batch.update(doc(db, "users", uid), {
+  batch.update(studentRef, {
     status: "archived",
     statusUpdatedAt: now,
     statusUpdatedBy: actor?.displayName || actor?.email || "Staff",
@@ -286,7 +278,15 @@ export async function archiveStudentProfile(uid, actor = null, branchId = null) 
     });
   }
 
-  return batch.commit();
+  await batch.commit();
+  try {
+    await unlinkStudentFromAllParents(uid);
+  } catch (err) {
+    throw new Error(
+      "The student was archived, but parent-link cleanup failed. Parent reads are blocked; retry archiving to finish cleanup.",
+      { cause: err }
+    );
+  }
 }
 
 /**
@@ -340,12 +340,21 @@ export async function createParentAccount(email, password, parentData) {
 
   const payload = parentUserSchema.parse(rawPayload);
 
+  let profileSaved = false;
   try {
     await setDoc(doc(db, "users", cred.user.uid), payload, { merge: true });
+    profileSaved = true;
     for (const studentId of initialChildren) {
-      await linkChildThroughWorker(cred.user.uid, studentId);
+      await sendParentLinkAction("link", { parentUid: cred.user.uid, studentId });
     }
   } catch (err) {
+    if (profileSaved) {
+      try {
+        await deleteDoc(doc(db, "users", cred.user.uid));
+      } catch (cleanupErr) {
+        console.warn("Failed to clean up parent profile:", cleanupErr);
+      }
+    }
     try {
       await deleteUser(cred.user);
     } catch (cleanupErr) {
@@ -386,7 +395,7 @@ export function updateParentRecord(uid, parentData = {}) {
   return setDoc(doc(db, "users", uid), payload, { merge: true });
 }
 
-async function linkChildThroughWorker(parentUid, studentId) {
+async function sendParentLinkAction(action, payload) {
   const workerBase = import.meta.env?.VITE_AI_WORKER_URL || "";
   const user = auth.currentUser;
   if (!workerBase || !user) {
@@ -398,10 +407,10 @@ async function linkChildThroughWorker(parentUid, studentId) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${await user.getIdToken()}`,
     },
-    body: JSON.stringify({ parentUid, studentId }),
+    body: JSON.stringify({ action, ...payload }),
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || "Could not link the parent account.");
+  if (!response.ok) throw new Error(result.error || "Could not update the parent-child link.");
 }
 
 /**
@@ -412,7 +421,7 @@ async function linkChildThroughWorker(parentUid, studentId) {
  */
 export function linkChildToParent(parentUid, studentId) {
   const parsed = parentChildLinkSchema.parse({ parentUid, studentId });
-  return linkChildThroughWorker(parsed.parentUid, parsed.studentId);
+  return sendParentLinkAction("link", parsed);
 }
 
 /**
@@ -423,14 +432,14 @@ export function linkChildToParent(parentUid, studentId) {
  */
 export function unlinkChildFromParent(parentUid, studentId) {
   const parsed = parentChildLinkSchema.parse({ parentUid, studentId });
-  return setDoc(
-    doc(db, "users", parsed.parentUid),
-    {
-      childStudentIds: arrayRemove(parsed.studentId),
-      updatedAt: new Date().toISOString(),
-    },
-    { merge: true }
-  );
+  return sendParentLinkAction("unlink", parsed);
+}
+
+export function unlinkStudentFromAllParents(studentId) {
+  if (typeof studentId !== "string" || !studentId.trim()) {
+    throw new Error("Student ID is required to remove parent links.");
+  }
+  return sendParentLinkAction("unlink-all", { studentId: studentId.trim() });
 }
 
 /**
@@ -483,4 +492,3 @@ export async function fetchAllParents(branchId = null) {
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
-

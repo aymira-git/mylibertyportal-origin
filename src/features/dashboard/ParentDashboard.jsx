@@ -42,12 +42,17 @@ export default function ParentDashboard({ user = null }) {
   const [loadingInitial, setLoadingInitial] = useState(Boolean(currentUid));
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [error, setError] = useState("");
+  const [detailsError, setDetailsError] = useState("");
+  const selectedChild = useMemo(() => {
+    return children.find((c) => c.id === selectedChildId) || null;
+  }, [children, selectedChildId]);
 
   // Reset child details and set loadingDetails immediately when child changes
   if (selectedChildId !== prevChildId) {
     setPrevChildId(selectedChildId);
     setChildDetails({ classes: [], attendance: [] });
     setLoadingDetails(Boolean(selectedChildId));
+    setDetailsError("");
   }
 
   // 1. Load Parent Profile and Linked Children
@@ -87,7 +92,10 @@ export default function ParentDashboard({ user = null }) {
     let active = true;
     if (!selectedChildId) return;
 
-    getChildAttendanceAndClasses(selectedChildId)
+    getChildAttendanceAndClasses(
+      selectedChildId,
+      selectedChild?.branchId || selectedChild?.branch
+    )
       .then((data) => {
         if (!active) return;
         setChildDetails(data);
@@ -95,6 +103,7 @@ export default function ParentDashboard({ user = null }) {
       .catch((err) => {
         if (!active) return;
         console.error("Failed loading child classes/attendance:", err);
+        setDetailsError("Unable to load classes or attendance. Please refresh or contact the front desk.");
       })
       .finally(() => {
         if (active) {
@@ -105,11 +114,7 @@ export default function ParentDashboard({ user = null }) {
     return () => {
       active = false;
     };
-  }, [selectedChildId]);
-
-  const selectedChild = useMemo(() => {
-    return children.find((c) => c.id === selectedChildId) || null;
-  }, [children, selectedChildId]);
+  }, [selectedChildId, selectedChild]);
 
   // Attendance Statistics
   const stats = useMemo(() => {
@@ -193,6 +198,12 @@ export default function ParentDashboard({ user = null }) {
 
   return (
     <div className="w-full space-y-6 max-w-5xl mx-auto pb-10">
+      {detailsError && (
+        <div role="alert" className="p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200 text-xs">
+          {detailsError}
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="bg-gradient-to-br from-[#1a3a8f] via-[#162f74] to-indigo-950 text-white rounded-3xl p-6 sm:p-8 shadow-md relative overflow-hidden">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -366,6 +377,10 @@ export default function ParentDashboard({ user = null }) {
               <div className="p-4 flex items-center justify-center text-xs text-slate-400">
                 <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Memuat kelas...
               </div>
+            ) : detailsError ? (
+              <div role="alert" className="p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200 text-xs">
+                Classes could not be loaded.
+              </div>
             ) : childDetails.classes.length === 0 ? (
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-500 text-center">
                 Belum terdaftar di kelas aktif saat ini.
@@ -415,6 +430,10 @@ export default function ParentDashboard({ user = null }) {
             {loadingDetails ? (
               <div className="p-4 flex items-center justify-center text-xs text-slate-400">
                 <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Memuat data kehadiran...
+              </div>
+            ) : detailsError ? (
+              <div role="alert" className="p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200 text-xs">
+                Attendance could not be loaded.
               </div>
             ) : childDetails.attendance.length === 0 ? (
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-500 text-center">

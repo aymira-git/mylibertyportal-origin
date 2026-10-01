@@ -37,6 +37,8 @@ export default function FrontDeskCashReconcile({
   const toast = useToast();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [loadedScopeKey, setLoadedScopeKey] = useState(null);
   const [copied, setCopied] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState("");
   const [showReconcileModal, setShowReconcileModal] = useState(false);
@@ -56,15 +58,19 @@ export default function FrontDeskCashReconcile({
   }, [students]);
 
   const targetBranchId = useMemo(
-    () => (branchLabel ? branchToId(branchLabel) : null),
+    () => (branchLabel && branchLabel !== "all" ? branchToId(branchLabel) : null),
     [branchLabel]
   );
+  const scopeKey = `${targetBranchId || "all"}:${division || "all"}`;
+  const isLoading = loading || loadedScopeKey !== scopeKey;
 
   const loadDailyPayments = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const list = await getPaymentsForRecordedDay(new Date(), targetBranchId, division);
       setPayments(list);
+      setLoadedScopeKey(scopeKey);
       setLastRefreshed(
         new Date().toLocaleTimeString("id-ID", {
           timeZone: "Asia/Makassar",
@@ -75,11 +81,13 @@ export default function FrontDeskCashReconcile({
       );
     } catch (err) {
       console.error("Failed to load daily payments for reconciliation:", err);
+      setPayments([]);
+      setLoadError(err.message || "Daily payment totals could not be verified.");
       toast("Failed to load today's reconciliation payments.", "error");
     } finally {
       setLoading(false);
     }
-  }, [targetBranchId, division, toast]);
+  }, [targetBranchId, division, scopeKey, toast]);
 
   useEffect(() => {
     let active = true;
@@ -87,6 +95,8 @@ export default function FrontDeskCashReconcile({
       .then((list) => {
         if (active) {
           setPayments(list);
+          setLoadedScopeKey(scopeKey);
+          setLoadError("");
           setLastRefreshed(
             new Date().toLocaleTimeString("id-ID", {
               timeZone: "Asia/Makassar",
@@ -101,6 +111,9 @@ export default function FrontDeskCashReconcile({
       .catch((err) => {
         if (active) {
           console.error("Failed to load daily payments for reconciliation:", err);
+          setPayments([]);
+          setLoadedScopeKey(scopeKey);
+          setLoadError(err.message || "Daily payment totals could not be verified.");
           toast("Failed to load today's reconciliation payments.", "error");
           setLoading(false);
         }
@@ -109,9 +122,10 @@ export default function FrontDeskCashReconcile({
     return () => {
       active = false;
     };
-  }, [targetBranchId, division, toast]);
+  }, [targetBranchId, division, scopeKey, toast]);
 
   const filteredPayments = useMemo(() => {
+    if (loadedScopeKey !== scopeKey) return [];
     if (!branchLabel || branchLabel === "all") {
       return payments;
     }
@@ -122,7 +136,7 @@ export default function FrontDeskCashReconcile({
         p.branchId;
       return matchesBranchFilter(b, branchLabel);
     });
-  }, [payments, branchLabel, studentBranchMap]);
+  }, [payments, branchLabel, studentBranchMap, loadedScopeKey, scopeKey]);
 
   const summary = useMemo(() => {
     return summarizePaymentsByMethod(filteredPayments);
@@ -182,7 +196,8 @@ export default function FrontDeskCashReconcile({
           {activeShift && (
             <button
               onClick={() => setShowReconcileModal(true)}
-              className="px-3.5 py-2 rounded-xl bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              disabled={isLoading || Boolean(loadError)}
+              className="px-3.5 py-2 rounded-xl bg-amber-600 text-white hover:bg-amber-700 text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>End Shift &amp; Count Drawer</span>
@@ -191,11 +206,11 @@ export default function FrontDeskCashReconcile({
 
           <button
             onClick={loadDailyPayments}
-            disabled={loading}
+            disabled={isLoading}
             title="Refresh Totals"
             className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition disabled:opacity-50 cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
           </button>
 
           <button
@@ -255,6 +270,12 @@ export default function FrontDeskCashReconcile({
         <p className="text-[10px] text-slate-400 font-medium text-right">
           Last reconciled at {lastRefreshed}
         </p>
+      )}
+
+      {loadError && (
+        <div role="alert" className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3">
+          Daily reconciliation is blocked: {loadError}
+        </div>
       )}
 
       {showReconcileModal && (

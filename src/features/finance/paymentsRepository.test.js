@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fake } from "../../test/firestoreFake.js";
-import { fetchPaymentHistory, markPaymentPending, recordPayment } from "./paymentsRepository.js";
+import { fake, firestoreModule } from "../../test/firestoreFake.js";
+import {
+  fetchPaymentHistory,
+  getPaymentsForRecordedDay,
+  markPaymentPending,
+  recordPayment,
+} from "./paymentsRepository.js";
 
 vi.mock(
   "firebase/firestore",
@@ -31,6 +36,7 @@ describe("recordPayment", () => {
       branchId: "kota_gorontalo",
       division: "courses",
     });
+
     const payment = fake.find("payments/auto-1");
     const student = fake.find("users/s1");
     expect(payment).toMatchObject({
@@ -123,6 +129,30 @@ describe("recordPayment", () => {
     expect(result._idempotentReplay).toBe(true);
     // Should NOT have committed a new payment to fake.ops
     expect(fake.find("payments/idem_ML-112233")).toBeUndefined();
+  });
+});
+
+describe("getPaymentsForRecordedDay", () => {
+  it("blocks reconciliation when its required index is missing instead of returning a partial total", async () => {
+    const indexError = Object.assign(
+      new Error("The query requires an index."),
+      { code: "failed-precondition" }
+    );
+    firestoreModule.getDocs.mockRejectedValueOnce(indexError);
+
+    await expect(
+      getPaymentsForRecordedDay(new Date("2026-09-22T04:00:00.000Z"), "kota_gorontalo", "courses")
+    ).rejects.toThrow("Cash reconciliation is blocked because a required payment index is not ready.");
+    expect(firestoreModule.getDocs).toHaveBeenCalledOnce();
+  });
+
+  it("does not hide permission or network failures behind an index fallback", async () => {
+    firestoreModule.getDocs.mockRejectedValueOnce(
+      Object.assign(new Error("permission-denied"), { code: "permission-denied" })
+    );
+
+    await expect(getPaymentsForRecordedDay()).rejects.toThrow("permission-denied");
+    expect(firestoreModule.getDocs).toHaveBeenCalledOnce();
   });
 });
 

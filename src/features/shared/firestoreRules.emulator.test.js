@@ -28,6 +28,7 @@ const USERS = {
   mgrGto: { role: "manager", branchId: "kota_gorontalo" },
   mgrBoba: { role: "manager", branchId: "bone_bolango" },
   foGto: { role: "frontoffice", branchId: "kota_gorontalo" },
+  foKgGto: { role: "frontoffice", branchId: "kota_gorontalo", division: "kindergarten" },
   foBoba: { role: "frontoffice", branchId: "bone_bolango" },
   insGto: { role: "instructor", branchId: "kota_gorontalo" },
   mktGto: { role: "marketing", branchId: "kota_gorontalo" },
@@ -213,6 +214,10 @@ describe.skipIf(!HAS_EMULATOR)("firestore.rules against the real emulator", () =
       await assertFails(recordPaymentBatch(authed("insGto")));
     });
 
+    it("blocks kindergarten front office from recording a non-kindergarten payment", async () => {
+      await assertFails(recordPaymentBatch(authed("foKgGto")));
+    });
+
     it("still rejects summary writes that smuggle foreign fields", async () => {
       const db = authed("foGto");
       const batch = writeBatch(db);
@@ -343,6 +348,21 @@ describe.skipIf(!HAS_EMULATOR)("firestore.rules against the real emulator", () =
     it("blocks frontoffice from editing other branches' students or staff", async () => {
       await assertFails(updateDoc(doc(authed("foGto"), "users", "student2"), { status: "inactive" }));
       await assertFails(updateDoc(doc(authed("foGto"), "users", "insGto"), { status: "inactive" }));
+    });
+
+    it("keeps kindergarten front office limited to kindergarten students", async () => {
+      await assertFails(
+        updateDoc(doc(authed("foKgGto"), "users", "student1"), { status: "inactive" })
+      );
+      await seedDoc(["users", "studentKg"], {
+        displayName: "studentKg",
+        role: "student",
+        branchId: "kota_gorontalo",
+        division: "kindergarten",
+      });
+      await assertSucceeds(
+        updateDoc(doc(authed("foKgGto"), "users", "studentKg"), { status: "inactive" })
+      );
     });
 
     it("lets a user edit only their own profile basics", async () => {
@@ -766,9 +786,156 @@ describe.skipIf(!HAS_EMULATOR)("firestore.rules against the real emulator", () =
         status: "open",
       });
 
-      // Parent1 has childStudentIds: ["student1"]. Query where studentIds array-contains student1:
+      const snap = await assertSucceeds(
+        getDocs(
+          query(
+            collection(authed("parent1"), "classes"),
+            where("studentIds", "array-contains", "student1"),
+            where("status", "==", "open"),
+            where("branchId", "==", "kota_gorontalo")
+          )
+        )
+      );
+      expect(snap.docs.map((d) => d.id)).toEqual(["class1"]);
+    });
+
+    it("allows active linked-child reads and applies the same archive predicate to report get and list", async () => {
+      await seedDoc(["classes", "class1"], {
+        instructorId: "insGto",
+        studentIds: ["student1"],
+        branchId: "kota_gorontalo",
+        status: "open",
+      });
+      await seedDoc(["classAttendance", "attendance1"], {
+        classId: "class1",
+        studentId: "student1",
+        attendanceDate: "2026-09-30",
+        status: "PRESENT",
+      });
+      await seedDoc(["payments", "payment1"], {
+        studentId: "student1",
+        branchId: "kota_gorontalo",
+        amount: 100,
+      });
+      await seedDoc(["progressReports", "report1"], {
+        instructorId: "insGto",
+        studentId: "student1",
+        classId: "class1",
+        branchId: "kota_gorontalo",
+      });
+
+      await assertSucceeds(getDoc(doc(authed("parent1"), "users", "student1")));
       await assertSucceeds(
-        getDocs(query(collection(authed("parent1"), "classes"), where("studentIds", "array-contains", "student1")))
+        getDocs(
+          query(
+            collection(authed("parent1"), "classes"),
+            where("studentIds", "array-contains", "student1"),
+            where("status", "==", "open"),
+            where("branchId", "==", "kota_gorontalo")
+          )
+        )
+      );
+      await assertSucceeds(getDoc(doc(authed("parent1"), "classAttendance", "attendance1")));
+      await assertSucceeds(getDoc(doc(authed("parent1"), "payments", "payment1")));
+      await assertSucceeds(getDoc(doc(authed("parent1"), "progressReports", "report1")));
+      await assertSucceeds(
+        getDocs(
+          query(
+            collection(authed("parent1"), "progressReports"),
+            where("studentId", "==", "student1")
+          )
+        )
+      );
+
+      await seedDoc(["users", "student1"], {
+        displayName: "student1",
+        role: "student",
+        branchId: "kota_gorontalo",
+        status: "archived",
+      });
+      await assertFails(getDoc(doc(authed("parent1"), "users", "student1")));
+      await assertFails(getDoc(doc(authed("parent1"), "classAttendance", "attendance1")));
+      await assertFails(getDoc(doc(authed("parent1"), "payments", "payment1")));
+      await assertFails(getDoc(doc(authed("parent1"), "progressReports", "report1")));
+      await assertFails(
+        getDocs(
+          query(
+            collection(authed("parent1"), "progressReports"),
+            where("studentId", "==", "student1")
+          )
+        )
+      );
+      await seedDoc(["classes", "class1"], {
+        instructorId: "insGto",
+        studentIds: [],
+        branchId: "kota_gorontalo",
+        status: "open",
+      });
+      await assertFails(getDoc(doc(authed("parent1"), "classes", "class1")));
+      const archivedClasses = await assertSucceeds(
+        getDocs(
+          query(
+            collection(authed("parent1"), "classes"),
+            where("studentIds", "array-contains", "student1"),
+            where("status", "==", "open"),
+            where("branchId", "==", "kota_gorontalo")
+          )
+        )
+      );
+      expect(archivedClasses.empty).toBe(true);
+    });
+
+    it("revokes all parent reads after unlink without affecting staff reads", async () => {
+      await seedDoc(["users", "parent1"], {
+        role: "parent",
+        branchId: "kota_gorontalo",
+        childStudentIds: [],
+      });
+      await seedDoc(["classes", "class1"], {
+        instructorId: "insGto",
+        studentIds: ["student1"],
+        branchId: "kota_gorontalo",
+        status: "open",
+      });
+      await seedDoc(["classAttendance", "attendance1"], {
+        classId: "class1",
+        studentId: "student1",
+        attendanceDate: "2026-09-30",
+        status: "PRESENT",
+      });
+      await seedDoc(["payments", "payment1"], {
+        studentId: "student1",
+        branchId: "kota_gorontalo",
+        amount: 100,
+      });
+      await seedDoc(["progressReports", "report1"], {
+        instructorId: "insGto",
+        studentId: "student1",
+        classId: "class1",
+        branchId: "kota_gorontalo",
+      });
+
+      await assertFails(getDoc(doc(authed("parent1"), "users", "student1")));
+      await assertFails(
+        getDocs(
+          query(
+            collection(authed("parent1"), "classes"),
+            where("studentIds", "array-contains", "student1"),
+            where("status", "==", "open"),
+            where("branchId", "==", "kota_gorontalo")
+          )
+        )
+      );
+      await assertFails(getDoc(doc(authed("parent1"), "classAttendance", "attendance1")));
+      await assertFails(getDoc(doc(authed("parent1"), "payments", "payment1")));
+      await assertFails(getDoc(doc(authed("parent1"), "progressReports", "report1")));
+      await assertFails(
+        getDocs(
+          query(
+            collection(authed("parent1"), "progressReports"),
+            where("studentId", "==", "student1")
+          )
+        )
       );
     });
 
@@ -913,5 +1080,3 @@ describe.skipIf(!HAS_EMULATOR)("firestore.rules against the real emulator", () =
     });
   });
 });
-
-

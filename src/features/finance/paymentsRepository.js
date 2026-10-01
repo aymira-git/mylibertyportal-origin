@@ -114,25 +114,13 @@ export async function getPaymentsForRecordedDay(witaDate = new Date(), branchId 
     list.sort((a, b) => new Date(b.recordedAt || 0).getTime() - new Date(a.recordedAt || 0).getTime());
     return list;
   } catch (err) {
-    console.warn("getPaymentsForRecordedDay range query error, falling back to recent scan:", err?.message);
-    // Safe fallback if range index isn't created yet: fetch recent 200 and filter by WITA day
-    const fallbackConstraints = [];
-    if (branchId) {
-      fallbackConstraints.push(where("branchId", "==", branchId));
+    if (err?.code === "failed-precondition" && /index/i.test(err.message || "")) {
+      throw new Error(
+        "Cash reconciliation is blocked because a required payment index is not ready.",
+        { cause: err }
+      );
     }
-    if (division && division !== "all") {
-      fallbackConstraints.push(where("division", "==", division));
-    }
-    fallbackConstraints.push(limit(200));
-    const q = query(collection(db, "payments"), ...fallbackConstraints);
-    const snap = await getDocs(q);
-    return snap.docs
-      .map((d) => /** @type {any} */ ({ id: d.id, ...d.data() }))
-      .filter((p) => {
-        if (!p.recordedAt) return false;
-        return p.recordedAt >= startIso && p.recordedAt < endIso;
-      })
-      .sort((a, b) => new Date(b.recordedAt || 0).getTime() - new Date(a.recordedAt || 0).getTime());
+    throw err;
   }
 }
 

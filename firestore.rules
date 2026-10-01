@@ -37,6 +37,103 @@ service cloud.firestore {
       return signedIn() && isActiveUser() && userProfile().role in ['frontoffice', 'opslead', 'ops_lead', 'frontofficelead'];
     }
 
+    function isActiveProfile(profile) {
+      return profile != null
+        && (!('status' in profile) || (profile.status != 'resigned' && profile.status != 'terminated'));
+    }
+
+    function isFrontOfficeProfile(profile) {
+      return signedIn()
+        && isActiveProfile(profile)
+        && profile.role in ['frontoffice', 'opslead', 'ops_lead', 'frontofficelead'];
+    }
+
+    function branchForProfile(profile) {
+      return ('branchId' in profile)
+        ? profile.branchId
+        : (('branch' in profile)
+          ? (
+            profile.branch == 'Bone Bolango' ? 'bone_bolango' :
+            profile.branch == 'Pohuwato' ? 'pohuwato' :
+            profile.branch == 'Limboto' ? 'limboto' : 'kota_gorontalo'
+          )
+          : 'kota_gorontalo');
+    }
+
+    function isSameBranchForProfile(data, profile) {
+      let branchId = branchForProfile(profile);
+      return data != null && (
+        ('branchId' in data && data.branchId == branchId)
+        || (!('branchId' in data) && 'branch' in data && (
+          (data.branch == 'Bone Bolango' && branchId == 'bone_bolango')
+          || (data.branch == 'Pohuwato' && branchId == 'pohuwato')
+          || (data.branch == 'Limboto' && branchId == 'limboto')
+          || (data.branch == 'Cabang Utama' && branchId == 'kota_gorontalo')
+          || (data.branch == 'Kota Gorontalo' && branchId == 'kota_gorontalo')
+        ))
+        || (!('branchId' in data) && !('branch' in data) && branchId == 'kota_gorontalo')
+      );
+    }
+
+    function isFrontOfficeDivisionAllowed(data, profile) {
+      let division = ('division' in profile) ? profile.division : null;
+      return data != null && (
+        division == 'all'
+        || (division == 'kindergarten'
+          ? ('division' in data && data.division == 'kindergarten')
+          : (!('division' in data) || data.division != 'kindergarten'))
+      );
+    }
+
+    function canFrontOfficeUpdateStudent(before, after) {
+      let profile = userProfile();
+      return isFrontOfficeProfile(profile)
+        && before.role == 'student'
+        && after.role == 'student'
+        && isSameBranchForProfile(before, profile)
+        && isSameBranchForProfile(after, profile)
+        && isFrontOfficeDivisionAllowed(before, profile)
+        && isFrontOfficeDivisionAllowed(after, profile)
+        && (!('branchId' in before) || after.branchId == before.branchId)
+        && after.diff(before).affectedKeys().hasOnly([
+          'displayName', 'name', 'phone', 'dob', 'address', 'parentName', 'parentPhone',
+          'emergencyContact', 'emergencyPhone', 'notes', 'placementTests', 'status',
+          'statusUpdatedAt', 'statusUpdatedBy',
+          'level', 'currentLevel', 'enrollmentDate',
+          'updatedAt', 'photoURL', 'nickname', 'gender', 'nis', 'school', 'grade',
+          'placeOfBirth', 'religion', 'programId', 'program', 'batchType', 'classType',
+          'schoolOrJob', 'classOrSemester', 'joinedDate', 'fatherName', 'fatherJob',
+          'fatherPhone', 'motherName', 'motherJob', 'motherPhone', 'referralSource',
+          'rating', 'paymentPlan', 'paymentStatus', 'lastPaymentPeriod', 'lastPaymentDate',
+          'lastPaymentAmount', 'lastPaymentMethod', 'paidUntil', 'branch', 'division'
+        ]);
+    }
+
+    function canFrontOfficeUpdatePayment(before, after) {
+      let profile = userProfile();
+      return isFrontOfficeProfile(profile)
+        && isSameBranchForProfile(before, profile)
+        && isSameBranchForProfile(after, profile)
+        && (!('branchId' in before) || after.branchId == before.branchId)
+        && after.diff(before).affectedKeys()
+          .hasOnly(['notes', 'approvalStatus', 'referenceNumber', 'updatedAt']);
+    }
+
+    function canCreatePayment(payment) {
+      let profile = userProfile();
+      let isAdminCaller = signedIn() && isActiveProfile(profile) && profile.role == 'admin';
+      let student = get(/databases/$(database)/documents/users/$(payment.studentId)).data;
+      return (isAdminCaller
+          || (isFrontOfficeProfile(profile)
+            && isSameBranchForProfile(payment, profile)
+            && isFrontOfficeDivisionAllowed(payment, profile)))
+        && payment.amount is number
+        && payment.amount > 0
+        && payment.studentId is string
+        && student.role == 'student'
+        && (isAdminCaller || isSameBranchForProfile(student, profile));
+    }
+
     function userBranch() {
       return signedIn() && ('branchId' in userProfile())
         ? userProfile().branchId
@@ -247,27 +344,7 @@ service cloud.firestore {
             ]));
       allow delete: if isAdmin() || (isFrontOffice() && resource.data.role in ['student', 'parent'] && isSameBranch(resource.data) && (resource.data.role != 'student' || isDivisionAllowedForBranchStaff(resource.data)));
       allow update: if isAdmin()
-        || (isFrontOffice()
-          && resource.data.role == 'student'
-          && request.resource.data.role == 'student'
-          && isSameBranch(resource.data)
-          && isSameBranch(request.resource.data)
-          && isDivisionAllowedForBranchStaff(resource.data)
-          && isDivisionAllowedForBranchStaff(request.resource.data)
-          && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId)
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly([
-              'displayName', 'name', 'phone', 'dob', 'address', 'parentName', 'parentPhone',
-              'emergencyContact', 'emergencyPhone', 'notes', 'placementTests', 'status',
-              'statusUpdatedAt', 'statusUpdatedBy',
-              'level', 'currentLevel', 'enrollmentDate',
-              'updatedAt', 'photoURL', 'nickname', 'gender', 'nis', 'school', 'grade',
-              'placeOfBirth', 'religion', 'programId', 'program', 'batchType', 'classType',
-              'schoolOrJob', 'classOrSemester', 'joinedDate', 'fatherName', 'fatherJob',
-              'fatherPhone', 'motherName', 'motherJob', 'motherPhone', 'referralSource',
-              'rating', 'paymentPlan', 'paymentStatus', 'lastPaymentPeriod', 'lastPaymentDate',
-              'lastPaymentAmount', 'lastPaymentMethod', 'paidUntil', 'branch', 'division'
-            ]))
+        || canFrontOfficeUpdateStudent(resource.data, request.resource.data)
         || (isFrontOffice()
           && resource.data.role == 'parent'
           && request.resource.data.role == 'parent'
@@ -481,21 +558,8 @@ service cloud.firestore {
         || (signedIn() && (resource.data.studentId == request.auth.uid || isParentOf(resource.data.studentId)));
       allow list: if isAdmin()
         || ((isManager() || isFrontOffice()) && isSameBranchStrict(resource.data) && isDivisionAllowedForBranchStaff(resource.data));
-      allow create: if (isAdmin() || (isFrontOffice() && isSameBranch(request.resource.data) && isDivisionAllowedForBranchStaff(request.resource.data)))
-        && request.resource.data.amount is number
-        && request.resource.data.amount > 0
-        && request.resource.data.studentId is string
-        && roleOf(request.resource.data.studentId) == 'student'
-        && isSameBranch(get(/databases/$(database)/documents/users/$(request.resource.data.studentId)).data);
-      allow update: if isAdmin()
-        || (
-          isFrontOffice()
-          && isSameBranch(resource.data)
-          && isSameBranch(request.resource.data)
-          && (!('branchId' in resource.data) || request.resource.data.branchId == resource.data.branchId)
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['notes', 'approvalStatus', 'referenceNumber', 'updatedAt'])
-        );
+      allow create: if canCreatePayment(request.resource.data);
+      allow update: if isAdmin() || canFrontOfficeUpdatePayment(resource.data, request.resource.data);
       allow delete: if isAdmin();
     }
 
@@ -549,7 +613,7 @@ service cloud.firestore {
       allow list: if isAdmin()
         || ((isManager() || isFrontOffice()) && isSameBranchStrict(resource.data) && isDivisionAllowedForManager(resource.data))
         || (signedIn() && resource.data.instructorId == request.auth.uid)
-        || (isParent() && ('childStudentIds' in userProfile()) && userProfile().childStudentIds.hasAny([resource.data.studentId]));
+        || (isParentOf(resource.data.studentId));
       allow create: if signedIn()
         && request.resource.data.instructorId == request.auth.uid
         && request.resource.data.studentId is string

@@ -8,6 +8,9 @@ import {
   updateParentRecord,
   linkChildToParent,
   unlinkChildFromParent,
+  unlinkStudentFromAllParents,
+  archiveStudentProfile,
+  updateStudentStatus,
   getParentLinkedStudents,
   findParentsForStudent,
   fetchAllParents,
@@ -159,8 +162,8 @@ describe("createStaffAccount", () => {
 });
 
 describe("deleteUserProfile", () => {
-  it("deletes user profile and removes student from class rosters in an atomic batch", async () => {
-    fake.seed("users", [{ id: "s1", role: "student" }]);
+  it("removes parent links through the Worker and deletes the student with roster cleanup", async () => {
+    fake.seed("users", [{ id: "s1", role: "student", branchId: "kota_gorontalo" }]);
     fake.seed("classes", [
       {
         id: "c1",
@@ -179,6 +182,13 @@ describe("deleteUserProfile", () => {
 
     await deleteUserProfile("s1");
 
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/parent-link$/),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ action: "unlink-all", studentId: "s1" }),
+      })
+    );
     // User document should be deleted
     expect(fake.opsOf("delete").some((o) => o.path === "users/s1")).toBe(true);
 
@@ -255,6 +265,24 @@ describe("createParentAccount", () => {
     expect(err.message).toContain("rolled back");
     expect(authMock.deleteUser).toHaveBeenCalledWith(userObj);
   });
+
+  it("removes the parent profile when the server rejects initial child linking", async () => {
+    const userObj = { uid: "parent_link_fail" };
+    authMock.createUserWithEmailAndPassword.mockResolvedValueOnce({ user: userObj });
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "Invalid request." }), { status: 400 })
+    );
+
+    await expect(
+      createParentAccount("parentfail@example.com", "pass123456", {
+        displayName: "Parent Link Fail",
+        initialChildStudentId: "student1",
+      })
+    ).rejects.toThrow("Invalid request.");
+
+    expect(fake.opsOf("delete").some((op) => op.path === "users/parent_link_fail")).toBe(true);
+    expect(authMock.deleteUser).toHaveBeenCalledWith(userObj);
+  });
 });
 
 describe("linkChildToParent and unlinkChildFromParent", () => {
@@ -263,12 +291,15 @@ describe("linkChildToParent and unlinkChildFromParent", () => {
     expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/api\/v1\/parent-link$/), expect.objectContaining({ method: "POST" }));
   });
 
-  it("unlinks a child from a parent with arrayRemove", async () => {
+  it("unlinks a child from a parent through the Worker", async () => {
     await unlinkChildFromParent("parent1", "child1");
-    const op = fake.find("users/parent1");
-    expect(op.opts).toEqual({ merge: true });
-    expect(op.data.childStudentIds).toEqual({ __op: "arrayRemove", items: ["child1"] });
-    expect(op.data.updatedAt).toBeTruthy();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/parent-link$/),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ action: "unlink", parentUid: "parent1", studentId: "child1" }),
+      })
+    );
   });
 
   it("throws if IDs are missing", () => {
@@ -276,6 +307,66 @@ describe("linkChildToParent and unlinkChildFromParent", () => {
     expect(() => linkChildToParent("p1", "")).toThrow();
     expect(() => unlinkChildFromParent("", "child1")).toThrow();
     expect(() => unlinkChildFromParent("p1", "")).toThrow();
+    expect(() => unlinkStudentFromAllParents("")).toThrow();
+  });
+});
+
+describe("archiveStudentProfile", () => {
+  it("archives the student, removes class roster entries, and revokes parent links", async () => {
+    fake.seed("users", [
+      { id: "s1", role: "student", branchId: "kota_gorontalo" },
+    ]);
+    fake.seed("classes", [
+      {
+        id: "c1",
+        branchId: "kota_gorontalo",
+        studentIds: ["s1", "s2"],
+        enrollments: [{ studentId: "s1" }, { studentId: "s2" }],
+      },
+      { id: "c2", branchId: "bone_bolango", studentIds: ["s1"], enrollments: [{ studentId: "s1" }] },
+    ]);
+
+    await archiveStudentProfile("s1", { displayName: "Front Office" });
+
+    expect(fake.opsOf("update")).toHaveLength(2);
+    expect(fake.find("users/s1").data).toMatchObject({ status: "archived" });
+    expect(fake.find("classes/c1").data.studentIds).toEqual(["s2"]);
+    expect(fake.find("classes/c1").data.enrollments).toEqual([{ studentId: "s2" }]);
+    expect(fake.find("classes/c2")).toBeUndefined();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/parent-link$/),
+      expect.objectContaining({
+        body: JSON.stringify({ action: "unlink-all", studentId: "s1" }),
+      })
+    );
+  });
+
+  it("routes archived status changes through roster and parent-link cleanup", async () => {
+    fake.seed("users", [
+      { id: "s1", role: "student", branchId: "kota_gorontalo" },
+    ]);
+
+    await updateStudentStatus("s1", "archived", "staff1");
+
+    expect(fake.find("users/s1").data.status).toBe("archived");
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/v1\/parent-link$/),
+      expect.objectContaining({
+        body: JSON.stringify({ action: "unlink-all", studentId: "s1" }),
+      })
+    );
+  });
+
+  it("reports partial success when archive commits but parent-link cleanup fails", async () => {
+    fake.seed("users", [{ id: "s1", role: "student", branchId: "kota_gorontalo" }]);
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "Worker unavailable." }), { status: 503 })
+    );
+
+    await expect(archiveStudentProfile("s1")).rejects.toThrow(
+      "The student was archived, but parent-link cleanup failed."
+    );
+    expect(fake.find("users/s1").data.status).toBe("archived");
   });
 });
 

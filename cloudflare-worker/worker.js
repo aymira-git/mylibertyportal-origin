@@ -91,6 +91,12 @@ function toFirestoreFields(obj) {
   return fields;
 }
 
+/**
+ * Firestore REST fields are dynamic application data; keep their decoded
+ * shape permissive at this boundary and validate values in the handler.
+ * @param {any} doc
+ * @returns {Record<string, any> | null}
+ */
 function fromFirestoreDocument(doc) {
   if (!doc || !doc.fields) return null;
   const data = {};
@@ -180,7 +186,7 @@ async function verifyCaller(request) {
 
 // ── FIRESTORE OPERATIONS ──
 
-async function fsGetDoc(collectionPath, docId, token) {
+async function fsGetDocSnapshot(collectionPath, docId, token) {
   const url = `${FIRESTORE_BASE}/${collectionPath}/${encodeURIComponent(docId)}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -189,7 +195,16 @@ async function fsGetDoc(collectionPath, docId, token) {
   if (!res.ok) {
     throw new Error(`Firestore GET failed: ${res.status} ${await res.text()}`);
   }
-  return fromFirestoreDocument(await res.json());
+  const raw = await res.json();
+  return {
+    document: fromFirestoreDocument(raw),
+    updateTime: raw.updateTime,
+  };
+}
+
+async function fsGetDoc(collectionPath, docId, token) {
+  const snapshot = await fsGetDocSnapshot(collectionPath, docId, token);
+  return snapshot?.document || null;
 }
 
 /**
@@ -245,12 +260,111 @@ async function fsSetDoc(collectionPath, docId, data, token) {
   return fromFirestoreDocument(await res.json());
 }
 
+async function fsCommitWrites(writes, token) {
+  if (writes.length === 0) return;
+  const res = await fetch(`${FIRESTORE_BASE}:commit`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ writes }),
+  });
+  if (!res.ok) {
+    const error = /** @type {Error & { status?: number }} */ (
+      new Error(`Firestore commit failed: ${res.status} ${await res.text()}`)
+    );
+    error.status = res.status;
+    throw error;
+  }
+}
+
+function updateWrite(collectionPath, docId, fields, updateTime) {
+  return {
+    update: {
+      name: `${FIRESTORE_BASE}/${collectionPath}/${encodeURIComponent(docId)}`,
+      fields: toFirestoreFields(fields),
+    },
+    updateMask: { fieldPaths: Object.keys(fields) },
+    currentDocument: { updateTime },
+  };
+}
+
+function createWrite(collectionPath, docId, fields) {
+  return {
+    update: {
+      name: `${FIRESTORE_BASE}/${collectionPath}/${encodeURIComponent(docId)}`,
+      fields: toFirestoreFields(fields),
+    },
+    currentDocument: { exists: false },
+  };
+}
+
+function deleteWrite(collectionPath, docId, updateTime) {
+  return {
+    delete: `${FIRESTORE_BASE}/${collectionPath}/${encodeURIComponent(docId)}`,
+    currentDocument: { updateTime },
+  };
+}
+
+function isWriteConflict(error) {
+  return error?.status === 409
+    || /FAILED_PRECONDITION|ABORTED|ALREADY_EXISTS/i.test(error?.message || "");
+}
+
+async function fsQueryParentsForStudent(studentId, token) {
+  const res = await fetch(`${FIRESTORE_BASE}:runQuery`, {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "users" }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: "childStudentIds" },
+            op: "ARRAY_CONTAINS",
+            value: { stringValue: studentId },
+          },
+        },
+      },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Firestore parent-link query failed: ${res.status} ${await res.text()}`);
+  }
+  const rows = await res.json();
+  return rows
+    .filter((row) => row.document)
+    .map((row) => fromFirestoreDocument(row.document))
+    .filter((parent) => parent.role === "parent");
+}
+
+function parentChildLinkWrite(parentUid, studentId, action) {
+  const operation = action === "link" ? "appendMissingElements" : "removeAllFromArray";
+  return {
+    update: {
+      name: `${FIRESTORE_BASE}/users/${encodeURIComponent(parentUid)}`,
+      fields: toFirestoreFields({ updatedAt: new Date().toISOString() }),
+    },
+    updateMask: { fieldPaths: ["updatedAt"] },
+    updateTransforms: [
+      {
+        fieldPath: "childStudentIds",
+        [operation]: { values: [{ stringValue: studentId }] },
+      },
+    ],
+  };
+}
+
 async function fsCreateDoc(collectionPath, data, token) {
   const url = `${FIRESTORE_BASE}/${collectionPath}`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: "Bearer " + token,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ fields: toFirestoreFields(data) }),
@@ -259,25 +373,6 @@ async function fsCreateDoc(collectionPath, data, token) {
     throw new Error(`Firestore CREATE failed: ${res.status} ${await res.text()}`);
   }
   return fromFirestoreDocument(await res.json());
-}
-
-async function fsCreateDocWithIdPrecondition(collectionPath, docId, data, token) {
-  const url = `${FIRESTORE_BASE}/${collectionPath}/${encodeURIComponent(docId)}?currentDocument.exists=false`;
-  const res = await fetch(url, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ fields: toFirestoreFields(data) }),
-  });
-  if (res.status === 409 || res.status === 400) {
-    return { ok: false, status: 409, error: "ALREADY_EXISTS" };
-  }
-  if (!res.ok) {
-    return { ok: false, status: res.status, error: await res.text() };
-  }
-  return { ok: true, doc: fromFirestoreDocument(await res.json()) };
 }
 
 async function fsDeleteDoc(collectionPath, docId, token) {
@@ -321,13 +416,15 @@ async function fsQueryOpenShift(userId, token) {
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: "Bearer " + token,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    throw new Error(`Firestore open-shift query failed: ${res.status} ${await res.text()}`);
+  }
   const results = await res.json();
   const first = Array.isArray(results) ? results.find((r) => r.document) : null;
   return first ? fromFirestoreDocument(first.document) : null;
@@ -391,6 +488,31 @@ const BRANCH_MAP = {
   limboto: "Limboto",
 };
 
+const LEGACY_BRANCH_ALIASES = {
+  "cabang utama": "kota_gorontalo",
+  utama: "kota_gorontalo",
+  "main branch": "kota_gorontalo",
+  gorontalo: "kota_gorontalo",
+  kota: "kota_gorontalo",
+};
+
+function branchIdOfUser(user) {
+  const raw = user?.branchId || user?.branch || "kota_gorontalo";
+  const value = String(raw).trim().toLowerCase();
+  if (BRANCH_MAP[value]) return value;
+  const branchId = Object.keys(BRANCH_MAP).find(
+    (id) => BRANCH_MAP[id].toLowerCase() === value
+  );
+  if (branchId) return branchId;
+  return LEGACY_BRANCH_ALIASES[value] || value.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function hasBranchAssignment(profile) {
+  return [profile?.branchId, profile?.branch].some(
+    (value) => typeof value === "string" && value.trim().length > 0
+  );
+}
+
 const LEGACY_ROLE_ALIASES = {
   ops_lead: "opslead",
   frontofficelead: "opslead",
@@ -405,6 +527,150 @@ function normalizeRole(role) {
   if (!role || typeof role !== "string") return role;
   const trimmed = role.trim().toLowerCase();
   return LEGACY_ROLE_ALIASES[trimmed] || trimmed;
+}
+
+function normalizedDivision(value) {
+  const clean = String(value || "").trim().toLowerCase();
+  if (
+    clean === "kindergarten"
+    || clean === "kids_school"
+    || clean === "kids school"
+    || clean === "tk"
+    || clean === "paud"
+    || clean.includes("kindergarten")
+    || clean.includes("kids school")
+    || clean.includes("paud")
+  ) {
+    return "kindergarten";
+  }
+  return "courses";
+}
+
+function isInstructorRole(role) {
+  return ["instructor", "instructorleader"].includes(normalizeRole(role));
+}
+
+function isFrontOfficeRole(role) {
+  return ["frontoffice", "opslead"].includes(normalizeRole(role));
+}
+
+function isEventWithinTimeWindow(event, currentTime) {
+  const { startTime, endTime } = event;
+  if (typeof startTime !== "string" || !/^\d{1,2}:\d{2}$/.test(startTime.trim())) {
+    return true;
+  }
+
+  const wita = new Date(currentTime.getTime() + 8 * 60 * 60 * 1000);
+  const currentMinutes = wita.getUTCHours() * 60 + wita.getUTCMinutes();
+  const [startHour, startMinute] = startTime.trim().split(":").map(Number);
+  if (
+    Number.isNaN(startHour)
+    || Number.isNaN(startMinute)
+    || startHour < 0
+    || startHour > 24
+    || startMinute < 0
+    || startMinute >= 60
+  ) {
+    return true;
+  }
+
+  const startMinutes = startHour * 60 + startMinute;
+  const windowStartMinutes = Math.max(0, startMinutes - 120);
+  let endMinutes = 24 * 60;
+  let parsedEndMinutes = null;
+  if (typeof endTime === "string" && /^\d{1,2}:\d{2}$/.test(endTime.trim())) {
+    const [endHour, endMinute] = endTime.trim().split(":").map(Number);
+    if (
+      !Number.isNaN(endHour)
+      && !Number.isNaN(endMinute)
+      && endHour >= 0
+      && endHour <= 24
+      && endMinute >= 0
+      && endMinute < 60
+    ) {
+      parsedEndMinutes = endHour * 60 + endMinute;
+      if (parsedEndMinutes > startMinutes) endMinutes = parsedEndMinutes;
+    }
+  }
+
+  if (parsedEndMinutes !== null && parsedEndMinutes <= startMinutes) {
+    return currentMinutes >= windowStartMinutes || currentMinutes <= parsedEndMinutes;
+  }
+  return currentMinutes >= windowStartMinutes && currentMinutes <= endMinutes;
+}
+
+function isCorporateEventEligible(event, user, now = new Date()) {
+  if (!event || event.status !== "active" || !user) return false;
+  const wita = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const today = wita.toISOString().slice(0, 10);
+  const currentMinutes = wita.getUTCHours() * 60 + wita.getUTCMinutes();
+  let previousDayAllowed = false;
+  if (event.startTime && event.endTime) {
+    const [startHour, startMinute] = event.startTime.split(":").map(Number);
+    const [endHour, endMinute] = event.endTime.split(":").map(Number);
+    if (!Number.isNaN(startHour) && !Number.isNaN(endHour)) {
+      const startMinutes = startHour * 60 + (startMinute || 0);
+      const endMinutes = endHour * 60 + (endMinute || 0);
+      previousDayAllowed = endMinutes <= startMinutes && currentMinutes <= endMinutes;
+    }
+  }
+  const yesterday = new Date(wita.getTime() - 86400000).toISOString().slice(0, 10);
+  if (
+    (previousDayAllowed
+      ? event.eventDate !== today && event.eventDate !== yesterday
+      : event.eventDate !== today)
+    || !isEventWithinTimeWindow(event, now)
+  ) {
+    return false;
+  }
+
+  switch (event.audienceType) {
+    case "all":
+      return true;
+    case "branch":
+      return Boolean(event.audienceValue)
+        && branchIdOfUser(user) === branchIdOfUser({ branchId: event.audienceValue });
+    case "division":
+      return Boolean(event.audienceValue)
+        && (
+          ["all", "both", "cross", "cross-divisional", "cross_divisional"]
+            .includes(String(user.division || "").trim().toLowerCase())
+          || normalizedDivision(user.division || "courses")
+            === normalizedDivision(event.audienceValue)
+        );
+    case "role": {
+      const role = normalizeRole(user.role);
+      const audience = normalizeRole(event.audienceValue);
+      return Boolean(audience)
+        && (
+          role === audience
+          || (audience === "instructor" && isInstructorRole(role))
+          || (audience === "frontoffice" && isFrontOfficeRole(role))
+        );
+    }
+    default:
+      return false;
+  }
+}
+
+function isActiveStaffProfile(profile) {
+  return profile && profile.status !== "terminated" && profile.status !== "resigned";
+}
+
+function canManageParentLinks(actor, student) {
+  const role = normalizeRole(actor?.role);
+  if (!isActiveStaffProfile(actor) || !["admin", "frontoffice", "opslead"].includes(role)) {
+    return false;
+  }
+  if (role === "admin") return true;
+  if (!hasBranchAssignment(actor) || !hasBranchAssignment(student)) return false;
+  if (branchIdOfUser(actor) !== branchIdOfUser(student)) return false;
+
+  const actorDivision = actor.division || "courses";
+  return actorDivision === "all"
+    || (actorDivision === "kindergarten"
+      ? student.division === "kindergarten"
+      : student.division !== "kindergarten");
 }
 
 // ── AUDIT LOGGER ──
@@ -647,7 +913,11 @@ async function handleShiftClockIn(request, env) {
   if (user.status && user.status !== "active") {
     return json({ error: "This staff badge is no longer active. Please contact administration." }, 403, request, env);
   }
-  if (user.branchId !== device.branchId) {
+  if (
+    !hasBranchAssignment(user)
+    || !hasBranchAssignment(device)
+    || branchIdOfUser(user) !== branchIdOfUser(device)
+  ) {
     return json({ error: "This staff badge is assigned to a different branch." }, 403, request, env);
   }
 
@@ -673,7 +943,7 @@ async function handleShiftClockIn(request, env) {
     if (!classDoc) {
       return json({ error: "Selected class no longer exists." }, 404, request, env);
     }
-    if (classDoc.branchId && classDoc.branchId !== device.branchId) {
+    if (hasBranchAssignment(classDoc) && branchIdOfUser(classDoc) !== branchIdOfUser(device)) {
       return json({ error: "Selected class belongs to a different branch." }, 403, request, env);
     }
     if (classDoc.instructorId !== badgeToken && classDoc.substituteInstructorId !== badgeToken) {
@@ -686,8 +956,8 @@ async function handleShiftClockIn(request, env) {
     if (!eventDoc) {
       return json({ error: "Selected corporate event no longer exists." }, 404, request, env);
     }
-    if (eventDoc.status !== "active") {
-      return json({ error: "Selected corporate event is not active or has been cancelled." }, 400, request, env);
+    if (!isCorporateEventEligible(eventDoc, user)) {
+      return json({ error: "You are not eligible for this corporate event at the current time." }, 403, request, env);
     }
     resolvedClassName = eventDoc.name || resolvedClassName;
   }
@@ -706,58 +976,42 @@ async function handleShiftClockIn(request, env) {
     );
   }
 
-  const serverTime = new Date().toISOString();
-  // Attempt atomic lock acquisition in activeShifts
-  const lockResult = await fsCreateDocWithIdPrecondition(
-    "activeShifts",
-    badgeToken,
-    {
-      userId: badgeToken,
-      clockIn: serverTime,
-      branchId: device.branchId,
-      status: "opening",
-    },
-    token
-  );
-
-  if (!lockResult.ok) {
-    const existingLock = await fsGetDoc("activeShifts", badgeToken, token);
-    if (existingLock && existingLock.shiftId) {
-      const shiftCheck = await fsGetDoc("shifts", existingLock.shiftId, token);
-      if (shiftCheck && shiftCheck.clockOut) {
-        // Stale lock detected, clean up
-        await fsDeleteDoc("activeShifts", badgeToken, token);
-        return json({ error: "A stale kiosk lock was cleared. Please scan again." }, 409, request, env);
-      } else {
-        return json(
-          {
-            error: "Staff member already has an active open shift.",
-            existingShiftId: existingLock.shiftId,
-          },
-          409,
-          request,
-          env
+  const lockSnapshot = await fsGetDocSnapshot("activeShifts", badgeToken, token);
+  if (lockSnapshot) {
+    const lock = lockSnapshot.document;
+    if (lock.shiftId) {
+      const lockedShift = await fsGetDoc("shifts", lock.shiftId, token);
+      if (lockedShift?.clockOut && lockSnapshot.updateTime) {
+        await fsCommitWrites(
+          [deleteWrite("activeShifts", badgeToken, lockSnapshot.updateTime)],
+          token
         );
+        return json({ error: "A stale kiosk lock was cleared. Please scan again." }, 409, request, env);
       }
-    } else {
-      return json(
-        { error: "Staff member already has an active open shift." },
-        409,
-        request,
-        env
-      );
     }
+    return json(
+      {
+        error: "Staff member already has an active kiosk lock.",
+        existingShiftId: lock.shiftId || null,
+      },
+      409,
+      request,
+      env
+    );
   }
 
   // 7. Create the shift with server-authoritative timestamp & branch
-  const branchName = BRANCH_MAP[device.branchId] || "Kota Gorontalo";
+  const serverTime = new Date().toISOString();
+  const shiftId = crypto.randomUUID();
+  const deviceBranchId = branchIdOfUser(device);
+  const branchName = BRANCH_MAP[deviceBranchId] || "Kota Gorontalo";
   const userDivision = user.division === "kindergarten" ? "kindergarten" : "courses";
   const shiftPayload = {
     userId: badgeToken,
     displayName: user.displayName || user.name || "Staff Member",
     role: normalizedRole,
     branch: branchName,
-    branchId: device.branchId,
+    branchId: deviceBranchId,
     division: userDivision,
     classId: classId || "general",
     className: resolvedClassName,
@@ -775,36 +1029,40 @@ async function handleShiftClockIn(request, env) {
     ...(eventId ? { eventId } : {}),
   };
 
-  let createdShift;
-  try {
-    createdShift = await fsCreateDoc("shifts", shiftPayload, token);
-  } catch (err) {
-    // Never leave an unresolvable opening lock after a failed shift write.
-    await fsDeleteDoc("activeShifts", badgeToken, token).catch(() => {});
-    throw err;
-  }
+  const activeLock = {
+    userId: badgeToken,
+    shiftId,
+    clockIn: serverTime,
+    branchId: deviceBranchId,
+    status: "active",
+    clockInNonce: nonce,
+  };
 
-  // Update activeShifts lock to point to the created shiftId
-  await fsSetDoc(
-    "activeShifts",
-    badgeToken,
-    {
-      userId: badgeToken,
-      shiftId: createdShift.id,
-      clockIn: serverTime,
-      branchId: device.branchId,
-      status: "active",
-    },
-    token
-  ).catch(() => {});
+  try {
+    await fsCommitWrites(
+      [
+        createWrite("shifts", shiftId, shiftPayload),
+        createWrite("activeShifts", badgeToken, activeLock),
+      ],
+      token
+    );
+  } catch (err) {
+    if (isWriteConflict(err)) {
+      return json({ error: "A concurrent clock-in already created an active shift." }, 409, request, env);
+    }
+    const lockAfterUncertainCommit = await fsGetDoc("activeShifts", badgeToken, token);
+    if (lockAfterUncertainCommit?.clockInNonce !== nonce || lockAfterUncertainCommit.shiftId !== shiftId) {
+      throw err;
+    }
+  }
 
   await logKioskAudit(
     "SHIFT_CLOCK_IN_VERIFIED",
     {
-      shiftId: createdShift.id,
+      shiftId,
       userId: badgeToken,
       deviceId,
-      branchId: device.branchId,
+      branchId: deviceBranchId,
       clockIn: serverTime,
     },
     token
@@ -813,7 +1071,7 @@ async function handleShiftClockIn(request, env) {
   return json(
     {
       success: true,
-      shiftId: createdShift.id,
+      shiftId,
       clockIn: serverTime,
       employee: {
         uid: badgeToken,
@@ -881,7 +1139,8 @@ async function handleShiftClockOut(request, env) {
   }
 
   // 4. Fetch and update shift
-  const shift = await fsGetDoc("shifts", shiftId, token);
+  const shiftSnapshot = await fsGetDocSnapshot("shifts", shiftId, token);
+  const shift = shiftSnapshot?.document;
   if (!shift) {
     return json({ error: "Shift not found." }, 404, request, env);
   }
@@ -892,23 +1151,56 @@ async function handleShiftClockOut(request, env) {
   if (shift.userId !== badgeToken) {
     return json({ error: "Shift does not belong to the scanned employee credential." }, 403, request, env);
   }
+  const user = await fsGetDoc("users", badgeToken, token);
+  if (!user) return json({ error: "Staff profile not found." }, 404, request, env);
+  if (
+    !hasBranchAssignment(user)
+    || !hasBranchAssignment(device)
+    || !hasBranchAssignment(shift)
+    || branchIdOfUser(user) !== branchIdOfUser(device)
+    || branchIdOfUser(shift) !== branchIdOfUser(device)
+  ) {
+    return json({ error: "This staff member, shift, and kiosk must belong to the same branch." }, 403, request, env);
+  }
 
-  const serverTime = new Date().toISOString();
-  await fsSetDoc(
-    "shifts",
-    shiftId,
-    {
-      ...shift,
-      clockOut: serverTime,
-      updatedAt: serverTime,
-      clockOutSource: "kiosk_verified",
-      clockOutDeviceId: deviceId,
-    },
-    token
-  );
+  const lockSnapshot = await fsGetDocSnapshot("activeShifts", badgeToken, token);
+  if (
+    !lockSnapshot
+    || lockSnapshot.document?.shiftId !== shiftId
+    || !lockSnapshot.updateTime
+    || !shiftSnapshot.updateTime
+  ) {
+    return json({ error: "The active shift lock no longer matches this shift. Please contact an administrator." }, 409, request, env);
+  }
 
-  // Clean up activeShifts lock
-  await fsDeleteDoc("activeShifts", badgeToken, token).catch(() => {});
+  let serverTime = new Date().toISOString();
+  try {
+    await fsCommitWrites(
+      [
+        updateWrite(
+          "shifts",
+          shiftId,
+          {
+            clockOut: serverTime,
+            updatedAt: serverTime,
+            clockOutSource: "kiosk_verified",
+            clockOutDeviceId: deviceId,
+            clockOutNonce: nonce,
+          },
+          shiftSnapshot.updateTime
+        ),
+        deleteWrite("activeShifts", badgeToken, lockSnapshot.updateTime),
+      ],
+      token
+    );
+  } catch (err) {
+    if (isWriteConflict(err)) {
+      return json({ error: "The shift changed while clock-out was being processed. Please rescan." }, 409, request, env);
+    }
+    const shiftAfterUncertainCommit = await fsGetDoc("shifts", shiftId, token);
+    if (shiftAfterUncertainCommit?.clockOutNonce !== nonce) throw err;
+    serverTime = shiftAfterUncertainCommit.clockOut;
+  }
 
   await logKioskAudit(
     "SHIFT_CLOCK_OUT_VERIFIED",
@@ -962,13 +1254,7 @@ async function handleShiftClassSwitch(request, env) {
     return json({ error: "Kiosk terminal is not authorized or has been revoked." }, 403, request, env);
   }
 
-  // 2. Consume the nonce with a Firestore compare-and-set.
-  const consumedChallenge = await fsConsumeKioskChallenge(deviceId, nonce, token);
-  if (!consumedChallenge.ok) {
-    return json({ error: "Invalid or already-consumed challenge nonce." }, 401, request, env);
-  }
-
-  // 3. Verify signature over badgeToken
+  // 2. Verify signature over badgeToken before checking for a completed retry.
   const isSignatureValid = await verifyDeviceSignature(
     device.publicKeyJwk,
     deviceId,
@@ -980,7 +1266,36 @@ async function handleShiftClassSwitch(request, env) {
     return json({ error: "Cryptographic device signature verification failed." }, 401, request, env);
   }
 
-  // 4. Verify user
+  // A committed switch may have lost its response; the nonce on the lock makes
+  // that retry safe without consuming or applying the transition a second time.
+  const consumedChallenge = await fsConsumeKioskChallenge(deviceId, nonce, token);
+  if (!consumedChallenge.ok) {
+    const currentLock = await fsGetDoc("activeShifts", badgeToken, token);
+    if (
+      currentLock?.lastTransitionNonce === nonce
+      && currentLock.lastClosedShiftId === previousShiftId
+      && currentLock.shiftId
+    ) {
+      const currentShift = await fsGetDoc("shifts", currentLock.shiftId, token);
+      if (currentShift) {
+        return json(
+          {
+            success: true,
+            closedShiftId: previousShiftId,
+            newShiftId: currentLock.shiftId,
+            clockIn: currentShift.clockIn,
+            className: currentShift.className || "",
+          },
+          200,
+          request,
+          env
+        );
+      }
+    }
+    return json({ error: "Invalid or already-consumed challenge nonce." }, 401, request, env);
+  }
+
+  // 3. Verify user
   const user = await fsGetDoc("users", badgeToken, token);
   if (!user) {
     return json({ error: "No user profile found matching this badge credential." }, 404, request, env);
@@ -989,7 +1304,8 @@ async function handleShiftClassSwitch(request, env) {
     return json({ error: "This staff badge is no longer active." }, 403, request, env);
   }
   // 5. Verify previous shift belongs to user and is open
-  const prevShift = await fsGetDoc("shifts", previousShiftId, token);
+  const previousShiftSnapshot = await fsGetDocSnapshot("shifts", previousShiftId, token);
+  const prevShift = previousShiftSnapshot?.document;
   if (!prevShift) {
     return json({ error: "Previous shift not found." }, 404, request, env);
   }
@@ -999,8 +1315,23 @@ async function handleShiftClassSwitch(request, env) {
   if (prevShift.userId !== badgeToken) {
     return json({ error: "Previous shift does not belong to the scanned employee credential." }, 403, request, env);
   }
-  if (user.branchId !== device.branchId || prevShift.branchId !== device.branchId) {
+  if (
+    !hasBranchAssignment(user)
+    || !hasBranchAssignment(device)
+    || !hasBranchAssignment(prevShift)
+    || branchIdOfUser(user) !== branchIdOfUser(device)
+    || branchIdOfUser(prevShift) !== branchIdOfUser(device)
+  ) {
     return json({ error: "This shift or staff badge belongs to a different branch." }, 403, request, env);
+  }
+  const activeLockSnapshot = await fsGetDocSnapshot("activeShifts", badgeToken, token);
+  if (
+    !activeLockSnapshot
+    || activeLockSnapshot.document?.shiftId !== previousShiftId
+    || !activeLockSnapshot.updateTime
+    || !previousShiftSnapshot.updateTime
+  ) {
+    return json({ error: "The active shift lock no longer matches this shift. Please rescan." }, 409, request, env);
   }
 
   // 6. Validate new class metadata authoritatively (K-06, K-11)
@@ -1009,7 +1340,7 @@ async function handleShiftClassSwitch(request, env) {
   if (!classDoc) {
     return json({ error: "Selected class no longer exists." }, 404, request, env);
   }
-  if (classDoc.branchId && classDoc.branchId !== device.branchId) {
+  if (hasBranchAssignment(classDoc) && branchIdOfUser(classDoc) !== branchIdOfUser(device)) {
     return json({ error: "Selected class belongs to a different branch." }, 403, request, env);
   }
   if (classDoc.instructorId !== badgeToken && classDoc.substituteInstructorId !== badgeToken) {
@@ -1018,29 +1349,17 @@ async function handleShiftClassSwitch(request, env) {
   resolvedClassName = classDoc.className || resolvedClassName;
 
   const serverTime = new Date().toISOString();
-  const branchName = BRANCH_MAP[device.branchId] || "Kota Gorontalo";
+  const deviceBranchId = branchIdOfUser(device);
+  const branchName = BRANCH_MAP[deviceBranchId] || "Kota Gorontalo";
 
-  // 7. Close previous shift
-  await fsSetDoc(
-    "shifts",
-    previousShiftId,
-    {
-      ...prevShift,
-      clockOut: serverTime,
-      updatedAt: serverTime,
-      clockOutSource: "kiosk_verified",
-      clockOutDeviceId: deviceId,
-    },
-    token
-  );
-
-  // 8. Create new shift with branch preserved and device proof (K-04)
+  // 7. Create the replacement shift and update the old shift and lock atomically.
+  const newShiftId = crypto.randomUUID();
   const newShiftPayload = {
     userId: badgeToken,
     displayName: user.displayName || user.name || "Staff Member",
     role: normalizeRole(user.role),
     branch: branchName,
-    branchId: device.branchId,
+    branchId: deviceBranchId,
     division: user.division === "kindergarten" ? "kindergarten" : "courses",
     classId,
     className: resolvedClassName,
@@ -1056,38 +1375,64 @@ async function handleShiftClassSwitch(request, env) {
     createdAt: serverTime,
   };
 
-  let createdShift;
-  try {
-    createdShift = await fsCreateDoc("shifts", newShiftPayload, token);
-  } catch (err) {
-    // Compensate the close so a transient create failure does not strand staff
-    // without an open shift. The retry can safely attempt the switch again.
-    await fsSetDoc("shifts", previousShiftId, prevShift, token).catch(() => {});
-    throw err;
-  }
+  const nextLock = {
+    userId: badgeToken,
+    shiftId: newShiftId,
+    clockIn: serverTime,
+    branchId: deviceBranchId,
+    status: "active",
+    lastTransitionNonce: nonce,
+    lastClosedShiftId: previousShiftId,
+  };
 
-  // Update activeShifts lock to point to new shift
-  await fsSetDoc(
-    "activeShifts",
-    badgeToken,
-    {
-      userId: badgeToken,
-      shiftId: createdShift.id,
-      clockIn: serverTime,
-      branchId: device.branchId,
-      status: "active",
-    },
-    token
-  ).catch(() => {});
+  try {
+    await fsCommitWrites(
+      [
+        updateWrite(
+          "shifts",
+          previousShiftId,
+          {
+            clockOut: serverTime,
+            updatedAt: serverTime,
+            clockOutSource: "kiosk_verified",
+            clockOutDeviceId: deviceId,
+            classSwitchNonce: nonce,
+          },
+          previousShiftSnapshot.updateTime
+        ),
+        createWrite("shifts", newShiftId, newShiftPayload),
+        updateWrite(
+          "activeShifts",
+          badgeToken,
+          nextLock,
+          activeLockSnapshot.updateTime
+        ),
+      ],
+      token
+    );
+  } catch (err) {
+    const currentLock = await fsGetDoc("activeShifts", badgeToken, token);
+    const committedAfterUncertainResponse = (
+      currentLock?.lastTransitionNonce === nonce
+      && currentLock.lastClosedShiftId === previousShiftId
+      && currentLock.shiftId === newShiftId
+    );
+    if (!committedAfterUncertainResponse) {
+      if (isWriteConflict(err)) {
+        return json({ error: "The shift changed while the class switch was being processed. Please rescan." }, 409, request, env);
+      }
+      throw err;
+    }
+  }
 
   await logKioskAudit(
     "SHIFT_CLASS_SWITCH_VERIFIED",
     {
       previousShiftId,
-      newShiftId: createdShift.id,
+      newShiftId,
       userId: badgeToken,
       deviceId,
-      branchId: device.branchId,
+      branchId: deviceBranchId,
       classId,
       time: serverTime,
     },
@@ -1098,7 +1443,7 @@ async function handleShiftClassSwitch(request, env) {
     {
       success: true,
       closedShiftId: previousShiftId,
-      newShiftId: createdShift.id,
+      newShiftId,
       clockIn: serverTime,
       className: resolvedClassName,
     },
@@ -1114,27 +1459,56 @@ async function handleParentLink(request, env) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "Invalid JSON body." }, 400, request, env); }
   const { parentUid, studentId } = body || {};
-  if (!parentUid || !studentId) return json({ error: "Parent and student are required." }, 400, request, env);
-  const token = await getAuthToken(request, env);
+  const action = body?.action || "link";
+  if (!["link", "unlink", "unlink-all"].includes(action)) {
+    return json({ error: "Unsupported parent-link action." }, 400, request, env);
+  }
+  if (!studentId || (action !== "unlink-all" && !parentUid)) {
+    return json({ error: "Parent and student are required." }, 400, request, env);
+  }
+
+  const token = await getServiceAccountToken(env);
   if (!token) return json({ error: "Server authentication unavailable." }, 500, request, env);
-  const [actor, parent, student] = await Promise.all([
-    fsGetDoc("users", caller.user_id, token), fsGetDoc("users", parentUid, token), fsGetDoc("users", studentId, token),
+  const [actor, student] = await Promise.all([
+    fsGetDoc("users", caller.user_id, token),
+    fsGetDoc("users", studentId, token),
   ]);
-  const actorRole = normalizeRole(actor?.role);
-  if (!actor || !["admin", "frontoffice", "opslead", "frontofficelead"].includes(actorRole)) {
-    return json({ error: "Only authorized front-office staff can manage parent links." }, 403, request, env);
+  if (!actor || !["admin", "frontoffice", "opslead"].includes(normalizeRole(actor.role))
+    || !isActiveStaffProfile(actor)) {
+    return json({ error: "Only active Admin or Front Office staff can manage parent links." }, 403, request, env);
   }
-  if (!parent || parent.role !== "parent" || !student || student.role !== "student" || (student.status && student.status !== "active")) {
-    return json({ error: "The selected active parent or student was not found." }, 404, request, env);
+  if (!student || student.role !== "student") {
+    return json({ error: "The selected student was not found." }, 404, request, env);
   }
-  if (actorRole !== "admin" && (actor.branchId !== parent.branchId || parent.branchId !== student.branchId)) {
-    return json({ error: "Parent and student must belong to your branch." }, 403, request, env);
+  if (!canManageParentLinks(actor, student)) {
+    return json({ error: "You are not authorized to manage links for this student's branch or division." }, 403, request, env);
   }
-  await fsSetDoc("users", parentUid, {
-    ...parent,
-    childStudentIds: [...new Set([...(parent.childStudentIds || []), studentId])],
-    updatedAt: new Date().toISOString(),
-  }, token);
+
+  if (action === "unlink-all") {
+    const parents = await fsQueryParentsForStudent(studentId, token);
+    for (let index = 0; index < parents.length; index += 450) {
+      const writes = parents
+        .slice(index, index + 450)
+        .map((parent) => parentChildLinkWrite(parent.id, studentId, "unlink"));
+      await fsCommitWrites(writes, token);
+    }
+    return json({ success: true, unlinkedParents: parents.length }, 200, request, env);
+  }
+
+  const parent = await fsGetDoc("users", parentUid, token);
+  if (!parent || parent.role !== "parent") {
+    return json({ error: "The selected parent was not found." }, 404, request, env);
+  }
+
+  if (action === "link") {
+    const parentIsActive = !parent.status || parent.status === "active";
+    const studentIsActive = !student.status || student.status === "active";
+    if (!parentIsActive || !studentIsActive) {
+      return json({ error: "Only active parents and students can be linked." }, 400, request, env);
+    }
+  }
+
+  await fsCommitWrites([parentChildLinkWrite(parentUid, studentId, action)], token);
   return json({ success: true }, 200, request, env);
 }
 
