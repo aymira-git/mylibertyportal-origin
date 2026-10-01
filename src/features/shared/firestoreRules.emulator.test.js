@@ -40,6 +40,15 @@ const USERS = {
   student2: { role: "student", branchId: "bone_bolango" },
 };
 
+const FRONT_OFFICE_PROFILE_UID = "frontOfficeOwnProfile";
+const FRONT_OFFICE_PROFILE = {
+  role: "frontoffice",
+  division: "kindergarten",
+  branch: "Kota Gorontalo",
+  branchId: "kota_gorontalo",
+  status: "active",
+};
+
 function authed(uid) {
   return testEnv.authenticatedContext(uid).firestore();
 }
@@ -111,6 +120,42 @@ describe.skipIf(!HAS_EMULATOR)("firestore.rules against the real emulator", () =
   beforeEach(async () => {
     await testEnv.clearFirestore();
     await seedUsers();
+  });
+
+  describe("users own profile get", () => {
+    beforeEach(async () => {
+      await seedDoc(["users", FRONT_OFFICE_PROFILE_UID], FRONT_OFFICE_PROFILE);
+    });
+
+    it("lets an authenticated front office user read their own profile", async () => {
+      await assertSucceeds(
+        getDoc(doc(authed(FRONT_OFFICE_PROFILE_UID), "users", FRONT_OFFICE_PROFILE_UID))
+      );
+    });
+
+    it("does not let an unrelated role read the front office profile", async () => {
+      await assertFails(
+        getDoc(doc(authed("cleanerGto"), "users", FRONT_OFFICE_PROFILE_UID))
+      );
+    });
+
+    it("does not let front office read another same-branch front office profile", async () => {
+      await seedDoc(["users", "otherFrontOffice"], {
+        role: "frontoffice",
+        division: "kindergarten",
+        branchId: "kota_gorontalo",
+        status: "active",
+      });
+      await assertFails(
+        getDoc(doc(authed(FRONT_OFFICE_PROFILE_UID), "users", "otherFrontOffice"))
+      );
+    });
+
+    it("keeps front office profile reads scoped to the same branch", async () => {
+      await assertFails(
+        getDoc(doc(authed(FRONT_OFFICE_PROFILE_UID), "users", "student2"))
+      );
+    });
   });
 
   describe("payments get owner scoping (C1)", () => {

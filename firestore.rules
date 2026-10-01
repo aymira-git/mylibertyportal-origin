@@ -319,10 +319,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isAdmin()
+      allow get: if (signedIn() && userId == request.auth.uid)
+        || isAdmin()
         || ((isManager() || isFrontOffice()) && isSameBranch(resource.data) && (resource.data.role == 'parent' || isDivisionAllowedForBranchStaff(resource.data)))
         || (isStaff() && resource.data.role in ['student', 'instructor', 'instructorleader', 'instructor_leader', 'parent'] && isSameBranch(resource.data) && (resource.data.role == 'parent' || isDivisionAllowedForBranchStaff(resource.data)))
-        || (signedIn() && userId == request.auth.uid)
         || (isParentOf(userId) && resource.data.role == 'student');
       allow list: if isAdmin()
         || (isManager() && isSameBranchStrict(resource.data) && (resource.data.role == 'parent' || isDivisionAllowedForBranchStaff(resource.data)))
